@@ -1,0 +1,31 @@
+# Publica el paquete en GitHub Packages (npm.pkg.github.com) al empujar un tag vX.Y.Z.
+#   npm version patch   # o minor / major  → crea el commit y el tag
+#   git push --follow-tags
+# Verifica antes en el workspace (pnpm check). El workflow solo publica: el GITHUB_TOKEN no
+# puede instalar paquetes privados de otros repos, y publicar no necesita node_modules.
+name: publish
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: "@carlos-burelo"
+      - run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
