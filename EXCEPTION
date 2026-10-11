@@ -1,0 +1,18 @@
+# Excepción de licencia — @carlos-burelo/klin
+
+Yo, Carlos Burelo, único titular de los derechos de autor de klin, otorgo a
+la organización dacyti-gsi (la "División") permiso para usar, modificar y
+distribuir este paquete dentro de sus aplicaciones propietarias (incluidas
+`apps/pladida` y `apps/showcase`) SIN quedar sujeta a las obligaciones de
+compartir-fuente de la AGPL-3.0 (secciones 4–6 y 13).
+
+Condiciones:
+
+1. Este permiso cubre únicamente el uso como dependencia. No transfiere
+   titularidad alguna: el copyright sigue siendo exclusivamente mío.
+2. La redistribución del paquete klin por sí solo (fuera de las apps de la
+   División) sigue bajo AGPL-3.0-or-later.
+3. Puedo revocar esta excepción para versiones futuras con 90 días de aviso;
+   las versiones ya publicadas bajo esta excepción conservan el permiso.
+
+Carlos Burelo, 2026-10-11.

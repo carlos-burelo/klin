@@ -6,7 +6,9 @@ Sin `recharts`, sin `ResponsiveContainer`, sin `"use client"` en el núcleo.
 > © 2026 Carlos Burelo. Licencia AGPL-3.0-or-later (`LICENSE`). Proyecto personal,
 > sin afiliación institucional: nadie más posee derechos sobre este código.
 > Quien use, modifique u ofrezca este código por red debe liberar el suyo
-> bajo la misma licencia (copyleft fuerte, incluye SaaS).
+> bajo la misma licencia (copyleft fuerte, incluye SaaS). Excepción: la
+> organización dacyti-gsi puede usarlo en sus apps propietarias según
+> `EXCEPTION` (permiso privado del titular, sin transferir derechos).
 
 ## Principios
 
