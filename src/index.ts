@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 export type { ArcLink, ArcNode } from "./components/arc-diagram";
 export { ArcDiagram } from "./components/arc-diagram";
 export type { ArchEdge, ArchNode } from "./components/architecture-diagram";

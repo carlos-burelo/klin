@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 import { sankey, sankeyLinkHorizontal } from "d3-sankey";
 import { formatDefault, seriesColor } from "../lib/palette";
 import { ChartEmpty } from "./empty";

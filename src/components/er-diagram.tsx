@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 import { EdgeLabel, fitNodeWidth, layoutDag } from "../lib/graph";
 import { truncateLabel } from "../lib/palette";
 import { ChartEmpty } from "./empty";

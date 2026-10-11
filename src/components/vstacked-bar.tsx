@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 import { max } from "d3-array";
 import { scaleBand, scaleLinear } from "d3-scale";
 import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";

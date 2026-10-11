@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 import { max, sum } from "d3-array";
 import { scaleBand, scaleLinear, scalePoint } from "d3-scale";
 import { curveMonotoneX, line } from "d3-shape";

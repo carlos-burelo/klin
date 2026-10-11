@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 import { hierarchy, tree } from "d3-hierarchy";
 import { seriesColor, truncateLabel } from "../lib/palette";
 import { ChartEmpty } from "./empty";

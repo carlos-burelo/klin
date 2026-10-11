@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 import { sum } from "d3-array";
 import { arc, pie } from "d3-shape";
 import { formatDefault, seriesColor } from "../lib/palette";

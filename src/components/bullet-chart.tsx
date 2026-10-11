@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 import { formatDefault, seriesColor } from "../lib/palette";
 import { ChartEmpty } from "./empty";
 

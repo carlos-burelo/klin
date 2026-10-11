@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 /** Estado vacío homogéneo para todas las gráficas (SSR, sin JS). */
 export function ChartEmpty({
   title = "Sin datos todavía",

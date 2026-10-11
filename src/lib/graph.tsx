@@ -1,4 +1,7 @@
 /**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
+/**
  * Motor de layout para diagramas de nodos y aristas (flow, state, ER, clase,
  * casos de uso, arquitectura). Determinista y SSR puro: sin simulación ni DOM.
  *

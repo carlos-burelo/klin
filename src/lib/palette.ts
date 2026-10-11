@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 /** Paleta por defecto: tokens del tema (claro/oscuro automáticos). */
 export const CHART_PALETTE = [
   "var(--chart-1)",

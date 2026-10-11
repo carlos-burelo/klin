@@ -3,8 +3,10 @@
 Gráficas SSR-first: **d3 para cálculo, SVG puro para render**.
 Sin `recharts`, sin `ResponsiveContainer`, sin `"use client"` en el núcleo.
 
-> © 2026 Carlos Burelo. Licencia MIT (`LICENSE`). Proyecto personal,
+> © 2026 Carlos Burelo. Licencia AGPL-3.0-or-later (`LICENSE`). Proyecto personal,
 > sin afiliación institucional: nadie más posee derechos sobre este código.
+> Quien use, modifique u ofrezca este código por red debe liberar el suyo
+> bajo la misma licencia (copyleft fuerte, incluye SaaS).
 
 ## Principios
 

@@ -1,3 +1,6 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
 import { arc } from "d3-shape";
 import { formatDefault, truncateLabel } from "../lib/palette";
 import { ChartEmpty } from "./empty";
