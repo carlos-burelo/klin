@@ -8,6 +8,3 @@ coverage/
 
 # Publicacion
 *.tgz
-
-# Sitio (se genera con pnpm site:build, no se versiona ni se publica)
-site/out/

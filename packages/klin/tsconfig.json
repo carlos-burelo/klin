@@ -1,13 +1,5 @@
 {
-  "extends": "@dacyti-gsi/config/tsconfig.react-library.json",
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "test/**/*.ts",
-    "test/**/*.tsx",
-    "site/src/**/*.ts",
-    "site/src/**/*.tsx",
-    "site/scripts/**/*.ts"
-  ],
-  "exclude": ["node_modules", "dist", "site/out"]
+  "extends": "../../tools/config/tsconfig.react-library.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"],
+  "exclude": ["node_modules", "dist"]
 }

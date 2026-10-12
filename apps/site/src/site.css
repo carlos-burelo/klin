@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Registro de Tailwind de la lib (rutas relativas a ESE archivo). */
-@import "../../src/styles.css";
+/* Registro de Tailwind de la lib (vía paquete, como cualquier consumidor). */
+@import "@carlos-burelo/klin/styles.css";
 
 @custom-variant dark (&:is(.dark *));
 

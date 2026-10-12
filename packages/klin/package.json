@@ -35,9 +35,7 @@
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "format": "biome format --write",
-    "test": "vitest run",
-    "site:build": "tsx site/scripts/build-site.ts",
-    "site:dev": "pnpm site:build && tsx site/scripts/serve.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "d3-array": "^3.2.4",
@@ -54,8 +52,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.2",
-    "@dacyti-gsi/config": "^0.1.0",
-    "@tailwindcss/postcss": "^4.3.3",
     "@types/d3-array": "^3.2.1",
     "@types/d3-force": "^3.0.10",
     "@types/d3-format": "^3.0.4",
@@ -63,15 +59,11 @@
     "@types/d3-sankey": "^0.12.5",
     "@types/d3-scale": "^4.0.9",
     "@types/d3-shape": "^3.2.0",
-    "@types/node": "^26.6.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "next": "16.4.0",
-    "postcss": "^8.5.29",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }

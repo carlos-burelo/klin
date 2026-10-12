@@ -26,6 +26,6 @@ jobs:
           node-version: 24
           registry-url: https://npm.pkg.github.com
           scope: "@carlos-burelo"
-      - run: pnpm publish --no-git-checks
+      - run: pnpm --filter @carlos-burelo/klin publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

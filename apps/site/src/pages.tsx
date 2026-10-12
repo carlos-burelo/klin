@@ -22,7 +22,6 @@ export function Shell({
   const charts = root === "" ? "charts/index.html" : "index.html";
   return (
     <html lang="es" suppressHydrationWarning>
-      {/* biome-ignore lint/style/noHeadElement: SSG estático sin Next; <head> manual es correcto aquí */}
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
