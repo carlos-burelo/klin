@@ -20,7 +20,7 @@ export type ArcNode = {
   color?: string;
 };
 
-export type ArcLink = {
+export type ArcEdge = {
   from: string;
   to: string;
   label?: string;
@@ -29,7 +29,7 @@ export type ArcLink = {
 /** Props del diagrama de arcos. */
 export type ArcDiagramProps = {
   nodes: ArcNode[];
-  links: ArcLink[];
+  edges: ArcEdge[];
   ariaLabel: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -59,11 +59,11 @@ export const MAX_ARC_LINKS = DEFAULT_MAX_LINKS;
  * Cómputo puro del layout de arcos (eje de nodos + grado + orden).
  * Trunca determinista para SSR.
  */
-export function computeArcLayout(nodes: ArcNode[], links: ArcLink[]) {
+export function computeArcLayout(nodes: ArcNode[], edges: ArcEdge[]) {
   const cappedNodes = nodes.slice(0, MAX_ARC_NODES);
   const known = new Set(cappedNodes.map((n) => n.id));
-  const clean = links
-    .filter((l) => known.has(l.from) && known.has(l.to))
+  const clean = edges
+    .filter((e) => known.has(e.from) && known.has(e.to))
     .slice(0, MAX_ARC_LINKS);
   const step = Math.min(
     MAX_STEP,
@@ -73,9 +73,9 @@ export function computeArcLayout(nodes: ArcNode[], links: ArcLink[]) {
   const ox = (ARC_W - totalW) / 2;
   const H = BASE_Y + VIEW_PAD_BOTTOM;
   const degree = new Map<string, number>(cappedNodes.map((n) => [n.id, 0]));
-  for (const l of clean) {
-    degree.set(l.from, (degree.get(l.from) ?? 0) + 1);
-    degree.set(l.to, (degree.get(l.to) ?? 0) + 1);
+  for (const e of clean) {
+    degree.set(e.from, (degree.get(e.from) ?? 0) + 1);
+    degree.set(e.to, (degree.get(e.to) ?? 0) + 1);
   }
   const order = new Map(cappedNodes.map((n, i) => [n.id, i]));
   return { cappedNodes, clean, step, totalW, ox, H, degree, order };
@@ -86,7 +86,7 @@ export function computeArcLayout(nodes: ArcNode[], links: ArcLink[]) {
  */
 export function ArcDiagram({
   nodes,
-  links,
+  edges,
   ariaLabel,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -100,7 +100,7 @@ export function ArcDiagram({
 
   const { cappedNodes, clean, step, ox, H, degree, order } = computeArcLayout(
     nodes,
-    links,
+    edges,
   );
   const xOf = (id: string) => ox + (order.get(id) ?? 0) * step;
 
@@ -118,17 +118,17 @@ export function ArcDiagram({
         aria-describedby={ariaDescribedBy}
       >
         <title>{ariaLabel}</title>
-        {clean.map((l, i) => {
-          const a = xOf(l.from);
-          const b = xOf(l.to);
+        {clean.map((e, i) => {
+          const a = xOf(e.from);
+          const b = xOf(e.to);
           const left = Math.min(a, b);
           const right = Math.max(a, b);
           const h = ARC_MIN_H + ((i * ARC_JITTER) % ARC_SPREAD);
-          const tip = l.label
-            ? `${l.from} ↔ ${l.to}: ${l.label}`
-            : `${l.from} ↔ ${l.to}`;
+          const tip = e.label
+            ? `${e.from} ↔ ${e.to}: ${e.label}`
+            : `${e.from} ↔ ${e.to}`;
           return (
-            <g key={stableKey([l.from, l.to], i)}>
+            <g key={stableKey([e.from, e.to], i)}>
               <title>{tip}</title>
               <path
                 d={`M ${left} ${BASE_Y} C ${left} ${BASE_Y - h}, ${right} ${BASE_Y - h}, ${right} ${BASE_Y}`}

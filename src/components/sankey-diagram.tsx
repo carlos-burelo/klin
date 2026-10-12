@@ -38,7 +38,7 @@ export type SankeyDiagramProps = {
   nodes: SankeyNode[];
   flows: SankeyFlow[];
   ariaLabel: string;
-  formatValue?: (value: number) => string;
+  format?: (value: number) => string;
   locale?: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -117,7 +117,7 @@ export function SankeyDiagram({
   nodes,
   flows,
   ariaLabel,
-  formatValue,
+  format,
   locale = "es-MX",
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -136,7 +136,7 @@ export function SankeyDiagram({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const fmt = formatValue ?? ((v: number) => formatDefault(v, locale));
+  const fmt = format ?? ((v: number) => formatDefault(v, locale));
 
   const colorOf = (id: string) => {
     const entry = colorById.get(id);

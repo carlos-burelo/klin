@@ -29,7 +29,7 @@ export type StackedBarProps = {
   rows: StackRow[];
   segments: StackSegment[];
   ariaLabel: string;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   /** Clave del segmento para el % (por defecto, el primero). */
   percentOf?: string;
   locale?: string;
@@ -56,7 +56,7 @@ export function StackedBar({
   segments,
   ariaLabel,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   percentOf,
   showLegend = true,
   className,
@@ -133,7 +133,7 @@ export function StackedBar({
                         ? 0
                         : Math.round((value / total) * PERCENT_FACTOR);
                     const tip =
-                      `${row.label} · ${seg.label}: ${formatValue(value)} (${pct}% del total)` +
+                      `${row.label} · ${seg.label}: ${format(value)} (${pct}% del total)` +
                       (row.detail ? ` (${row.detail})` : "");
                     return (
                       <g key={stableKey([seg.key], si)}>

@@ -34,7 +34,7 @@ export type TopoNode = {
   role?: TopoRole;
 };
 
-export type TopoLink = {
+export type TopoEdge = {
   from: string;
   to: string;
   label?: string;
@@ -109,7 +109,7 @@ const UNKNOWN_RANK = 99;
 /** Props de la topología de red. */
 export type NetworkTopologyProps = {
   nodes: TopoNode[];
-  links: TopoLink[];
+  edges: TopoEdge[];
   ariaLabel: string;
   direction?: "TB" | "LR";
   emptyTitle?: string;
@@ -148,7 +148,7 @@ function roleColor(role: TopoRole): string {
   }
 }
 
-function statusColor(status: TopoLink["status"]): string {
+function statusColor(status: TopoEdge["status"]): string {
   switch (status) {
     case "down":
       return CHART_TOKEN.destructive;
@@ -303,15 +303,15 @@ function RoleGlyph({ role, x, y }: { role: TopoRole; x: number; y: number }) {
  */
 export function computeTopologyLayout(
   nodes: TopoNode[],
-  links: TopoLink[],
+  edges: TopoEdge[],
   direction: "TB" | "LR" = "TB",
 ): {
   layout: DagLayout;
   byId: Map<string, TopoNode>;
-  linkByKey: Map<string, TopoLink>;
+  edgeByKey: Map<string, TopoEdge>;
   width: number;
   height: number;
-  usedStatuses: Array<NonNullable<TopoLink["status"]> | "up">;
+  usedStatuses: Array<NonNullable<TopoEdge["status"]> | "up">;
 } {
   const rank = new Map(ROLE_ORDER.map((r, i) => [r, i]));
   const ordered = [...nodes].sort(
@@ -331,7 +331,7 @@ export function computeTopologyLayout(
   const H = LAYOUT.NODE_H;
   const layout = layoutDag(
     ordered.map((n) => n.id),
-    links,
+    edges,
     {
       direction,
       nodeW: W,
@@ -343,16 +343,16 @@ export function computeTopologyLayout(
     },
   );
   const byId = new Map(nodes.map((n) => [n.id, n]));
-  const linkByKey = new Map(
-    links.map((l) => [`${l.from}→${l.to}`, l] as const),
+  const edgeByKey = new Map(
+    edges.map((e) => [`${e.from}→${e.to}`, e] as const),
   );
   const usedStatuses = [
-    ...new Set(links.map((l) => l.status ?? "up")),
-  ] as Array<NonNullable<TopoLink["status"]> | "up">;
+    ...new Set(edges.map((e) => e.status ?? "up")),
+  ] as Array<NonNullable<TopoEdge["status"]> | "up">;
   return {
     layout,
     byId,
-    linkByKey,
+    edgeByKey,
     width: Math.max(1, layout.width),
     height: Math.max(1, layout.height),
     usedStatuses,
@@ -364,7 +364,7 @@ export function computeTopologyLayout(
  */
 export function NetworkTopology({
   nodes,
-  links,
+  edges,
   ariaLabel,
   direction = "TB",
   emptyTitle = EMPTY_TITLE,
@@ -377,8 +377,8 @@ export function NetworkTopology({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { layout, byId, linkByKey, width, height, usedStatuses } =
-    computeTopologyLayout(nodes, links, direction);
+  const { layout, byId, edgeByKey, width, height, usedStatuses } =
+    computeTopologyLayout(nodes, edges, direction);
 
   return (
     <div className={className} style={style}>
@@ -406,8 +406,8 @@ export function NetworkTopology({
             </marker>
           </defs>
           {layout.edges.map((e, i) => {
-            const link = linkByKey.get(`${e.from}→${e.to}`);
-            const status = link?.status ?? "up";
+            const edge = edgeByKey.get(`${e.from}→${e.to}`);
+            const status = edge?.status ?? "up";
             return (
               <path
                 key={stableKey([e.from, e.to], i)}
@@ -427,7 +427,7 @@ export function NetworkTopology({
             const tip =
               `${n.label} (${role})` +
               (n.sub ? ` · ${n.sub}` : "") +
-              ` · ${links.filter((l) => l.from === p.id || l.to === p.id).length} enlaces`;
+              ` · ${edges.filter((e) => e.from === p.id || e.to === p.id).length} enlaces`;
             return (
               <g key={stableKey([p.id], i)}>
                 <title>{tip}</title>
@@ -466,13 +466,13 @@ export function NetworkTopology({
             );
           })}
           {layout.edges.map((e, i) => {
-            const link = linkByKey.get(`${e.from}→${e.to}`);
-            return link?.label ? (
+            const edge = edgeByKey.get(`${e.from}→${e.to}`);
+            return edge?.label ? (
               <EdgeLabel
-                key={stableKey([e.from, e.to, link.label], i)}
+                key={stableKey([e.from, e.to, edge.label], i)}
                 mx={e.mx}
                 my={e.my}
-                text={link.label}
+                text={edge.label}
               />
             ) : null;
           })}

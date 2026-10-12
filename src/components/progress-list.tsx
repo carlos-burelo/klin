@@ -21,7 +21,7 @@ export type ProgressRow = {
 export type ProgressListProps = {
   rows: ProgressRow[];
   ariaLabel: string;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   color?: string;
   className?: string;
@@ -38,7 +38,7 @@ export function ProgressList({
   rows,
   ariaLabel,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   color,
   className,
   style,
@@ -70,7 +70,7 @@ export function ProgressList({
           Math.max(0, (value / total) * PERCENT_FACTOR),
         );
         const tip =
-          `${row.label}: ${formatValue(value)} de ${formatValue(toNumber(row.total ?? row.value))}` +
+          `${row.label}: ${format(value)} de ${format(toNumber(row.total ?? row.value))}` +
           (row.detail ? ` (${row.detail})` : "");
         return (
           <div
@@ -86,7 +86,7 @@ export function ProgressList({
                 {row.label}
               </span>
               <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums">
-                {formatValue(value)}
+                {format(value)}
               </span>
             </div>
             <div

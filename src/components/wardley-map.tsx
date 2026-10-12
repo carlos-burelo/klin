@@ -34,7 +34,7 @@ export type WardleyNode = {
 };
 
 /** Enlace de Wardley (ids de origen y destino). */
-export type WardleyLink = {
+export type WardleyEdge = {
   from: string;
   to: string;
 };
@@ -42,7 +42,7 @@ export type WardleyLink = {
 /** Props del mapa de Wardley SSR (cadena de valor vs. evolución). */
 export type WardleyMapProps = {
   nodes: WardleyNode[];
-  links: WardleyLink[];
+  edges: WardleyEdge[];
   ariaLabel: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -71,21 +71,21 @@ const LABEL_MAX_NODE = 20;
  */
 export function computeWardleyLayout(
   nodes: WardleyNode[],
-  links: WardleyLink[],
+  edges: WardleyEdge[],
 ): {
   points: Array<WardleyNode & { nx: number; ny: number }>;
-  cleanLinks: WardleyLink[];
+  cleanEdges: WardleyEdge[];
   byId: Map<string, WardleyNode>;
 } {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const known = new Set(nodes.map((n) => n.id));
-  const cleanLinks = links.filter((l) => known.has(l.from) && known.has(l.to));
+  const cleanEdges = edges.filter((e) => known.has(e.from) && known.has(e.to));
   const points = nodes.map((n) => ({
     ...n,
     nx: clamp01(toNumber(n.x)),
     ny: clamp01(toNumber(n.y)),
   }));
-  return { points, cleanLinks, byId };
+  return { points, cleanEdges, byId };
 }
 
 /**
@@ -93,7 +93,7 @@ export function computeWardleyLayout(
  */
 export function WardleyMap({
   nodes,
-  links,
+  edges,
   ariaLabel,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -105,7 +105,7 @@ export function WardleyMap({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { points, cleanLinks } = computeWardleyLayout(nodes, links);
+  const { points, cleanEdges } = computeWardleyLayout(nodes, edges);
   const pointById = new Map(points.map((p) => [p.id, p]));
 
   const innerW = W - MARGIN.left - MARGIN.right;
@@ -166,13 +166,13 @@ export function WardleyMap({
       >
         Cadena de valor →
       </text>
-      {cleanLinks.map((l, i) => {
-        const a = pointById.get(l.from);
-        const b = pointById.get(l.to);
+      {cleanEdges.map((e, i) => {
+        const a = pointById.get(e.from);
+        const b = pointById.get(e.to);
         if (!a || !b) return null;
         return (
           <line
-            key={stableKey([l.from, l.to], i)}
+            key={stableKey([e.from, e.to], i)}
             x1={px(a.nx)}
             y1={py(a.ny)}
             x2={px(b.nx)}

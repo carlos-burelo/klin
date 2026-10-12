@@ -31,7 +31,7 @@ export type TreemapNode = {
 export type TreemapChartProps = {
   data: TreemapNode[];
   ariaLabel: string;
-  formatValue?: (value: number) => string;
+  format?: (value: number) => string;
   locale?: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -99,7 +99,7 @@ export function computeTreemapLayout(data: TreemapNode[]): {
 export function TreemapChart({
   data,
   ariaLabel,
-  formatValue,
+  format,
   locale = "es-MX",
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -115,7 +115,7 @@ export function TreemapChart({
   if (leaves.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const fmt = formatValue ?? ((v: number) => formatDefault(v, locale));
+  const fmt = format ?? ((v: number) => formatDefault(v, locale));
   const total = leaves.reduce((acc, l) => acc + toNumber(l.value), 0);
 
   return (

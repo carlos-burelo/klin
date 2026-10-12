@@ -1,6 +1,6 @@
 {
   "name": "@carlos-burelo/klin",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Gráficas SSR-friendly (d3 para cálculo, SVG puro, tooltip portal mínimo)",
   "license": "AGPL-3.0-or-later",
   "author": "Carlos Burelo",

@@ -3,7 +3,7 @@
  */
 export type {
   ArcDiagramProps,
-  ArcLink,
+  ArcEdge,
   ArcNode,
 } from "./components/arc-diagram";
 export { ArcDiagram } from "./components/arc-diagram";
@@ -13,9 +13,9 @@ export type {
   ArchNode,
 } from "./components/architecture-diagram";
 export { ArchitectureDiagram } from "./components/architecture-diagram";
-export type { AreaChartProps, AreaSeries } from "./components/area-chart";
+export type { AreaChartProps } from "./components/area-chart";
 export { AreaChart } from "./components/area-chart";
-export type { BarChartProps, BarSeries } from "./components/bar-chart";
+export type { BarChartProps } from "./components/bar-chart";
 export { BarChart } from "./components/bar-chart";
 export type { BoxGroup, BoxPlotProps } from "./components/box-plot";
 export { BoxPlot } from "./components/box-plot";
@@ -58,15 +58,10 @@ export type { GanttChartProps, GanttTask } from "./components/gantt-chart";
 export { GanttChart } from "./components/gantt-chart";
 export type { GaugeChartProps } from "./components/gauge-chart";
 export { GaugeChart } from "./components/gauge-chart";
-export type {
-  HBarSeries,
-  HorizontalBarChartProps,
-} from "./components/hbar-chart";
-export { HorizontalBarChart } from "./components/hbar-chart";
-export type { MatrixHeatmapProps } from "./components/heatmap";
-export { MatrixHeatmap } from "./components/heatmap";
 export type { HistogramProps } from "./components/histogram";
 export { Histogram } from "./components/histogram";
+export type { HorizontalBarChartProps } from "./components/horizontal-bar-chart";
+export { HorizontalBarChart } from "./components/horizontal-bar-chart";
 export type {
   KanbanBoardProps,
   KanbanCard,
@@ -75,24 +70,26 @@ export type {
 export { KanbanBoard } from "./components/kanban-board";
 export type { ChartLegendProps, LegendItem } from "./components/legend";
 export { ChartLegend } from "./components/legend";
-export type { LineChartProps, LineSeries } from "./components/line-chart";
+export type { LineChartProps } from "./components/line-chart";
 export { LineChart } from "./components/line-chart";
 export type { LollipopChartProps } from "./components/lollipop-chart";
 export { LollipopChart } from "./components/lollipop-chart";
+export type { MatrixHeatmapProps } from "./components/matrix-heatmap";
+export { MatrixHeatmap } from "./components/matrix-heatmap";
 export type {
   MindmapDiagramProps,
   MindNode,
 } from "./components/mindmap-diagram";
 export { MindmapDiagram } from "./components/mindmap-diagram";
 export type {
+  NetworkEdge,
   NetworkGraphProps,
-  NetworkLink,
   NetworkNode,
 } from "./components/network-graph";
 export { NetworkGraph } from "./components/network-graph";
 export type {
   NetworkTopologyProps,
-  TopoLink,
+  TopoEdge,
   TopoNode,
   TopoRole,
 } from "./components/network-topology";
@@ -144,7 +141,7 @@ export type {
   StateNode,
 } from "./components/state-diagram";
 export { StateDiagram } from "./components/state-diagram";
-export type { StreamgraphProps, StreamSeries } from "./components/streamgraph";
+export type { StreamgraphProps } from "./components/streamgraph";
 export { Streamgraph } from "./components/streamgraph";
 export type {
   SunburstChartProps,
@@ -174,15 +171,12 @@ export type {
 export { UseCaseDiagram } from "./components/usecase-diagram";
 export type { VennDiagramProps, VennSet } from "./components/venn-diagram";
 export { VennDiagram } from "./components/venn-diagram";
-export type {
-  VerticalStackedBarProps,
-  VStackSeries,
-} from "./components/vstacked-bar";
-export { VerticalStackedBar } from "./components/vstacked-bar";
+export type { VerticalStackedBarProps } from "./components/vertical-stacked-bar";
+export { VerticalStackedBar } from "./components/vertical-stacked-bar";
 export type { WaffleChartProps, WafflePart } from "./components/waffle-chart";
 export { WaffleChart } from "./components/waffle-chart";
 export type {
-  WardleyLink,
+  WardleyEdge,
   WardleyMapProps,
   WardleyNode,
 } from "./components/wardley-map";

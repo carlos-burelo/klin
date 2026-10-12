@@ -22,7 +22,7 @@ export type FunnelChartProps = {
   stages: FunnelStage[];
   ariaLabel: string;
   height?: number;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   /**
    * Color por etapa. Si retorna `undefined` se usa el color de serie.
@@ -55,7 +55,7 @@ export function FunnelChart({
   ariaLabel,
   height = 280,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   itemColor,
   className,
   style,
@@ -102,8 +102,8 @@ export function FunnelChart({
             : Math.round(((value / prev) * PERCENT_FACTOR || 0) * 10) / 10;
         const tip =
           i === 0
-            ? `${stage.label}: ${formatValue(value)} (${conv}% del inicio)`
-            : `${stage.label}: ${formatValue(value)} (${conv}% del inicio · ${step}% previo)`;
+            ? `${stage.label}: ${format(value)} (${conv}% del inicio)`
+            : `${stage.label}: ${format(value)} (${conv}% del inicio · ${step}% previo)`;
         return (
           <g key={stableKey([stage.label], i)}>
             <title>{tip}</title>
@@ -130,7 +130,7 @@ export function FunnelChart({
               fill="white"
               opacity={STAGE_VALUE_OPACITY}
             >
-              {`${formatValue(value)} · ${conv}%`}
+              {`${format(value)} · ${conv}%`}
             </text>
           </g>
         );

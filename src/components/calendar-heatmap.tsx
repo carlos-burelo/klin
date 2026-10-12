@@ -36,7 +36,7 @@ export type CalendarHeatmapProps = {
   /** Fecha de fin `YYYY-MM-DD` (por defecto hoy; pasar fija para determinismo). */
   end?: string;
   weeks?: number;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   color?: string;
   className?: string;
@@ -56,7 +56,7 @@ export function CalendarHeatmap({
   end,
   weeks = 26,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   color,
   className,
   style,
@@ -160,8 +160,8 @@ export function CalendarHeatmap({
               ? ""
               : weekdayFmt.format(fecha);
             const tip = weekday
-              ? `${key} (${weekday}): ${formatValue(v)}`
-              : `${key}: ${formatValue(v)}`;
+              ? `${key} (${weekday}): ${format(v)}`
+              : `${key}: ${format(v)}`;
             return (
               <g key={key}>
                 <title>{tip}</title>

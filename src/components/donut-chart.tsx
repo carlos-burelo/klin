@@ -38,7 +38,7 @@ export type DonutChartProps = {
   ariaLabel: string;
   size?: number;
   thickness?: number;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   /**
    * Color por rebanada. Si retorna `undefined` se usa el color de serie.
@@ -60,7 +60,7 @@ export type PieChartProps = {
   data: DonutDatum[];
   ariaLabel: string;
   size?: number;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   /**
    * Color por rebanada. Si retorna `undefined` se usa el color de serie.
@@ -87,7 +87,7 @@ export function DonutChart({
   size = 220,
   thickness = 38,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   itemColor,
   totalLabel = "Total",
   showTotal = true,
@@ -147,7 +147,7 @@ export function DonutChart({
               total > 0
                 ? Math.round((datum.value / total) * PERCENT_FACTOR)
                 : 0;
-            const tip = `${datum.label}: ${formatValue(datum.value)} (${pct}% del total)`;
+            const tip = `${datum.label}: ${format(datum.value)} (${pct}% del total)`;
             return (
               <g key={stableKey([datum.label], i)}>
                 <title>{tip}</title>
@@ -172,7 +172,7 @@ export function DonutChart({
               fontWeight={FONT_SEMIBOLD}
               fill={CHART_TOKEN.foreground}
             >
-              {formatValue(total)}
+              {format(total)}
             </text>
             <text
               x={radius}
@@ -189,7 +189,7 @@ export function DonutChart({
       {showLegend ? (
         <ChartLegend
           items={clean.map((d, i) => ({
-            label: `${d.label} · ${formatValue(d.value)}`,
+            label: `${d.label} · ${format(d.value)}`,
             color: sliceColor(d, i),
           }))}
         />
@@ -204,7 +204,7 @@ export function PieChart({
   ariaLabel,
   size = 220,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   itemColor,
   totalLabel = "Total",
   showTotal = true,
@@ -221,7 +221,7 @@ export function PieChart({
       ariaLabel={ariaLabel}
       size={size}
       thickness={size / 2}
-      formatValue={formatValue}
+      format={format}
       locale={locale}
       itemColor={itemColor}
       totalLabel={totalLabel}

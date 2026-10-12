@@ -33,7 +33,7 @@ export type HistogramProps = {
   ariaLabel: string;
   bins?: number;
   height?: number;
-  formatTick?: ValueFormatter;
+  format?: ValueFormatter;
   color?: string;
   locale?: string;
   className?: string;
@@ -58,7 +58,7 @@ export function Histogram({
   ariaLabel,
   bins = 12,
   height = 240,
-  formatTick,
+  format,
   color,
   locale = "es-MX",
   className,
@@ -91,7 +91,7 @@ export function Histogram({
   const ticks = y.ticks(GRID_TICKS);
   const fill = seriesColor(2, color);
   const total = clean.length;
-  const fmtTick = formatTick ?? ((v: number) => formatDefault(v, locale));
+  const fmtTick = format ?? ((v: number) => formatDefault(v, locale));
 
   return (
     <ChartSvg

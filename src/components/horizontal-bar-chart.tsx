@@ -30,14 +30,11 @@ import {
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
-/** Serie de barras horizontales (clave, etiqueta y color opcional). */
-export type HBarSeries = ChartSeries;
-
 /** Props de barras horizontales agrupadas SSR. */
 export type HorizontalBarChartProps = {
   data: Array<Record<string, string | number>>;
   yKey: string;
-  series: HBarSeries[];
+  series: ChartSeries[];
   ariaLabel: string;
   formatX?: ValueFormatter;
   locale?: string;

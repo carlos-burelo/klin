@@ -106,13 +106,13 @@ Helpers: `seriesColors(series)`, `truncateLabel`, `toNumber`, `domainWithZero`,
 `maxNodes`/`maxEdges`), `EdgeLabel` (trunca a 24).
 Vacío único: `EMPTY_TITLE`. Formateadores tipados `ValueFormatter`.
 Caps centralizados `DEFAULT_MAX_NODES/LINKS/LEAVES/ROWS` (`src/lib/limits.ts`).
-Serie única `ChartSeries` (alias legacy `BarSeries`, `HBarSeries`, …).
+Serie única `ChartSeries`.
 Universal aditivo: `className`/`style`, `ariaDescribedBy?`, `locale?` (`es-MX`),
 `showLegend?`, `annotations?` (línea de referencia SSR), `itemColor?` por dato.
 Cada componente exporta su `XProps` (`import type { BarChartProps } from "@carlos-burelo/klin"`).
 Diagramas pesados exponen su cómputo puro (`computeNetworkPositions`,
 `computeSankeyLayout`, `computeTreemapLayout`, …) con caps SSR
-(400 nodos / 800 links-hojas).
+(400 nodos / 800 edges-hojas).
 
 ## Línea de estilo (obligatoria)
 

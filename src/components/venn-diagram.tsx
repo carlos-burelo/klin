@@ -21,7 +21,7 @@ export type VennDiagramProps = {
   intersections?: { sets: number[]; value: number }[];
   ariaLabel: string;
   size?: number;
-  formatValue?: (value: number) => string;
+  format?: (value: number) => string;
   locale?: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -84,7 +84,7 @@ export function VennDiagram({
   intersections,
   ariaLabel,
   size = 340,
-  formatValue,
+  format,
   locale = "es-MX",
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -124,7 +124,7 @@ export function VennDiagram({
       (x) => [x.sets.join(","), toNumber(x.value)] as const,
     ),
   );
-  const fmt = formatValue ?? ((v: number) => formatDefault(v, locale));
+  const fmt = format ?? ((v: number) => formatDefault(v, locale));
   const tipFor = (idx: number[]) => {
     const names = idx.map((i) => sets[i]?.label ?? "").join(" ∩ ");
     const v = inter.get(idx.join(","));

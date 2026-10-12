@@ -36,7 +36,7 @@ export type NetworkNode = {
   color?: string;
 };
 
-export type NetworkLink = {
+export type NetworkEdge = {
   from: string;
   to: string;
 };
@@ -44,7 +44,7 @@ export type NetworkLink = {
 /** Props del grafo de red. */
 export type NetworkGraphProps = {
   nodes: NetworkNode[];
-  links: NetworkLink[];
+  edges: NetworkEdge[];
   ariaLabel: string;
   seed?: number;
   emptyTitle?: string;
@@ -77,35 +77,35 @@ const NETWORK_H = 420;
 
 /**
  * Cómputo puro de posiciones (fuerzas con semilla fija, NETWORK_TICKS ticks).
- * Trunca determinista a los primeros N nodos/links para SSR.
+ * Trunca determinista a los primeros N nodos/edges para SSR.
  */
 export function computeNetworkPositions(
   nodes: NetworkNode[],
-  links: NetworkLink[],
+  edges: NetworkEdge[],
   seed = NETWORK_SEED,
 ): {
   positioned: PositionedNetworkNode[];
-  renderedLinks: NetworkLink[];
+  renderedEdges: NetworkEdge[];
   degree: Map<string, number>;
 } {
   const capped = nodes.slice(0, MAX_NETWORK_NODES);
   const known = new Set(capped.map((n) => n.id));
-  const renderedLinks = links
-    .filter((l) => known.has(l.from) && known.has(l.to))
+  const renderedEdges = edges
+    .filter((e) => known.has(e.from) && known.has(e.to))
     .slice(0, MAX_NETWORK_LINKS);
 
   type SimNode = PositionedNetworkNode;
   const simNodes: SimNode[] = capped.map((n) => ({ ...n }));
-  const simLinks = renderedLinks.map((l) => ({
-    source: l.from,
-    target: l.to,
+  const simEdges = renderedEdges.map((e) => ({
+    source: e.from,
+    target: e.to,
   }));
 
   const sim = forceSimulation(simNodes)
     .randomSource(seededRandom(seed))
     .force(
       "link",
-      forceLink<SimNode, { source: string; target: string }>(simLinks)
+      forceLink<SimNode, { source: string; target: string }>(simEdges)
         .id((d) => d.id)
         .distance(NETWORK_LINK_DISTANCE),
     )
@@ -116,12 +116,12 @@ export function computeNetworkPositions(
   for (let i = 0; i < NETWORK_TICKS; i++) sim.tick();
 
   const degree = new Map<string, number>(capped.map((n) => [n.id, 0]));
-  for (const l of renderedLinks) {
-    degree.set(l.from, (degree.get(l.from) ?? 0) + 1);
-    degree.set(l.to, (degree.get(l.to) ?? 0) + 1);
+  for (const e of renderedEdges) {
+    degree.set(e.from, (degree.get(e.from) ?? 0) + 1);
+    degree.set(e.to, (degree.get(e.to) ?? 0) + 1);
   }
 
-  return { positioned: simNodes, renderedLinks, degree };
+  return { positioned: simNodes, renderedEdges, degree };
 }
 
 /**
@@ -129,7 +129,7 @@ export function computeNetworkPositions(
  */
 export function NetworkGraph({
   nodes,
-  links,
+  edges,
   ariaLabel,
   seed = 42,
   emptyTitle = EMPTY_TITLE,
@@ -142,9 +142,9 @@ export function NetworkGraph({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { positioned, renderedLinks, degree } = computeNetworkPositions(
+  const { positioned, renderedEdges, degree } = computeNetworkPositions(
     nodes,
-    links,
+    edges,
     seed,
   );
   const pos = new Map(positioned.map((n) => [n.id, n]));
@@ -159,13 +159,13 @@ export function NetworkGraph({
       aria-describedby={ariaDescribedBy}
     >
       <title>{ariaLabel}</title>
-      {renderedLinks.map((l, i) => {
-        const a = pos.get(l.from);
-        const b = pos.get(l.to);
+      {renderedEdges.map((e, i) => {
+        const a = pos.get(e.from);
+        const b = pos.get(e.to);
         if (!a || !b) return null;
         return (
           <line
-            key={stableKey([l.from, l.to], i)}
+            key={stableKey([e.from, e.to], i)}
             x1={a.x ?? 0}
             y1={a.y ?? 0}
             x2={b.x ?? 0}

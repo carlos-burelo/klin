@@ -22,7 +22,7 @@ export type WaffleChartProps = {
   parts: WafflePart[];
   ariaLabel: string;
   size?: number;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   /**
    * Color por parte. Si retorna `undefined` se usa el color de serie.
@@ -48,7 +48,7 @@ export function WaffleChart({
   ariaLabel,
   size = 220,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   itemColor,
   showLegend = true,
   className,
@@ -107,13 +107,13 @@ export function WaffleChart({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{`${ariaLabel}: ${clean.map((p) => `${p.label} ${formatValue((p.value / total) * PERCENT_FACTOR)}%`).join(" · ")}`}</title>
+        <title>{`${ariaLabel}: ${clean.map((p) => `${p.label} ${format((p.value / total) * PERCENT_FACTOR)}%`).join(" · ")}`}</title>
         {cells.map((c, i) => {
           const col = i % WAFFLE_COLS;
           const row = WAFFLE_COLS - 1 - Math.floor(i / WAFFLE_COLS);
           const part = clean[c.part];
           if (!part) return null;
-          const tip = `${part.label}: ${formatValue((part.value / total) * PERCENT_FACTOR)}%`;
+          const tip = `${part.label}: ${format((part.value / total) * PERCENT_FACTOR)}%`;
           return (
             <g key={`${col}-${row}`}>
               <title>{tip}</title>
@@ -133,7 +133,7 @@ export function WaffleChart({
       {showLegend ? (
         <ChartLegend
           items={clean.map((p, i) => ({
-            label: `${p.label} · ${formatValue((p.value / total) * PERCENT_FACTOR)}%`,
+            label: `${p.label} · ${format((p.value / total) * PERCENT_FACTOR)}%`,
             color: colors[i] ?? CHART_TOKEN.chart1,
           }))}
         />

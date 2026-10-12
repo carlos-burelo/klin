@@ -31,8 +31,6 @@ import {
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
-export type LineSeries = ChartSeries;
-
 const POINT_PADDING = 0.5;
 const AXIS_LABEL_OFFSET = 10;
 const ANNOTATION_LABEL_DX = 4;
@@ -42,7 +40,7 @@ const ANNOTATION_LABEL_DY = -4;
 export type LineChartProps = {
   data: Array<Record<string, string | number>>;
   xKey: string;
-  series: LineSeries[];
+  series: ChartSeries[];
   height?: number;
   ariaLabel: string;
   formatY?: ValueFormatter;

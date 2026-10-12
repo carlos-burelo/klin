@@ -200,11 +200,11 @@ describe("gráficas SSR (sin JS)", () => {
     const props: {
       ariaLabel: string;
       nodes: { id: string }[];
-      links: { from: string; to: string }[];
+      edges: { from: string; to: string }[];
     } = {
       ariaLabel: "red",
       nodes: [{ id: "a" }, { id: "b" }, { id: "c" }],
-      links: [
+      edges: [
         { from: "a", to: "b" },
         { from: "b", to: "c" },
       ],
@@ -242,7 +242,7 @@ describe("gráficas SSR (sin JS)", () => {
           { id: "fw", label: "FW", role: "firewall" },
           { id: "srv", label: "App", role: "server" },
         ]}
-        links={[
+        edges={[
           { from: "inet", to: "fw" },
           { from: "fw", to: "srv", status: "down", label: "caído" },
         ]}

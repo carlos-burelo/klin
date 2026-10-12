@@ -40,7 +40,7 @@ export type RadarChartProps = {
   size?: number;
   levels?: number;
   maxValue?: number;
-  formatTick?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   showLegend?: boolean;
   className?: string;
@@ -61,7 +61,7 @@ export function RadarChart({
   levels = 4,
   maxValue,
   locale = "es-MX",
-  formatTick = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   showLegend = true,
   className,
   style,
@@ -143,7 +143,7 @@ export function RadarChart({
         ))}
         {series.map((s, si) => (
           <g key={stableKey([s.label], si)}>
-            <title>{`${s.label}: ${s.values.map((v) => formatTick(v)).join(" · ")}`}</title>
+            <title>{`${s.label}: ${s.values.map((v) => format(v)).join(" · ")}`}</title>
             <polygon
               points={s.values.map((v, i) => point(i, v)).join(" ")}
               fill={colors[si] ?? CHART_TOKEN.chart1}
@@ -153,7 +153,7 @@ export function RadarChart({
               strokeLinejoin="round"
             />
             {s.values.map((v, i) => {
-              const tip = `${s.label} · ${axes[i] ?? ""}: ${formatTick(v)}`;
+              const tip = `${s.label} · ${axes[i] ?? ""}: ${format(v)}`;
               const [cx, cy] = point(i, v).split(",").map(Number);
               return (
                 <g key={stableKey([s.label, i], i)}>

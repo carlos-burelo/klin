@@ -25,7 +25,7 @@ export type BulletRow = {
 export type BulletChartProps = {
   rows: BulletRow[];
   ariaLabel: string;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   color?: string;
   className?: string;
@@ -55,7 +55,7 @@ export function BulletChart({
   rows,
   ariaLabel,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   color,
   className,
   style,
@@ -101,7 +101,7 @@ export function BulletChart({
           const [lo, mid, hi] = row.ranges;
           const clipId = `${uid}-bullet-${ri}`;
           const tip =
-            `${row.label}: ${formatValue(row.value)} (meta ${formatValue(row.target)})` +
+            `${row.label}: ${format(row.value)} (meta ${format(row.target)})` +
             (row.detail ? ` · ${row.detail}` : "");
           const segs = [
             {
@@ -138,7 +138,7 @@ export function BulletChart({
                   {row.label}
                 </span>
                 <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums">
-                  {`${formatValue(row.value)} / ${formatValue(row.target)}`}
+                  {`${format(row.value)} / ${format(row.target)}`}
                 </span>
               </div>
               <svg

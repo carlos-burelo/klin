@@ -39,7 +39,7 @@ export type MatrixHeatmapProps = {
   /** values[fila][columna]. */
   values: number[][];
   ariaLabel: string;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   color?: string;
   className?: string;
@@ -59,7 +59,7 @@ export function MatrixHeatmap({
   values,
   ariaLabel,
   locale = "es-MX",
-  formatValue = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   color,
   className,
   style,
@@ -123,7 +123,7 @@ export function MatrixHeatmap({
             </text>
             {cols.map((col, ci) => {
               const v = toNumber(values[ri]?.[ci] ?? 0);
-              const tip = `${row} · ${col}: ${formatValue(v)}`;
+              const tip = `${row} · ${col}: ${format(v)}`;
               return (
                 <g key={stableKey([col], ci)}>
                   <title>{tip}</title>

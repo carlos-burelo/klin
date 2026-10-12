@@ -25,13 +25,11 @@ import {
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
-export type StreamSeries = ChartSeries;
-
 /** Props del streamgraph. */
 export type StreamgraphProps = {
   data: Array<Record<string, string | number>>;
   xKey: string;
-  series: StreamSeries[];
+  series: ChartSeries[];
   height?: number;
   ariaLabel: string;
   formatY?: (value: number) => string;
@@ -57,7 +55,7 @@ const FALLBACK_SERIES_COLOR = CHART_TOKEN.chart1;
  */
 export function computeStreamLayers(
   data: Array<Record<string, string | number>>,
-  series: StreamSeries[],
+  series: ChartSeries[],
   xKey: string,
 ): {
   layers: Array<Array<[number, number]>>;

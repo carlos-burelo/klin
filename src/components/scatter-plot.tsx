@@ -37,7 +37,7 @@ export type ScatterPlotProps = {
   xLabel?: string;
   yLabel?: string;
   height?: number;
-  formatTick?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   color?: string;
   /**
@@ -62,7 +62,7 @@ export function ScatterPlot({
   yLabel = "y",
   height = 260,
   locale = "es-MX",
-  formatTick = (v: number) => formatDefault(v, locale),
+  format = (v: number) => formatDefault(v, locale),
   color,
   itemColor,
   className,
@@ -110,13 +110,7 @@ export function ScatterPlot({
       style={style}
       ariaDescribedBy={ariaDescribedBy}
     >
-      <YGrid
-        ticks={ticks}
-        y={y}
-        margin={MARGIN}
-        width={W}
-        format={formatTick}
-      />
+      <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={format} />
       {x.ticks(X_TICKS).map((t) => (
         <text
           key={`x${t}`}
@@ -126,7 +120,7 @@ export function ScatterPlot({
           fontSize={TICK_FONT_SIZE}
           fill={CHART_TOKEN.muted}
         >
-          {formatTick(t)}
+          {format(t)}
         </text>
       ))}
       <text
@@ -139,7 +133,7 @@ export function ScatterPlot({
         {xLabel}
       </text>
       {clean.map((p, i) => {
-        const tip = `${p.label ? `${p.label}: ` : ""}(${formatTick(p.x)}, ${formatTick(p.y)})`;
+        const tip = `${p.label ? `${p.label}: ` : ""}(${format(p.x)}, ${format(p.y)})`;
         return (
           <g key={`${p.x}-${p.y}-${i}`}>
             <title>{tip}</title>

@@ -3,7 +3,8 @@
  */
 
 import { scaleBand, scaleLinear } from "d3-scale";
-import { type CSSProperties, useId } from "react";
+import type { CSSProperties } from "react";
+import { useId } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { domainWithZero } from "../lib/domain";
 import {
@@ -30,8 +31,6 @@ import {
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
-export type VStackSeries = ChartSeries;
-
 const GROUP_BAND_PADDING = 0.3;
 const AXIS_LABEL_OFFSET = 10;
 const ANNOTATION_LABEL_DX = 4;
@@ -41,7 +40,7 @@ const ANNOTATION_LABEL_DY = -4;
 export type VerticalStackedBarProps = {
   data: Array<Record<string, string | number>>;
   xKey: string;
-  series: VStackSeries[];
+  series: ChartSeries[];
   height?: number;
   ariaLabel: string;
   formatY?: ValueFormatter;

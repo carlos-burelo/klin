@@ -13,14 +13,14 @@ Leyenda de esfuerzo: `S` (props simples) · `M` (cómputo/layout) · `L` (nuevo 
 
 - `locale?: string = "es-MX"` — locale de `formatDefault` sin pasar formateador (`S`).
 - `showLegend?: boolean = true` — ocultar `ChartLegend` en dashboards densos (`S`).
-- `height` donde falta (hbar, diverging, pyramid, stacked, bullet, gantt) (`S`).
+- `height` donde falta (HorizontalBarChart, diverging, pyramid, stacked, bullet, gantt) (`S`).
 - `id?: string` — prefijo de `clipPath`/`defs` en vez de `useId` (embeds multi-instancia) (`S`).
 
 ---
 
 ## ArcDiagram
 
-Actual: `nodes, links, ariaLabel, emptyTitle, emptyDescription`.
+Actual: `nodes, edges, ariaLabel, emptyTitle, emptyDescription`.
 
 - `nodeSize?: "auto" | "degree" = "degree"` — radio por grado vs fijo (`S`).
 - `sortBy?: "degree" | "label" | "order" = "degree"` — orden del eje (`S`).
@@ -72,7 +72,7 @@ Actual: `groups, ariaLabel, height = 260, formatY, empty*`.
 
 ## BulletChart
 
-Actual: `rows, ariaLabel, formatValue, color, empty*`.
+Actual: `rows, ariaLabel, format, color, empty*`.
 
 - `bands?: [string, string, string]` — colores de bandas (`S`).
 - `showTargetLabel?: boolean = true` — valor de meta visible (`S`).
@@ -81,13 +81,13 @@ Actual: `rows, ariaLabel, formatValue, color, empty*`.
 
 ## CalendarHeatmap
 
-Actual: `values, ariaLabel, end (= hoy), weeks = 26, formatValue, color, empty*`.
+Actual: `values, ariaLabel, end (= hoy), weeks = 26, format, color, empty*`.
 
 - `start?: string` — ventana explícita (hoy se deriva de `end`) (`S`).
 - `weekStart?: 0 | 1 = 1` — semana Lun vs Dom (`M`).
 - `showMonthLabels?: boolean = true`, `showWeekdayLabels?: boolean = true` (`S`).
 - `scale?: "linear" | "sqrt" | "quantile" = "linear"` — distribución sesgada (`M`).
-- `firstDayLabel?: boolean` — no: cubierto por `formatValue`.
+- `firstDayLabel?: boolean` — no: cubierto por `format`.
 
 ## ClassDiagram
 
@@ -108,7 +108,7 @@ Actual: `data, yKey, left, right, ariaLabel, formatX, empty*`.
 
 ## DonutChart / PieChart
 
-Actual: `data, ariaLabel, size = 220, thickness = 38 (dona), formatValue, empty*`.
+Actual: `data, ariaLabel, size = 220, thickness = 38 (dona), format, empty*`.
 
 - `totalLabel?: string = "Total"` — hoy hardcode en dona (`S`).
 - `showTotal?: boolean = true` — dona minimalista (`S`).
@@ -142,7 +142,7 @@ Actual: `nodes, edges, ariaLabel, direction = "TB", empty*`.
 
 ## FunnelChart
 
-Actual: `stages, ariaLabel, height = 280, formatValue, empty*`.
+Actual: `stages, ariaLabel, height = 280, format, empty*`.
 
 - `showDropOff?: boolean = true` — pérdida entre etapas en conector (`S`, tooltip ya la trae como `% previo`).
 - `shape?: "trapezoid" | "bar" = "trapezoid"` (`M`).
@@ -160,7 +160,7 @@ Actual: `tasks, ariaLabel, formatDate, empty*`.
 
 ## GaugeChart
 
-Actual: `value, ariaLabel, label?, size = 220, thickness = 22, color, trackColor, formatValue (% inside), emptyTitle`.
+Actual: `value, ariaLabel, label?, size = 220, thickness = 22, color, trackColor, format (% inside), emptyTitle`.
 
 - `min?: number = 0, max?: number = 100` — hoy 0–100 fijos (`S`).
 - `zones?: Array<{to: number; color?: string}>` — bandas (`M`).
@@ -176,7 +176,7 @@ Actual: `data, yKey, series, ariaLabel, formatX, empty*`.
 
 ## MatrixHeatmap
 
-Actual: `rows, cols, values, ariaLabel, formatValue, color, empty*`.
+Actual: `rows, cols, values, ariaLabel, format, color, empty*`.
 
 - `scale?: "linear" | "quantile" = "linear"` (`M`).
 - `showValues?: "auto" | "always" | "never" = "auto"` — texto en celda (`S`).
@@ -185,7 +185,7 @@ Actual: `rows, cols, values, ariaLabel, formatValue, color, empty*`.
 
 ## Histogram
 
-Actual: `values, ariaLabel, bins = 12, height = 240, formatTick, color, empty*`.
+Actual: `values, ariaLabel, bins = 12, height = 240, format, color, empty*`.
 
 - `binning?: "count" | "width" | "sturges" = "count"` (`M`).
 - `cumulative?: boolean = false` — ojiva (`M`).
@@ -237,7 +237,7 @@ Actual: `root, ariaLabel, empty*`.
 
 ## NetworkGraph
 
-Actual: `nodes, links, ariaLabel, seed = 42, empty*`.
+Actual: `nodes, edges, ariaLabel, seed = 42, empty*`.
 
 - `forces?: { distance?: number; charge?: number; collide?: number }` — física (`S`, defaults `NETWORK_*`).
 - `nodeSize?: "degree" | "fixed" = "degree"` (`S`).
@@ -246,11 +246,11 @@ Actual: `nodes, links, ariaLabel, seed = 42, empty*`.
 
 ## NetworkTopology
 
-Actual: `nodes, links, ariaLabel, direction = "TB", empty*`.
+Actual: `nodes, edges, ariaLabel, direction = "TB", empty*`.
 
 - `linkLegend?: boolean = true` — leyenda activo/degradado/caído (`S`).
 - `glyphSize?: number = GLYPH_R` (`S`).
-- `statusColors?: Record<TopoLink["status"], string>` (`S`).
+- `statusColors?: Record<TopoEdge["status"], string>` (`S`).
 
 ## OrgChart
 
@@ -270,7 +270,7 @@ Actual: `data, xKey, yKey, ariaLabel, height = 280, formatY, color, empty*`.
 
 ## ProgressList
 
-Actual: `rows, ariaLabel, formatValue, color, empty*`.
+Actual: `rows, ariaLabel, format, color, empty*`.
 
 - `barHeight?: "sm" | "md" = "md"` (`S`).
 - `showPercent?: boolean = true` — badge `%` (`S`, tooltip ya trae `de total`).
@@ -294,7 +294,7 @@ Actual: `points, ariaLabel, xLabel = "→ Esfuerzo", yLabel = "↑ Impacto", qua
 
 ## RadarChart
 
-Actual: `axes, series, ariaLabel, size = 300, levels = 4, maxValue?, formatTick, empty*`.
+Actual: `axes, series, ariaLabel, size = 300, levels = 4, maxValue?, format, empty*`.
 
 - `fillOpacity?: number` — por serie (`S`).
 - `showVertices?: boolean = true` (`S`).
@@ -302,14 +302,14 @@ Actual: `axes, series, ariaLabel, size = 300, levels = 4, maxValue?, formatTick,
 
 ## RadialProgress
 
-Actual: `value, ariaLabel, label?, size = 160, thickness = 16, color, trackColor, formatValue (% inside), emptyTitle`.
+Actual: `value, ariaLabel, label?, size = 160, thickness = 16, color, trackColor, format (% inside), emptyTitle`.
 
 - `min/max`, `trackStyle?: "full" | "ticks"` (`S`).
 - `emptyDescription?` (`S`).
 
 ## SankeyDiagram
 
-Actual: `nodes, flows, ariaLabel, formatValue, empty*`.
+Actual: `nodes, flows, ariaLabel, format, empty*`.
 
 - `nodeAlign?: "left" | "justify" | "center" = "justify"` — d3-sankey (`S`).
 - `showNodeValues?: boolean = true` (`S`).
@@ -318,7 +318,7 @@ Actual: `nodes, flows, ariaLabel, formatValue, empty*`.
 
 ## ScatterPlot
 
-Actual: `points, ariaLabel, xLabel = "x", yLabel = "y", height = 260, formatTick, color, empty*`.
+Actual: `points, ariaLabel, xLabel = "x", yLabel = "y", height = 260, format, color, empty*`.
 
 - `trendline?: boolean = false` — regresión lineal (`M`).
 - `sizeBy?: string` — burbujas (`M`).
@@ -342,7 +342,7 @@ Actual: `values, ariaLabel, width = 120, height = 36, color, emptyTitle, emptyDe
 
 ## StackedBar
 
-Actual: `rows, segments, ariaLabel, formatValue, percentOf (= segments[0]), empty*`.
+Actual: `rows, segments, ariaLabel, format, percentOf (= segments[0]), empty*`.
 
 - `scale?: "row" | "global" = "global"` — hoy global (`maxTotal`) (`S`).
 - `showPercent?: boolean = true` — badge (hoy siempre) (`S`).
@@ -366,7 +366,7 @@ Actual: `data, xKey, series, height = 280, ariaLabel, formatY, empty*`.
 
 ## SunburstChart
 
-Actual: `data, ariaLabel, size = 300, formatValue, empty*`.
+Actual: `data, ariaLabel, size = 300, format, empty*`.
 
 - `depth?: number` — podar anillos (`S`).
 - `showRootLabel?: boolean = true` (`S`).
@@ -397,7 +397,7 @@ Actual: `items, ariaLabel, defaultOpen = true, empty*`.
 
 ## TreemapChart
 
-Actual: `data, ariaLabel, formatValue, empty*`.
+Actual: `data, ariaLabel, format, empty*`.
 
 - `tiling?: "squarify" | "slice" | "dice" = "squarify"` (`S`).
 - `showValues?: boolean = true`, `minLabelArea?: number` (`S`).
@@ -412,7 +412,7 @@ Actual: `actors, usecases, edges, ariaLabel, empty*`.
 
 ## VennDiagram
 
-Actual: `sets (2|3), intersections?, ariaLabel, size = 340, formatValue, empty*`.
+Actual: `sets (2|3), intersections?, ariaLabel, size = 340, format, empty*`.
 
 - `showPercent?: boolean = false` — % del universo (`S`, requiere `universe?: number`).
 - `proportional?: boolean` — no: geometría fija intencional (documentar, cero props).
@@ -426,7 +426,7 @@ Actual: `data, xKey, series, height = 260, ariaLabel, formatY, normalize = false
 
 ## WaffleChart
 
-Actual: `parts, ariaLabel, size = 220, formatValue, empty*`.
+Actual: `parts, ariaLabel, size = 220, format, empty*`.
 
 - `columns?: number = 10` — hoy 10×10 fijo (`S`).
 - `gap?: number = 3`, `cellRadius?` (`S`).
@@ -434,11 +434,11 @@ Actual: `parts, ariaLabel, size = 220, formatValue, empty*`.
 
 ## WardleyMap
 
-Actual: `nodes, links, ariaLabel, empty*`.
+Actual: `nodes, edges, ariaLabel, empty*`.
 
 - `showGridLabels?: boolean = true` (`S`).
 - `stages?: [string, string, string, string]` — hoy fijos Génesis→Mercancía (`S`).
-- `nodeSize?: "fixed" | "links" = "fixed"` (`S`).
+- `nodeSize?: "fixed" | "edges" = "fixed"` (`S`).
 
 ## WaterfallChart
 

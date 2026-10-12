@@ -30,8 +30,6 @@ import {
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
-export type BarSeries = ChartSeries;
-
 const GROUP_BAND_PADDING = 0.22;
 const SERIES_BAND_PADDING = 0.08;
 const AXIS_LABEL_OFFSET = 10;
@@ -42,7 +40,7 @@ const ANNOTATION_LABEL_DY = -4;
 export type BarChartProps = {
   data: Array<Record<string, string | number>>;
   xKey: string;
-  series: BarSeries[];
+  series: ChartSeries[];
   height?: number;
   ariaLabel: string;
   formatY?: ValueFormatter;
@@ -61,7 +59,7 @@ export type BarChartProps = {
   barColor?: (
     datum: Record<string, string | number>,
     datumIndex: number,
-    serie: BarSeries,
+    serie: ChartSeries,
     serieIndex: number,
   ) => string | undefined;
 };

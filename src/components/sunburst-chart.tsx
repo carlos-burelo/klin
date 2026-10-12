@@ -34,7 +34,7 @@ export type SunburstChartProps = {
   data: SunburstNode[];
   ariaLabel: string;
   size?: number;
-  formatValue?: (value: number) => string;
+  format?: (value: number) => string;
   locale?: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -90,7 +90,7 @@ export function SunburstChart({
   data,
   ariaLabel,
   size = DEFAULT_SIZE,
-  formatValue,
+  format,
   locale = "es-MX",
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -106,7 +106,7 @@ export function SunburstChart({
   if (rings.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const fmt = formatValue ?? ((v: number) => formatDefault(v, locale));
+  const fmt = format ?? ((v: number) => formatDefault(v, locale));
 
   const radius = size / 2;
   const total = toNumber(root.value);

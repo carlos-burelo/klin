@@ -18,7 +18,7 @@ export function seriesColor(index: number, override?: string): string {
   return CHART_PALETTE[index % CHART_PALETTE.length] ?? "var(--chart-1)";
 }
 
-/** Formateador de valores numéricos (unifica formatY/formatX/formatValue). */
+/** Formateador de valores numéricos (unifica format/formatX/formatY). */
 export type ValueFormatter = (value: number) => string;
 
 /** Formato de un valor numérico (locale configurable, no-finitos → "—"). */

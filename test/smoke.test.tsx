@@ -23,13 +23,13 @@ import { FlowChart } from "../src/components/flow-chart";
 import { FunnelChart } from "../src/components/funnel-chart";
 import { GanttChart } from "../src/components/gantt-chart";
 import { GaugeChart } from "../src/components/gauge-chart";
-import { HorizontalBarChart } from "../src/components/hbar-chart";
-import { MatrixHeatmap } from "../src/components/heatmap";
 import { Histogram } from "../src/components/histogram";
+import { HorizontalBarChart } from "../src/components/horizontal-bar-chart";
 import { KanbanBoard } from "../src/components/kanban-board";
 import { ChartLegend } from "../src/components/legend";
 import { LineChart } from "../src/components/line-chart";
 import { LollipopChart } from "../src/components/lollipop-chart";
+import { MatrixHeatmap } from "../src/components/matrix-heatmap";
 import { MindmapDiagram } from "../src/components/mindmap-diagram";
 import { NetworkGraph } from "../src/components/network-graph";
 import { NetworkTopology } from "../src/components/network-topology";
@@ -55,7 +55,7 @@ import { TreemapChart } from "../src/components/treemap-chart";
 import { UseCaseDiagram } from "../src/components/usecase-diagram";
 import type { VennSet } from "../src/components/venn-diagram";
 import { VennDiagram } from "../src/components/venn-diagram";
-import { VerticalStackedBar } from "../src/components/vstacked-bar";
+import { VerticalStackedBar } from "../src/components/vertical-stacked-bar";
 import { WaffleChart } from "../src/components/waffle-chart";
 import { WardleyMap } from "../src/components/wardley-map";
 import { WaterfallChart } from "../src/components/waterfall-chart";
@@ -95,7 +95,7 @@ describe("smoke SSR todos los componentes", () => {
           { id: "a", label: "A" },
           { id: "b", label: "B" },
         ]}
-        links={[{ from: "a", to: "b" }]}
+        edges={[{ from: "a", to: "b" }]}
       />,
     );
     expectSmoke(html, "arcos");
@@ -423,7 +423,7 @@ describe("smoke SSR todos los componentes", () => {
       <NetworkGraph
         ariaLabel="red"
         nodes={[{ id: "a" }, { id: "b" }, { id: "c" }]}
-        links={[
+        edges={[
           { from: "a", to: "b" },
           { from: "b", to: "c" },
         ]}
@@ -441,7 +441,7 @@ describe("smoke SSR todos los componentes", () => {
           { id: "fw", label: "FW", role: "firewall" },
           { id: "srv", label: "App", role: "server" },
         ]}
-        links={[
+        edges={[
           { from: "inet", to: "fw" },
           { from: "fw", to: "srv", status: "down", label: "caído" },
         ]}
@@ -791,7 +791,7 @@ describe("smoke SSR todos los componentes", () => {
           { id: "a", label: "A", x: 0.2, y: 0.8 },
           { id: "b", label: "B", x: 0.7, y: 0.3 },
         ]}
-        links={[{ from: "a", to: "b" }]}
+        edges={[{ from: "a", to: "b" }]}
       />,
     );
     expectSmoke(html, "wardley");
@@ -814,7 +814,7 @@ describe("smoke SSR todos los componentes", () => {
 describe("casos vacíos pintan EMPTY_TITLE", () => {
   test("ArcDiagram vacío", () => {
     expectEmpty(
-      renderToStaticMarkup(<ArcDiagram ariaLabel="x" nodes={[]} links={[]} />),
+      renderToStaticMarkup(<ArcDiagram ariaLabel="x" nodes={[]} edges={[]} />),
     );
   });
   test("ArchitectureDiagram vacío", () => {
@@ -954,14 +954,14 @@ describe("casos vacíos pintan EMPTY_TITLE", () => {
   test("NetworkGraph vacío", () => {
     expectEmpty(
       renderToStaticMarkup(
-        <NetworkGraph ariaLabel="x" nodes={[]} links={[]} />,
+        <NetworkGraph ariaLabel="x" nodes={[]} edges={[]} />,
       ),
     );
   });
   test("NetworkTopology vacía", () => {
     expectEmpty(
       renderToStaticMarkup(
-        <NetworkTopology ariaLabel="x" nodes={[]} links={[]} />,
+        <NetworkTopology ariaLabel="x" nodes={[]} edges={[]} />,
       ),
     );
   });
@@ -1104,7 +1104,7 @@ describe("casos vacíos pintan EMPTY_TITLE", () => {
   });
   test("WardleyMap vacío", () => {
     expectEmpty(
-      renderToStaticMarkup(<WardleyMap ariaLabel="x" nodes={[]} links={[]} />),
+      renderToStaticMarkup(<WardleyMap ariaLabel="x" nodes={[]} edges={[]} />),
     );
   });
   test("WaterfallChart vacío", () => {

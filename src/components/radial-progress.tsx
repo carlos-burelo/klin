@@ -35,7 +35,7 @@ export type RadialProgressProps = {
   thickness?: number;
   color?: string;
   trackColor?: string;
-  formatValue?: ValueFormatter;
+  format?: ValueFormatter;
   locale?: string;
   className?: string;
   style?: CSSProperties;
@@ -54,7 +54,7 @@ export function RadialProgress({
   thickness = 16,
   color = CHART_TOKEN.chart1,
   trackColor = CHART_TOKEN.track,
-  formatValue,
+  format,
   locale = "es-MX",
   className,
   style,
@@ -83,7 +83,7 @@ export function RadialProgress({
     startAngle: START,
     endAngle: START + (clamped / PERCENT_FACTOR) * TAU,
   });
-  const fmt = formatValue ?? ((v: number) => `${formatDefault(v, locale)}%`);
+  const fmt = format ?? ((v: number) => `${formatDefault(v, locale)}%`);
   const tip = `${label ? `${label}: ` : ""}${fmt(clamped)}`;
 
   return (
