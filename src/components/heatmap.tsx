@@ -1,14 +1,53 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { max } from "d3-array";
+import type { CSSProperties } from "react";
+import { topPositive } from "../lib/domain";
+import { stableKey } from "../lib/keys";
+import { toNumber } from "../lib/number";
+import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import {
+  BAR_RADIUS,
+  CHART_TOKEN,
+  EMPTY_CELL_OPACITY,
+  TICK_DY,
+  TICK_FONT_SIZE,
+  TICK_GAP_PX,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 const W = 640;
 const LABEL_W = 132;
 const LABEL_H = 30;
 const MAX_CELL = 64;
+/** Separación entre celdas, aire lateral y relleno inferior. */
+const CELL_GAP = 4;
+const GRID_SIDE_PAD = 16;
+const GRID_BOTTOM_PAD = 8;
+/** Máximos de truncado de columna y fila. */
+const LABEL_MAX_COL = 10;
+const LABEL_MAX_ROW = 18;
+/** Opacidades de celda con valor (base + rango). */
+const CELL_BASE_OPACITY = 0.15;
+const CELL_RANGE_OPACITY = 0.85;
+
+/** Props del mapa de calor matricial SSR (filas × columnas). */
+export type MatrixHeatmapProps = {
+  rows: string[];
+  cols: string[];
+  /** values[fila][columna]. */
+  values: number[][];
+  ariaLabel: string;
+  formatValue?: ValueFormatter;
+  locale?: string;
+  color?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+};
 
 /**
  * Mapa de calor matricial SSR (filas × columnas, intensidad por opacidad).
@@ -19,85 +58,87 @@ export function MatrixHeatmap({
   cols,
   values,
   ariaLabel,
-  formatValue = formatDefault,
+  locale = "es-MX",
+  formatValue = (v: number) => formatDefault(v, locale),
   color,
-  emptyTitle = "Sin datos todavía",
+  className,
+  style,
+  ariaDescribedBy,
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  rows: string[];
-  cols: string[];
-  /** values[fila][columna]. */
-  values: number[][];
-  ariaLabel: string;
-  formatValue?: (value: number) => string;
-  color?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+}: MatrixHeatmapProps) {
   if (rows.length === 0 || cols.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const top = Math.max(1, max(values, (r) => max(r) ?? 0) ?? 1);
+  const top = topPositive(values.flat());
   const cell = Math.min(
     MAX_CELL,
-    Math.floor((W - LABEL_W - 16) / cols.length) - 4,
+    Math.floor((W - LABEL_W - GRID_SIDE_PAD) / cols.length) - CELL_GAP,
   );
-  const step = cell + 4;
-  const gridW = cols.length * step - 4;
+  const step = cell + CELL_GAP;
+  const gridW = cols.length * step - CELL_GAP;
   const gx = LABEL_W + Math.max(0, (W - LABEL_W - gridW) / 2);
-  const H = LABEL_H + rows.length * step - 4 + 8;
+  const H = LABEL_H + rows.length * step - CELL_GAP + GRID_BOTTOM_PAD;
   const fill = seriesColor(0, color);
 
   return (
-    <div className="overflow-x-auto">
+    <div
+      className={className ? `overflow-x-auto ${className}` : "overflow-x-auto"}
+      style={style}
+    >
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="h-auto w-full"
         role="img"
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
       >
         <title>{ariaLabel}</title>
         {cols.map((col, ci) => (
           <text
-            key={col}
+            key={stableKey([col], ci)}
             x={gx + ci * step + cell / 2}
-            y={LABEL_H - 8}
+            y={LABEL_H - TICK_GAP_PX}
             textAnchor="middle"
-            fontSize={11}
-            fill="var(--color-muted-foreground)"
+            fontSize={TICK_FONT_SIZE}
+            fill={CHART_TOKEN.muted}
           >
             <title>{col}</title>
-            {truncateLabel(col, 10)}
+            {truncateLabel(col, LABEL_MAX_COL)}
           </text>
         ))}
         {rows.map((row, ri) => (
-          <g key={row}>
+          <g key={stableKey([row], ri)}>
             <text
-              x={gx - 8}
+              x={gx - TICK_GAP_PX}
               y={LABEL_H + ri * step + cell / 2}
-              dy={4}
+              dy={TICK_DY}
               textAnchor="end"
-              fontSize={11}
-              fill="var(--color-muted-foreground)"
+              fontSize={TICK_FONT_SIZE}
+              fill={CHART_TOKEN.muted}
             >
               <title>{row}</title>
-              {truncateLabel(row, 18)}
+              {truncateLabel(row, LABEL_MAX_ROW)}
             </text>
             {cols.map((col, ci) => {
-              const v = values[ri]?.[ci] ?? 0;
+              const v = toNumber(values[ri]?.[ci] ?? 0);
               const tip = `${row} · ${col}: ${formatValue(v)}`;
               return (
-                <g key={col}>
+                <g key={stableKey([col], ci)}>
                   <title>{tip}</title>
                   <rect
                     x={gx + ci * step}
                     y={LABEL_H + ri * step}
                     width={cell}
                     height={cell}
-                    rx={4}
+                    rx={BAR_RADIUS}
                     fill={fill}
-                    fillOpacity={v <= 0 ? 0.08 : 0.15 + 0.85 * (v / top)}
+                    fillOpacity={
+                      v <= 0
+                        ? EMPTY_CELL_OPACITY
+                        : CELL_BASE_OPACITY + CELL_RANGE_OPACITY * (v / top)
+                    }
                     data-chart-tip={tip}
                   />
                 </g>

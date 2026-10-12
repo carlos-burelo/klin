@@ -1,8 +1,12 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
+import type { CSSProperties } from "react";
+import { stableKey } from "../lib/keys";
+import { toNumber } from "../lib/number";
 import { formatDefault, seriesColor } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import { CHART_TOKEN } from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
 export type VennSet = {
@@ -11,36 +15,39 @@ export type VennSet = {
   color?: string;
 };
 
-/**
- * Venn SSR de 2 o 3 conjuntos (geometría fija, valores por región).
- */
-export function VennDiagram({
-  sets,
-  intersections,
-  ariaLabel,
-  size = 340,
-  formatValue = formatDefault,
-  emptyTitle = "Sin datos todavía",
-  emptyDescription,
-}: {
+export type VennDiagramProps = {
   sets: [VennSet, VennSet] | [VennSet, VennSet, VennSet];
   /** Valores de intersecciones por índices (`[0,1]`, `[0,1,2]`…). */
   intersections?: { sets: number[]; value: number }[];
   ariaLabel: string;
   size?: number;
   formatValue?: (value: number) => string;
+  locale?: string;
   emptyTitle?: string;
   emptyDescription?: string;
-}) {
-  if (sets.length < 2) {
-    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
-  }
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+};
 
+/**
+ * Cómputo puro de la geometría fija del Venn (centros + regiones).
+ */
+export function computeVennGeometry(
+  count: 2 | 3,
+  size: number,
+): {
+  r: number;
+  pad: number;
+  cy: number;
+  centers: Array<{ x: number; y: number }>;
+  regions: Array<{ sets: number[]; x: number; y: number }>;
+} {
   const r = size * 0.26;
   const pad = 34;
   const cy = size / 2;
   const centers =
-    sets.length === 2
+    count === 2
       ? [
           { x: size * 0.36, y: cy },
           { x: size * 0.64, y: cy },
@@ -50,6 +57,49 @@ export function VennDiagram({
           { x: size * 0.34, y: size * 0.64 },
           { x: size * 0.66, y: size * 0.64 },
         ];
+  const regions =
+    count === 2
+      ? [
+          { sets: [0], x: size * 0.24, y: cy },
+          { sets: [1], x: size * 0.76, y: cy },
+          { sets: [0, 1], x: size * 0.5, y: cy },
+        ]
+      : [
+          { sets: [0], x: size * 0.5, y: size * 0.2 },
+          { sets: [1], x: size * 0.22, y: size * 0.72 },
+          { sets: [2], x: size * 0.78, y: size * 0.72 },
+          { sets: [0, 1], x: size * 0.4, y: size * 0.5 },
+          { sets: [0, 2], x: size * 0.6, y: size * 0.5 },
+          { sets: [1, 2], x: size * 0.5, y: size * 0.72 },
+          { sets: [0, 1, 2], x: size * 0.5, y: size * 0.57 },
+        ];
+  return { r, pad, cy, centers, regions };
+}
+
+/**
+ * Venn SSR de 2 o 3 conjuntos (geometría fija, valores por región).
+ */
+export function VennDiagram({
+  sets,
+  intersections,
+  ariaLabel,
+  size = 340,
+  formatValue,
+  locale = "es-MX",
+  emptyTitle = EMPTY_TITLE,
+  emptyDescription,
+  className,
+  style,
+  ariaDescribedBy,
+}: VennDiagramProps) {
+  if (sets.length < 2) {
+    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
+  }
+
+  const { r, pad, centers, regions } = computeVennGeometry(
+    sets.length === 2 ? 2 : 3,
+    size,
+  );
   // Etiquetas de conjunto: en 2 van arriba; en 3 salen radiales para no
   // caer dentro de otro círculo.
   const centroid =
@@ -68,35 +118,28 @@ export function VennDiagram({
     const len = Math.max(1, Math.hypot(dx, dy));
     return { x: c.x + (dx / len) * (r + 18), y: c.y + (dy / len) * (r + 18) };
   };
-  // Centroides de regiones (2: izq, der, centro; 3: 3 pétalos + 3 pares + centro).
-  const regions =
-    sets.length === 2
-      ? [
-          { sets: [0], x: size * 0.24, y: cy },
-          { sets: [1], x: size * 0.76, y: cy },
-          { sets: [0, 1], x: size * 0.5, y: cy },
-        ]
-      : [
-          { sets: [0], x: size * 0.5, y: size * 0.2 },
-          { sets: [1], x: size * 0.22, y: size * 0.72 },
-          { sets: [2], x: size * 0.78, y: size * 0.72 },
-          { sets: [0, 1], x: size * 0.4, y: size * 0.5 },
-          { sets: [0, 2], x: size * 0.6, y: size * 0.5 },
-          { sets: [1, 2], x: size * 0.5, y: size * 0.72 },
-          { sets: [0, 1, 2], x: size * 0.5, y: size * 0.57 },
-        ];
 
   const inter = new Map(
-    (intersections ?? []).map((x) => [x.sets.join(","), x.value]),
+    (intersections ?? []).map(
+      (x) => [x.sets.join(","), toNumber(x.value)] as const,
+    ),
   );
+  const fmt = formatValue ?? ((v: number) => formatDefault(v, locale));
   const tipFor = (idx: number[]) => {
     const names = idx.map((i) => sets[i]?.label ?? "").join(" ∩ ");
     const v = inter.get(idx.join(","));
-    return v === undefined ? names : `${names}: ${formatValue(v)}`;
+    return v === undefined ? names : `${names}: ${fmt(v)}`;
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div
+      className={
+        className
+          ? `flex flex-col items-center ${className}`
+          : "flex flex-col items-center"
+      }
+      style={style}
+    >
       <svg
         viewBox={`${-pad} ${-pad} ${size + pad * 2} ${size + pad * 2}`}
         width={size}
@@ -104,13 +147,14 @@ export function VennDiagram({
         className="h-auto max-w-full"
         role="img"
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
       >
         <title>{ariaLabel}</title>
         {centers.map((c, i) => {
           const color = seriesColor(i, sets[i]?.color);
-          const tip = `${sets[i]?.label}: ${formatValue(sets[i]?.value ?? 0)}`;
+          const tip = `${sets[i]?.label}: ${fmt(toNumber(sets[i]?.value))}`;
           return (
-            <g key={sets[i]?.label ?? i}>
+            <g key={stableKey([sets[i]?.label ?? ""], i)}>
               <title>{tip}</title>
               <circle
                 cx={c.x}
@@ -125,10 +169,10 @@ export function VennDiagram({
             </g>
           );
         })}
-        {regions.map((rg) => {
+        {regions.map((rg, i) => {
           const tip = tipFor(rg.sets);
           return (
-            <g key={rg.sets.join(",")}>
+            <g key={stableKey([rg.sets.join(",")], i)}>
               <title>{tip}</title>
               <text
                 x={rg.x}
@@ -137,11 +181,11 @@ export function VennDiagram({
                 dy={4}
                 fontSize={12}
                 fontWeight={600}
-                fill="var(--color-foreground)"
+                fill={CHART_TOKEN.foreground}
                 data-chart-tip={tip}
               >
                 {inter.get(rg.sets.join(",")) !== undefined
-                  ? formatValue(inter.get(rg.sets.join(",")) ?? 0)
+                  ? fmt(inter.get(rg.sets.join(",")) ?? 0)
                   : ""}
               </text>
             </g>
@@ -151,14 +195,14 @@ export function VennDiagram({
           const lp = labelPos(ci);
           return (
             <text
-              key={`vlabel-${c.x}-${c.y}`}
+              key={stableKey(["vlabel", c.x, c.y], ci)}
               x={lp.x}
               y={lp.y}
               textAnchor="middle"
               dy={4}
               fontSize={12}
               fontWeight={600}
-              fill="var(--color-foreground)"
+              fill={CHART_TOKEN.foreground}
             >
               {sets[ci]?.label}
             </text>
@@ -167,7 +211,7 @@ export function VennDiagram({
       </svg>
       <ChartLegend
         items={sets.map((s, i) => ({
-          label: `${s.label} · ${formatValue(s.value)}`,
+          label: `${s.label} · ${fmt(toNumber(s.value))}`,
           color: seriesColor(i, s.color),
         }))}
       />

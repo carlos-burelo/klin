@@ -2,8 +2,17 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import { hierarchy, tree } from "d3-hierarchy";
+import type { CSSProperties } from "react";
+import { stableKey } from "../lib/keys";
 import { seriesColor, truncateLabel } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import {
+  CHART_TOKEN,
+  DIAGRAM_MIN_SCROLL,
+  EDGE_LABEL_FONT_SIZE,
+  EDGE_WIDTH,
+  FONT_SEMIBOLD,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 export type OrgNode = {
   name: string;
@@ -12,29 +21,35 @@ export type OrgNode = {
   children?: OrgNode[];
 };
 
-const BOX_W = 150;
-const BOX_H = 52;
-const GAP_X = 24;
-const GAP_Y = 64;
-
-/**
- * Organigrama SSR (árbol vertical con cargo).
- */
-export function OrgChart({
-  root,
-  ariaLabel,
-  emptyTitle = "Sin datos todavía",
-  emptyDescription,
-}: {
+/** Props del organigrama. */
+export type OrgChartProps = {
   root: OrgNode;
   ariaLabel: string;
   emptyTitle?: string;
   emptyDescription?: string;
-}) {
-  if (!root.name) {
-    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
-  }
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+};
 
+const BOX_W = 150;
+const BOX_H = 52;
+const GAP_X = 24;
+const GAP_Y = 64;
+const VIEW_PAD_X = 48;
+const VIEW_PAD_Y = 24;
+const ORIGIN_PAD_X = 24;
+const ORIGIN_PAD_Y = 12;
+const NODE_RX = 8;
+const NODE_FONT_SIZE = 12;
+const LABEL_DY = 4;
+const LABEL_DY_WITH_ROLE = -3;
+const ROLE_DY = 12;
+
+/**
+ * Cómputo puro del layout del organigrama (árbol vertical + viewport).
+ */
+export function computeOrgLayout(root: OrgNode) {
   const laid = tree<OrgNode>().nodeSize([BOX_W + GAP_X, BOX_H + GAP_Y])(
     hierarchy<OrgNode>(root),
   );
@@ -45,22 +60,46 @@ export function OrgChart({
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const maxY = Math.max(...ys);
-  const W = maxX - minX + BOX_W + 48;
-  const H = maxY + BOX_H + 24;
-  const ox = BOX_W / 2 + 24 - minX;
-  const oy = BOX_H / 2 + 12;
+  const W = maxX - minX + BOX_W + VIEW_PAD_X;
+  const H = maxY + BOX_H + VIEW_PAD_Y;
+  const ox = BOX_W / 2 + ORIGIN_PAD_X - minX;
+  const oy = BOX_H / 2 + ORIGIN_PAD_Y;
+  return { nodes, links, W, H, ox, oy };
+}
+
+/**
+ * Organigrama SSR (árbol vertical con cargo).
+ */
+export function OrgChart({
+  root,
+  ariaLabel,
+  emptyTitle = EMPTY_TITLE,
+  emptyDescription,
+  className,
+  style,
+  ariaDescribedBy,
+}: OrgChartProps) {
+  if (!root.name) {
+    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
+  }
+
+  const { nodes, links, W, H, ox, oy } = computeOrgLayout(root);
 
   return (
-    <div className="overflow-x-auto">
+    <div
+      className={className ? `overflow-x-auto ${className}` : "overflow-x-auto"}
+      style={style}
+    >
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="h-auto"
-        style={{ minWidth: Math.min(W, 560) }}
+        style={{ minWidth: Math.min(W, DIAGRAM_MIN_SCROLL) }}
         role="img"
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
       >
         <title>{ariaLabel}</title>
-        {links.map((l) => {
+        {links.map((l, i) => {
           const x1 = (l.source.x ?? 0) + ox;
           const y1 = (l.source.y ?? 0) + oy + BOX_H / 2;
           const x2 = (l.target.x ?? 0) + ox;
@@ -68,11 +107,11 @@ export function OrgChart({
           const my = (y1 + y2) / 2;
           return (
             <path
-              key={`${l.source.data.name}-${l.target.data.name}`}
+              key={stableKey([l.source.data.name, l.target.data.name], i)}
               d={`M ${x1} ${y1} L ${x1} ${my} L ${x2} ${my} L ${x2} ${y2}`}
               fill="none"
-              stroke="var(--color-muted-foreground)"
-              strokeWidth={1.5}
+              stroke={CHART_TOKEN.muted}
+              strokeWidth={EDGE_WIDTH}
             />
           );
         })}
@@ -84,36 +123,36 @@ export function OrgChart({
             ? `${n.data.name} · ${n.data.role}`
             : n.data.name;
           return (
-            <g key={`${n.data.name}-${i}`}>
+            <g key={stableKey([n.data.name], i)}>
               <title>{tip}</title>
               <rect
                 x={cx - BOX_W / 2}
                 y={cy - BOX_H / 2}
                 width={BOX_W}
                 height={BOX_H}
-                rx={8}
-                fill="var(--card)"
+                rx={NODE_RX}
+                fill={CHART_TOKEN.card}
                 stroke={color}
-                strokeWidth={1.5}
+                strokeWidth={EDGE_WIDTH}
                 data-chart-tip={tip}
               />
               <text
                 x={cx}
-                y={cy + (n.data.role ? -3 : 4)}
+                y={cy + (n.data.role ? LABEL_DY_WITH_ROLE : LABEL_DY)}
                 textAnchor="middle"
-                fontSize={12}
-                fontWeight={600}
-                fill="var(--color-foreground)"
+                fontSize={NODE_FONT_SIZE}
+                fontWeight={FONT_SEMIBOLD}
+                fill={CHART_TOKEN.foreground}
               >
                 {truncateLabel(n.data.name, 20)}
               </text>
               {n.data.role ? (
                 <text
                   x={cx}
-                  y={cy + 12}
+                  y={cy + ROLE_DY}
                   textAnchor="middle"
-                  fontSize={10}
-                  fill="var(--color-muted-foreground)"
+                  fontSize={EDGE_LABEL_FONT_SIZE}
+                  fill={CHART_TOKEN.muted}
                 >
                   {truncateLabel(n.data.role, 24)}
                 </text>

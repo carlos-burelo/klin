@@ -1,24 +1,50 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
+import { type CSSProperties, useId } from "react";
+import { stableKey } from "../lib/keys";
+import { toNumber } from "../lib/number";
+import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import { CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
+/** Segmento apilado (clave, etiqueta y color opcional). */
 export type StackSegment = {
   key: string;
   label: string;
   color?: string;
 };
 
+/** Fila apilada (etiqueta, detalle y valores por segmento). */
 export type StackRow = {
   label: string;
   detail?: string;
   values: Record<string, number>;
 };
 
+/** Props de barras apiladas SSR (progreso y comparativas). */
+export type StackedBarProps = {
+  rows: StackRow[];
+  segments: StackSegment[];
+  ariaLabel: string;
+  formatValue?: ValueFormatter;
+  /** Clave del segmento para el % (por defecto, el primero). */
+  percentOf?: string;
+  locale?: string;
+  showLegend?: boolean;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+};
+
 const TRACK_W = 600;
 const TRACK_H = 24;
+/** Radio de la pista (pastilla). */
+const TRACK_RADIUS = TRACK_H / 2;
 
 /**
  * Barras horizontales apiladas SSR (progreso y comparativas).
@@ -29,48 +55,50 @@ export function StackedBar({
   rows,
   segments,
   ariaLabel,
-  formatValue = formatDefault,
+  locale = "es-MX",
+  formatValue = (v: number) => formatDefault(v, locale),
   percentOf,
-  emptyTitle = "Sin datos todavía",
+  showLegend = true,
+  className,
+  style,
+  ariaDescribedBy,
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  rows: StackRow[];
-  segments: StackSegment[];
-  ariaLabel: string;
-  formatValue?: (value: number) => string;
-  /** Clave del segmento para el % (por defecto, el primero). */
-  percentOf?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+}: StackedBarProps) {
+  // useId arriba: hooks siempre en mismo orden (antes del early return).
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   if (rows.length === 0 || segments.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const mainKey = percentOf ?? segments[0]?.key ?? "";
   const colors = segments.map((s, i) => seriesColor(i, s.color));
-  const maxTotal = Math.max(
-    1,
-    ...rows.map((r) =>
-      segments.reduce((acc, s) => acc + (r.values[s.key] ?? 0), 0),
-    ),
-  );
+  const totalOf = (values: Record<string, number>) =>
+    segments.reduce((acc, s) => acc + toNumber(values[s.key]), 0);
+  const maxTotal = Math.max(1, ...rows.map((r) => totalOf(r.values)));
 
   return (
-    <div role="img" aria-label={ariaLabel}>
+    <div
+      role="img"
+      aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
+      className={className}
+      style={style}
+    >
       <title>{ariaLabel}</title>
       <div className="flex flex-col gap-2.5">
         {rows.map((row, ri) => {
-          const total = segments.reduce(
-            (acc, s) => acc + (row.values[s.key] ?? 0),
-            0,
-          );
-          const main = row.values[mainKey] ?? 0;
-          const percent = total === 0 ? 0 : Math.round((main / total) * 100);
+          const total = totalOf(row.values);
+          const main = toNumber(row.values[mainKey]);
+          const percent =
+            total === 0 ? 0 : Math.round((main / total) * PERCENT_FACTOR);
           let offset = 0;
-          const clipId = `st-${ri}-${total}`;
+          const clipId = `${uid}-st-${ri}`;
           return (
-            <div key={row.label} className="flex items-center gap-2">
+            <div
+              key={stableKey([row.label], ri)}
+              className="flex items-center gap-2"
+            >
               <span
                 className="w-36 shrink-0 truncate text-xs text-muted-foreground"
                 title={row.detail ? `${row.label} · ${row.detail}` : row.label}
@@ -84,34 +112,38 @@ export function StackedBar({
               >
                 <defs>
                   <clipPath id={clipId}>
-                    <rect width={TRACK_W} height={TRACK_H} rx={12} />
+                    <rect width={TRACK_W} height={TRACK_H} rx={TRACK_RADIUS} />
                   </clipPath>
                 </defs>
                 <rect
                   width={TRACK_W}
                   height={TRACK_H}
-                  rx={12}
-                  fill="var(--muted)"
+                  rx={TRACK_RADIUS}
+                  fill={CHART_TOKEN.track}
                 />
                 <g clipPath={`url(#${clipId})`}>
                   {segments.map((seg, si) => {
-                    const value = row.values[seg.key] ?? 0;
+                    const value = toNumber(row.values[seg.key]);
                     const w = (value / maxTotal) * TRACK_W;
                     const x = offset;
                     offset += w;
                     if (w <= 0) return null;
+                    const pct =
+                      total === 0
+                        ? 0
+                        : Math.round((value / total) * PERCENT_FACTOR);
                     const tip =
-                      `${row.label} · ${seg.label}: ${formatValue(value)}` +
+                      `${row.label} · ${seg.label}: ${formatValue(value)} (${pct}% del total)` +
                       (row.detail ? ` (${row.detail})` : "");
                     return (
-                      <g key={seg.key}>
+                      <g key={stableKey([seg.key], si)}>
                         <title>{tip}</title>
                         <rect
                           x={x}
                           y={0}
                           width={w}
                           height={TRACK_H}
-                          fill={colors[si]}
+                          fill={colors[si] ?? CHART_TOKEN.chart1}
                           data-chart-tip={tip}
                         />
                       </g>
@@ -126,12 +158,14 @@ export function StackedBar({
           );
         })}
       </div>
-      <ChartLegend
-        items={segments.map((s, i) => ({
-          label: s.label,
-          color: colors[i] ?? "var(--chart-1)",
-        }))}
-      />
+      {showLegend ? (
+        <ChartLegend
+          items={segments.map((s, i) => ({
+            label: s.label,
+            color: colors[i] ?? CHART_TOKEN.chart1,
+          }))}
+        />
+      ) : null}
     </div>
   );
 }

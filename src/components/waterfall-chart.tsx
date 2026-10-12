@@ -3,8 +3,25 @@
  */
 import { max, min } from "d3-array";
 import { scaleBand, scaleLinear } from "d3-scale";
+import type { CSSProperties } from "react";
+import type { ValueAnnotation } from "../lib/api";
+import { ChartSvg, YGrid } from "../lib/frame";
+import { stableKey } from "../lib/keys";
+import { toNumber } from "../lib/number";
+import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, truncateLabel } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import {
+  ANNOTATION_DASH,
+  ANNOTATION_WIDTH,
+  BAR_RADIUS,
+  CHART_TOKEN,
+  FONT_SEMIBOLD,
+  GRID_TICKS,
+  GRID_WIDTH,
+  TICK_FONT_SIZE,
+  ZERO_MARK_PX,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 export type WaterfallStep = {
   label: string;
@@ -12,33 +29,54 @@ export type WaterfallStep = {
   value: number;
 };
 
+/** Props de WaterfallChart. */
+export type WaterfallChartProps = {
+  steps: WaterfallStep[];
+  ariaLabel: string;
+  height?: number;
+  totalLabel?: string;
+  formatY?: ValueFormatter;
+  locale?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+  annotations?: ValueAnnotation[];
+  emptyTitle?: string;
+  emptyDescription?: string;
+};
+
 const W = 640;
 const MARGIN = { top: 28, right: 12, bottom: 32, left: 48 };
 
-const UP = "var(--chart-1)";
-const DOWN = "var(--chart-5)";
-const TOTAL = "var(--color-primary)";
+const UP = CHART_TOKEN.chart1;
+const DOWN = CHART_TOKEN.chart5;
+const TOTAL = CHART_TOKEN.primary;
+
+const GROUP_BAND_PADDING = 0.3;
+const AXIS_LABEL_OFFSET = 10;
+const VALUE_LABEL_DY = 6;
+const CONNECTOR_DASH = "3 3";
+const ANNOTATION_LABEL_DX = 4;
+const ANNOTATION_LABEL_DY = -4;
 
 /**
  * Cascada SSR (acumulado por deltas + total). Subidas, bajadas y conectores.
+ * Soporta negativos; no-finitos cuentan como 0.
  */
 export function WaterfallChart({
   steps,
   ariaLabel,
   height = 280,
   totalLabel = "Total",
-  formatY = formatDefault,
-  emptyTitle = "Sin datos todavía",
+  formatY,
+  locale = "es-MX",
+  className,
+  style,
+  ariaDescribedBy,
+  annotations,
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  steps: WaterfallStep[];
-  ariaLabel: string;
-  height?: number;
-  totalLabel?: string;
-  formatY?: (value: number) => string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+}: WaterfallChartProps) {
   if (steps.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
@@ -48,19 +86,24 @@ export function WaterfallChart({
 
   let acc = 0;
   const floats = steps.map((s) => {
+    const value = toNumber(s.value);
     const from = acc;
-    acc += s.value;
-    return { ...s, from, to: acc };
+    acc += value;
+    return { label: s.label, value, from, to: acc };
   });
   const total = acc;
   const lo = Math.min(0, min(floats, (f) => Math.min(f.from, f.to)) ?? 0);
   const hi = Math.max(0, max(floats, (f) => Math.max(f.from, f.to)) ?? 1);
 
-  const labels = [...steps.map((s) => s.label), totalLabel];
-  const y = scaleLinear().domain([lo, hi]).nice(4).range([innerH, 0]);
-  const x = scaleBand().domain(labels).range([0, innerW]).padding(0.3);
-  const ticks = y.ticks(4);
+  const labels = [...floats.map((f) => f.label), totalLabel];
+  const y = scaleLinear().domain([lo, hi]).nice(GRID_TICKS).range([innerH, 0]);
+  const x = scaleBand()
+    .domain(labels)
+    .range([0, innerW])
+    .padding(GROUP_BAND_PADDING);
+  const ticks = y.ticks(GRID_TICKS);
   const bw = x.bandwidth();
+  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
 
   const bar = (
     key: string,
@@ -70,6 +113,7 @@ export function WaterfallChart({
     color: string,
     tip: string,
     dashed: boolean,
+    nextLabel?: string,
   ) => {
     const yTop = y(Math.max(from, to));
     const yBase = y(Math.min(from, to));
@@ -80,30 +124,30 @@ export function WaterfallChart({
           x={MARGIN.left + (x(label) ?? 0)}
           y={MARGIN.top + yTop}
           width={bw}
-          height={Math.max(2, yBase - yTop)}
-          rx={4}
+          height={Math.max(ZERO_MARK_PX, yBase - yTop)}
+          rx={BAR_RADIUS}
           fill={color}
           data-chart-tip={tip}
         />
         <text
           x={MARGIN.left + (x(label) ?? 0) + bw / 2}
-          y={MARGIN.top + yTop - 6}
+          y={MARGIN.top + yTop - VALUE_LABEL_DY}
           textAnchor="middle"
-          fontSize={11}
-          fontWeight={600}
-          fill="var(--color-foreground)"
+          fontSize={TICK_FONT_SIZE}
+          fontWeight={FONT_SEMIBOLD}
+          fill={CHART_TOKEN.foreground}
         >
-          {formatY(to)}
+          {fmtY(to)}
         </text>
-        {dashed ? (
+        {dashed && nextLabel ? (
           <line
             x1={MARGIN.left + (x(label) ?? 0) + bw}
-            x2={MARGIN.left + (x(labels[labels.indexOf(label) + 1] ?? "") ?? 0)}
+            x2={MARGIN.left + (x(nextLabel) ?? 0)}
             y1={MARGIN.top + y(to)}
             y2={MARGIN.top + y(to)}
-            stroke="var(--color-muted-foreground)"
-            strokeWidth={1}
-            strokeDasharray="3 3"
+            stroke={CHART_TOKEN.muted}
+            strokeWidth={GRID_WIDTH}
+            strokeDasharray={CONNECTOR_DASH}
           />
         ) : null}
       </g>
@@ -111,76 +155,88 @@ export function WaterfallChart({
   };
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${height}`}
-      className="h-auto w-full"
-      role="img"
-      aria-label={ariaLabel}
+    <ChartSvg
+      width={W}
+      height={height}
+      ariaLabel={ariaLabel}
+      className={className ? `h-auto w-full ${className}` : undefined}
+      style={style}
+      ariaDescribedBy={ariaDescribedBy}
     >
-      <title>{ariaLabel}</title>
-      {ticks.map((t) => (
-        <g key={t}>
-          <line
-            x1={MARGIN.left}
-            x2={W - MARGIN.right}
-            y1={MARGIN.top + y(t)}
-            y2={MARGIN.top + y(t)}
-            stroke="var(--border)"
-            strokeWidth={1}
-          />
-          <text
-            x={MARGIN.left - 8}
-            y={MARGIN.top + y(t)}
-            dy={4}
-            textAnchor="end"
-            fontSize={11}
-            fill="var(--color-muted-foreground)"
-          >
-            {formatY(t)}
-          </text>
-        </g>
-      ))}
-      {floats.map((f, i) => (
-        <g key={f.label}>
-          {bar(
-            f.label,
-            f.label,
-            f.from,
-            f.to,
-            f.value >= 0 ? UP : DOWN,
-            `${f.label}: ${f.value >= 0 ? "+" : ""}${formatY(f.value)} (acumulado ${formatY(f.to)})`,
-            i < floats.length,
-          )}
-          <text
-            x={MARGIN.left + (x(f.label) ?? 0) + bw / 2}
-            y={height - 10}
-            textAnchor="middle"
-            fontSize={11}
-            fill="var(--color-muted-foreground)"
-          >
-            <title>{f.label}</title>
-            {truncateLabel(f.label)}
-          </text>
-        </g>
-      ))}
+      <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={fmtY} />
+      {(annotations ?? []).map((a, ai) => {
+        if (a.value < lo || a.value > hi) return null;
+        const ay = MARGIN.top + y(a.value);
+        return (
+          <g key={`ann-${a.value}-${ai}`}>
+            <title>{a.label ?? String(a.value)}</title>
+            <line
+              x1={MARGIN.left}
+              x2={W - MARGIN.right}
+              y1={ay}
+              y2={ay}
+              stroke={a.color ?? CHART_TOKEN.accent}
+              strokeWidth={ANNOTATION_WIDTH}
+              strokeDasharray={ANNOTATION_DASH}
+            />
+            <text
+              x={W - MARGIN.right - ANNOTATION_LABEL_DX}
+              y={ay}
+              dy={ANNOTATION_LABEL_DY}
+              textAnchor="end"
+              fontSize={TICK_FONT_SIZE}
+              fill={a.color ?? CHART_TOKEN.muted}
+            >
+              {a.label ?? String(a.value)}
+            </text>
+          </g>
+        );
+      })}
+      {floats.map((f, i) => {
+        const nextLabel = floats[i + 1]?.label ?? totalLabel;
+        return (
+          <g key={stableKey([f.label], i)}>
+            {bar(
+              stableKey([f.label], i),
+              f.label,
+              f.from,
+              f.to,
+              f.value >= 0 ? UP : DOWN,
+              `${f.label}: ${f.value >= 0 ? "+" : ""}${fmtY(f.value)} (acumulado ${fmtY(f.to)})`,
+              true,
+              nextLabel,
+            )}
+            <text
+              x={MARGIN.left + (x(f.label) ?? 0) + bw / 2}
+              y={height - AXIS_LABEL_OFFSET}
+              textAnchor="middle"
+              fontSize={TICK_FONT_SIZE}
+              fill={CHART_TOKEN.muted}
+            >
+              <title>{f.label}</title>
+              {truncateLabel(f.label)}
+            </text>
+          </g>
+        );
+      })}
       {bar(
-        totalLabel,
+        stableKey([totalLabel], floats.length),
         totalLabel,
         0,
         total,
         TOTAL,
-        `${totalLabel}: ${formatY(total)}`,
+        `${totalLabel}: ${fmtY(total)}`,
         false,
       )}
       <text
         x={MARGIN.left + (x(totalLabel) ?? 0) + bw / 2}
-        y={height - 10}
+        y={height - AXIS_LABEL_OFFSET}
         textAnchor="middle"
-        fontSize={11}
-        fill="var(--color-muted-foreground)"
+        fontSize={TICK_FONT_SIZE}
+        fill={CHART_TOKEN.muted}
       >
         {totalLabel}
       </text>
-    </svg>
+    </ChartSvg>
   );
 }

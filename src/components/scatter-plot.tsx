@@ -1,10 +1,22 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
+
 import { max, min } from "d3-array";
 import { scaleLinear } from "d3-scale";
+import type { CSSProperties } from "react";
+import { ChartSvg, YGrid } from "../lib/frame";
+import { toNumber } from "../lib/number";
+import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import {
+  CHART_TOKEN,
+  GRID_TICKS,
+  POINT_BORDER,
+  POINT_RADIUS_SCATTER,
+  TICK_FONT_SIZE,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 export type ScatterPoint = {
   x: number;
@@ -12,8 +24,36 @@ export type ScatterPoint = {
   label?: string;
 };
 
+const X_TICKS = 5;
+const X_TICK_LABEL_OFFSET = 18;
+const X_LABEL_OFFSET = 2;
+const Y_LABEL_X = 12;
+const SCATTER_FILL_OPACITY = 0.75;
+
+/** Props de ScatterPlot. */
+export type ScatterPlotProps = {
+  points: ScatterPoint[];
+  ariaLabel: string;
+  xLabel?: string;
+  yLabel?: string;
+  height?: number;
+  formatTick?: ValueFormatter;
+  locale?: string;
+  color?: string;
+  /**
+   * Color por punto. Si retorna `undefined` se usa el color base (`color`).
+   */
+  itemColor?: (point: ScatterPoint, index: number) => string | undefined;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+};
+
 /**
- * Dispersión XY SSR (correlaciones, outliers).
+ * Dispersión XY SSR (correlaciones, outliers). Soporta negativos en
+ * ambos ejes; filtra puntos no-finitos.
  */
 export function ScatterPlot({
   points,
@@ -21,22 +61,24 @@ export function ScatterPlot({
   xLabel = "x",
   yLabel = "y",
   height = 260,
-  formatTick = formatDefault,
+  locale = "es-MX",
+  formatTick = (v: number) => formatDefault(v, locale),
   color,
-  emptyTitle = "Sin datos todavía",
+  itemColor,
+  className,
+  style,
+  ariaDescribedBy,
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  points: ScatterPoint[];
-  ariaLabel: string;
-  xLabel?: string;
-  yLabel?: string;
-  height?: number;
-  formatTick?: (value: number) => string;
-  color?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
-  if (points.length === 0) {
+}: ScatterPlotProps) {
+  const clean = points
+    .map((p) => ({
+      x: toNumber(p.x, Number.NaN),
+      y: toNumber(p.y, Number.NaN),
+      label: p.label,
+    }))
+    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (clean.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -45,71 +87,58 @@ export function ScatterPlot({
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
 
-  const xs = points.map((p) => p.x);
-  const ys = points.map((p) => p.y);
+  const xs = clean.map((p) => p.x);
+  const ys = clean.map((p) => p.y);
   const x = scaleLinear()
     .domain([Math.min(0, min(xs) ?? 0), max(xs) ?? 1])
-    .nice(4)
+    .nice(GRID_TICKS)
     .range([0, innerW]);
   const y = scaleLinear()
     .domain([Math.min(0, min(ys) ?? 0), max(ys) ?? 1])
-    .nice(4)
+    .nice(GRID_TICKS)
     .range([innerH, 0]);
+  const ticks = y.ticks(GRID_TICKS);
 
   const fill = seriesColor(0, color);
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${height}`}
-      className="h-auto w-full"
-      role="img"
-      aria-label={ariaLabel}
+    <ChartSvg
+      width={W}
+      height={height}
+      ariaLabel={ariaLabel}
+      className={className ? `h-auto w-full ${className}` : "h-auto w-full"}
+      style={style}
+      ariaDescribedBy={ariaDescribedBy}
     >
-      <title>{ariaLabel}</title>
-      {y.ticks(4).map((t) => (
-        <g key={`y${t}`}>
-          <line
-            x1={MARGIN.left}
-            x2={W - MARGIN.right}
-            y1={MARGIN.top + y(t)}
-            y2={MARGIN.top + y(t)}
-            stroke="var(--border)"
-            strokeWidth={1}
-          />
-          <text
-            x={MARGIN.left - 8}
-            y={MARGIN.top + y(t)}
-            dy={4}
-            textAnchor="end"
-            fontSize={11}
-            fill="var(--color-muted-foreground)"
-          >
-            {formatTick(t)}
-          </text>
-        </g>
-      ))}
-      {x.ticks(5).map((t) => (
+      <YGrid
+        ticks={ticks}
+        y={y}
+        margin={MARGIN}
+        width={W}
+        format={formatTick}
+      />
+      {x.ticks(X_TICKS).map((t) => (
         <text
           key={`x${t}`}
           x={MARGIN.left + x(t)}
-          y={height - 18}
+          y={height - X_TICK_LABEL_OFFSET}
           textAnchor="middle"
-          fontSize={11}
-          fill="var(--color-muted-foreground)"
+          fontSize={TICK_FONT_SIZE}
+          fill={CHART_TOKEN.muted}
         >
           {formatTick(t)}
         </text>
       ))}
       <text
         x={MARGIN.left + innerW / 2}
-        y={height - 2}
+        y={height - X_LABEL_OFFSET}
         textAnchor="middle"
-        fontSize={11}
-        fill="var(--color-muted-foreground)"
+        fontSize={TICK_FONT_SIZE}
+        fill={CHART_TOKEN.muted}
       >
         {xLabel}
       </text>
-      {points.map((p, i) => {
+      {clean.map((p, i) => {
         const tip = `${p.label ? `${p.label}: ` : ""}(${formatTick(p.x)}, ${formatTick(p.y)})`;
         return (
           <g key={`${p.x}-${p.y}-${i}`}>
@@ -117,26 +146,26 @@ export function ScatterPlot({
             <circle
               cx={MARGIN.left + x(p.x)}
               cy={MARGIN.top + y(p.y)}
-              r={4.5}
-              fill={fill}
-              fillOpacity={0.75}
-              stroke="var(--background)"
-              strokeWidth={1.5}
+              r={POINT_RADIUS_SCATTER}
+              fill={itemColor?.(p, i) ?? fill}
+              fillOpacity={SCATTER_FILL_OPACITY}
+              stroke={CHART_TOKEN.background}
+              strokeWidth={POINT_BORDER}
               data-chart-tip={tip}
             />
           </g>
         );
       })}
       <text
-        x={12}
+        x={Y_LABEL_X}
         y={MARGIN.top + innerH / 2}
         textAnchor="middle"
-        fontSize={11}
-        fill="var(--color-muted-foreground)"
-        transform={`rotate(-90, 12, ${MARGIN.top + innerH / 2})`}
+        fontSize={TICK_FONT_SIZE}
+        fill={CHART_TOKEN.muted}
+        transform={`rotate(-90, ${Y_LABEL_X}, ${MARGIN.top + innerH / 2})`}
       >
         {yLabel}
       </text>
-    </svg>
+    </ChartSvg>
   );
 }

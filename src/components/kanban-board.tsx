@@ -1,7 +1,10 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { ChartEmpty } from "./empty";
+import type { CSSProperties } from "react";
+import { stableKey } from "../lib/keys";
+import { CHART_TOKEN } from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 export type KanbanCard = {
   title: string;
@@ -16,36 +19,69 @@ export type KanbanColumn = {
   cards: KanbanCard[];
 };
 
+/** Props del tablero kanban. */
+export type KanbanBoardProps = {
+  columns: KanbanColumn[];
+  ariaLabel: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+};
+
+const FALLBACK_TAG_COLOR = CHART_TOKEN.chart1;
+
+/**
+ * Cómputo puro de conteos WIP por columna (testable, sin JSX).
+ */
+export function computeKanbanStats(columns: KanbanColumn[]): Array<{
+  count: number;
+  over: boolean;
+}> {
+  return columns.map((col) => ({
+    count: col.cards.length,
+    over: col.limit !== undefined && col.cards.length > col.limit,
+  }));
+}
+
 /**
  * Kanban SSR (columnas + tarjetas + límite WIP). HTML puro, sin SVG.
  */
 export function KanbanBoard({
   columns,
   ariaLabel,
-  emptyTitle = "Sin datos todavía",
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  columns: KanbanColumn[];
-  ariaLabel: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+  className,
+  style,
+  ariaDescribedBy,
+}: KanbanBoardProps) {
   if (columns.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const stats = computeKanbanStats(columns);
 
   return (
     <div
       role="img"
       aria-label={ariaLabel}
-      className="grid auto-cols-[minmax(180px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-1"
+      aria-describedby={ariaDescribedBy}
+      className={
+        className
+          ? `grid auto-cols-[minmax(180px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-1 ${className}`
+          : "grid auto-cols-[minmax(180px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-1"
+      }
+      style={style}
     >
       <title>{ariaLabel}</title>
-      {columns.map((col) => {
-        const over = col.limit !== undefined && col.cards.length > col.limit;
+      {columns.map((col, ci) => {
+        const over = stats[ci]?.over ?? false;
+        const count = stats[ci]?.count ?? col.cards.length;
         return (
           <div
-            key={col.title}
+            key={stableKey([col.title], ci)}
             className="flex min-h-24 flex-col gap-2 rounded-lg border bg-muted/40 p-2.5"
           >
             <div className="flex items-center justify-between gap-2">
@@ -60,18 +96,16 @@ export function KanbanBoard({
                 }
                 title={
                   col.limit === undefined
-                    ? `${col.cards.length} tarjetas`
-                    : `${col.cards.length} de ${col.limit} (WIP)`
+                    ? `${count} tarjetas`
+                    : `${count} de ${col.limit} (WIP)`
                 }
               >
-                {col.limit === undefined
-                  ? col.cards.length
-                  : `${col.cards.length}/${col.limit}`}
+                {col.limit === undefined ? count : `${count}/${col.limit}`}
               </span>
             </div>
-            {col.cards.map((card) => (
+            {col.cards.map((card, ki) => (
               <div
-                key={card.title}
+                key={stableKey([card.title], ki)}
                 title={card.tag ? `${card.title} · ${card.tag}` : card.title}
                 className="rounded-md border bg-card p-2 shadow-xs"
               >
@@ -82,7 +116,7 @@ export function KanbanBoard({
                       aria-hidden="true"
                       className="size-1.5 shrink-0 rounded-full"
                       style={{
-                        backgroundColor: card.tagColor ?? "var(--chart-1)",
+                        backgroundColor: card.tagColor ?? FALLBACK_TAG_COLOR,
                       }}
                     />
                     {card.tag}

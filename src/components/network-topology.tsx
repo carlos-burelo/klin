@@ -1,9 +1,21 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
+
+import type { CSSProperties } from "react";
+import type { DagLayout } from "../lib/graph";
 import { EdgeLabel, fitNodeWidth, layoutDag } from "../lib/graph";
+import { stableKey } from "../lib/keys";
 import { truncateLabel } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import {
+  CHART_TOKEN,
+  DIAGRAM_MIN_SCROLL,
+  EDGE_LABEL_FONT_SIZE,
+  EDGE_WIDTH,
+  FONT_SEMIBOLD,
+  NODE_BORDER_WIDTH,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
 export type TopoRole =
@@ -29,6 +41,84 @@ export type TopoLink = {
   status?: "up" | "degraded" | "down";
 };
 
+const NODE_FONT_SIZE = 12;
+const NODE_RX_PROCESS = 8;
+const NODE_FIT = { min: 150, max: 220, size: 12, pad: 52 } as const;
+const LAYOUT = {
+  NODE_H: 60,
+  GAP_X: 48,
+  GAP_Y: 72,
+  MIN_W: DIAGRAM_MIN_SCROLL,
+  MAX_NODES: 300,
+} as const;
+const ARROW_MARKER = {
+  SIZE: 10,
+  REF_X: 8,
+  REF_Y: 5,
+  WIDTH: 7,
+  HEIGHT: 7,
+} as const;
+const GLYPH_R = 7;
+const GLYPH_THIN = 1.25;
+const GLYPH_RX_SMALL = 2;
+const GLYPH_RX_TINY = 1.5;
+const GLYPH_DOT_R = 1;
+/** Marcos de glifo por rol (x, y, w, h relativos al centro). */
+const GLYPH_FRAME = {
+  firewall: { dx: -7, dy: -6, w: 14, h: 12, lineDy: 2 },
+  switch: { dx: -8, dy: -5, w: 16, h: 10 },
+  server: {
+    dx: -6,
+    dy: -8,
+    w: 12,
+    h: 16,
+    dotDx: -2.5,
+    dotDy: 4,
+    slotX1: 1,
+    slotX2: 4,
+    slotDy: 4,
+  },
+  host: { w: 14, h: 9, dy: -6, standTop: 3, standFoot: 4 },
+} as const;
+/** Trazo de nube (curvas fijas del glifo). */
+const CLOUD_PATH_OFFSETS = { x0: -8, dy: 3, tailDx: -15, tailDy: 4.6 } as const;
+/** Flecha de router y switch (desplazamientos fijos del glifo). */
+const ROUTER_ARROW = {
+  tail: -3.5,
+  len: 7,
+  headX: 1.5,
+  headDy: 2,
+  dash: "2 1.5",
+} as const;
+const SWITCH_ZIGZAG = {
+  x0: -4,
+  dy: 1,
+  step: 2.5,
+  rise: 3,
+  x1: 1,
+  dy2: -1,
+} as const;
+const GLYPH_X = 24;
+const LABEL_X = 38;
+const LABEL_DY = 4;
+const LABEL_DY_WITH_SUB = -3;
+const SUB_DY = 12;
+const DASH_DOWN = "5 4";
+const UNKNOWN_RANK = 99;
+
+/** Props de la topología de red. */
+export type NetworkTopologyProps = {
+  nodes: TopoNode[];
+  links: TopoLink[];
+  ariaLabel: string;
+  direction?: "TB" | "LR";
+  emptyTitle?: string;
+  emptyDescription?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+};
+
 const ROLE_ORDER: TopoRole[] = [
   "internet",
   "cloud",
@@ -42,30 +132,30 @@ const ROLE_ORDER: TopoRole[] = [
 function roleColor(role: TopoRole): string {
   switch (role) {
     case "internet":
-      return "var(--color-chart-2)";
+      return CHART_TOKEN.accent;
     case "cloud":
-      return "var(--color-chart-4)";
+      return CHART_TOKEN.chart4;
     case "firewall":
-      return "var(--color-destructive)";
+      return CHART_TOKEN.destructive;
     case "router":
-      return "var(--color-chart-1)";
+      return CHART_TOKEN.chart1;
     case "switch":
-      return "var(--color-chart-3)";
+      return CHART_TOKEN.chart3;
     case "server":
-      return "var(--color-chart-5)";
+      return CHART_TOKEN.chart5;
     case "host":
-      return "var(--color-muted-foreground)";
+      return CHART_TOKEN.muted;
   }
 }
 
 function statusColor(status: TopoLink["status"]): string {
   switch (status) {
     case "down":
-      return "var(--color-destructive)";
+      return CHART_TOKEN.destructive;
     case "degraded":
-      return "var(--color-chart-3)";
+      return CHART_TOKEN.chart3;
     default:
-      return "var(--color-muted-foreground)";
+      return CHART_TOKEN.muted;
   }
 }
 
@@ -75,67 +165,198 @@ function RoleGlyph({ role, x, y }: { role: TopoRole; x: number; y: number }) {
   switch (role) {
     case "internet":
       return (
-        <g stroke={c} strokeWidth={1.5} fill="none">
-          <circle cx={x} cy={y} r={7} />
-          <ellipse cx={x} cy={y} rx={3.5} ry={7} />
-          <line x1={x - 7} y1={y} x2={x + 7} y2={y} />
+        <g stroke={c} strokeWidth={EDGE_WIDTH} fill="none">
+          <circle cx={x} cy={y} r={GLYPH_R} />
+          <ellipse cx={x} cy={y} rx={GLYPH_R / 2} ry={GLYPH_R} />
+          <line x1={x - GLYPH_R} y1={y} x2={x + GLYPH_R} y2={y} />
         </g>
       );
     case "cloud":
       return (
-        <g fill="none" stroke={c} strokeWidth={1.5}>
+        <g fill="none" stroke={c} strokeWidth={EDGE_WIDTH}>
           <path
-            d={`M ${x - 8} ${y + 3} a 4 4 0 0 1 1 -7.8 a 5 5 0 0 1 9.4 -2 a 3.6 3.6 0 0 1 4.6 5.2 l -15 4.6 z`}
+            d={`M ${x + CLOUD_PATH_OFFSETS.x0} ${y + CLOUD_PATH_OFFSETS.dy} a 4 4 0 0 1 1 -7.8 a 5 5 0 0 1 9.4 -2 a 3.6 3.6 0 0 1 4.6 5.2 l ${CLOUD_PATH_OFFSETS.tailDx} ${CLOUD_PATH_OFFSETS.tailDy} z`}
           />
         </g>
       );
     case "firewall":
       return (
-        <g stroke={c} strokeWidth={1.5}>
-          <rect x={x - 7} y={y - 6} width={14} height={12} rx={2} fill="none" />
-          <line x1={x - 7} y1={y - 2} x2={x + 7} y2={y - 2} />
-          <line x1={x - 7} y1={y + 2} x2={x + 7} y2={y + 2} />
+        <g stroke={c} strokeWidth={EDGE_WIDTH}>
+          <rect
+            x={x + GLYPH_FRAME.firewall.dx}
+            y={y + GLYPH_FRAME.firewall.dy}
+            width={GLYPH_FRAME.firewall.w}
+            height={GLYPH_FRAME.firewall.h}
+            rx={GLYPH_RX_SMALL}
+            fill="none"
+          />
+          <line
+            x1={x - GLYPH_R}
+            y1={y - GLYPH_FRAME.firewall.lineDy}
+            x2={x + GLYPH_R}
+            y2={y - GLYPH_FRAME.firewall.lineDy}
+          />
+          <line
+            x1={x - GLYPH_R}
+            y1={y + GLYPH_FRAME.firewall.lineDy}
+            x2={x + GLYPH_R}
+            y2={y + GLYPH_FRAME.firewall.lineDy}
+          />
         </g>
       );
     case "router":
       return (
-        <g stroke={c} strokeWidth={1.5} fill="none">
-          <circle cx={x} cy={y} r={7} />
+        <g stroke={c} strokeWidth={EDGE_WIDTH} fill="none">
+          <circle cx={x} cy={y} r={GLYPH_R} />
           <path
-            d={`M ${x - 3.5} ${y} h 7 M ${x + 1.5} ${y - 2} L ${x + 3.5} ${y} L ${x + 1.5} ${y + 2}`}
+            d={`M ${x + ROUTER_ARROW.tail} ${y} h ${ROUTER_ARROW.len} M ${x + ROUTER_ARROW.headX} ${y - ROUTER_ARROW.headDy} L ${x - ROUTER_ARROW.tail} ${y} L ${x + ROUTER_ARROW.headX} ${y + ROUTER_ARROW.headDy}`}
           />
-          <path d={`M ${x + 3.5} ${y} h -7`} strokeDasharray="2 1.5" />
+          <path
+            d={`M ${x - ROUTER_ARROW.tail} ${y} h -${ROUTER_ARROW.len}`}
+            strokeDasharray={ROUTER_ARROW.dash}
+          />
         </g>
       );
     case "switch":
       return (
-        <g stroke={c} strokeWidth={1.5} fill="none">
-          <rect x={x - 8} y={y - 5} width={16} height={10} rx={2} />
+        <g stroke={c} strokeWidth={EDGE_WIDTH} fill="none">
+          <rect
+            x={x + GLYPH_FRAME.switch.dx}
+            y={y + GLYPH_FRAME.switch.dy}
+            width={GLYPH_FRAME.switch.w}
+            height={GLYPH_FRAME.switch.h}
+            rx={GLYPH_RX_SMALL}
+          />
           <path
-            d={`M ${x - 4} ${y + 1} l 2.5 -3 l 2.5 3 M ${x + 1} ${y - 1} l 2.5 3`}
-            strokeWidth={1.25}
+            d={`M ${x + SWITCH_ZIGZAG.x0} ${y + SWITCH_ZIGZAG.dy} l ${SWITCH_ZIGZAG.step} -${SWITCH_ZIGZAG.rise} l ${SWITCH_ZIGZAG.step} ${SWITCH_ZIGZAG.rise} M ${x + SWITCH_ZIGZAG.x1} ${y + SWITCH_ZIGZAG.dy2} l ${SWITCH_ZIGZAG.step} ${SWITCH_ZIGZAG.rise}`}
+            strokeWidth={GLYPH_THIN}
           />
         </g>
       );
     case "server":
       return (
-        <g stroke={c} strokeWidth={1.5} fill="none">
-          <rect x={x - 6} y={y - 8} width={12} height={16} rx={2} />
-          <circle cx={x - 2.5} cy={y - 4} r={1} fill={c} stroke="none" />
-          <circle cx={x - 2.5} cy={y + 4} r={1} fill={c} stroke="none" />
-          <line x1={x + 1} y1={y - 4} x2={x + 4} y2={y - 4} />
-          <line x1={x + 1} y1={y + 4} x2={x + 4} y2={y + 4} />
+        <g stroke={c} strokeWidth={EDGE_WIDTH} fill="none">
+          <rect
+            x={x + GLYPH_FRAME.server.dx}
+            y={y + GLYPH_FRAME.server.dy}
+            width={GLYPH_FRAME.server.w}
+            height={GLYPH_FRAME.server.h}
+            rx={GLYPH_RX_SMALL}
+          />
+          <circle
+            cx={x + GLYPH_FRAME.server.dotDx}
+            cy={y - GLYPH_FRAME.server.dotDy}
+            r={GLYPH_DOT_R}
+            fill={c}
+            stroke="none"
+          />
+          <circle
+            cx={x + GLYPH_FRAME.server.dotDx}
+            cy={y + GLYPH_FRAME.server.dotDy}
+            r={GLYPH_DOT_R}
+            fill={c}
+            stroke="none"
+          />
+          <line
+            x1={x + GLYPH_FRAME.server.slotX1}
+            y1={y - GLYPH_FRAME.server.slotDy}
+            x2={x + GLYPH_FRAME.server.slotX2}
+            y2={y - GLYPH_FRAME.server.slotDy}
+          />
+          <line
+            x1={x + GLYPH_FRAME.server.slotX1}
+            y1={y + GLYPH_FRAME.server.slotDy}
+            x2={x + GLYPH_FRAME.server.slotX2}
+            y2={y + GLYPH_FRAME.server.slotDy}
+          />
         </g>
       );
     case "host":
       return (
-        <g stroke={c} strokeWidth={1.5} fill="none">
-          <rect x={x - 7} y={y - 6} width={14} height={9} rx={1.5} />
-          <line x1={x} y1={y + 3} x2={x} y2={y + 7} />
-          <line x1={x - 4} y1={y + 7} x2={x + 4} y2={y + 7} />
+        <g stroke={c} strokeWidth={EDGE_WIDTH} fill="none">
+          <rect
+            x={x - GLYPH_R}
+            y={y + GLYPH_FRAME.host.dy}
+            width={GLYPH_FRAME.host.w}
+            height={GLYPH_FRAME.host.h}
+            rx={GLYPH_RX_TINY}
+          />
+          <line
+            x1={x}
+            y1={y + GLYPH_FRAME.host.standTop}
+            x2={x}
+            y2={y + GLYPH_R}
+          />
+          <line
+            x1={x - GLYPH_FRAME.host.standFoot}
+            y1={y + GLYPH_R}
+            x2={x + GLYPH_FRAME.host.standFoot}
+            y2={y + GLYPH_R}
+          />
         </g>
       );
   }
+}
+
+/**
+ * Cómputo puro del layout de topología (orden por rol + DAG).
+ */
+export function computeTopologyLayout(
+  nodes: TopoNode[],
+  links: TopoLink[],
+  direction: "TB" | "LR" = "TB",
+): {
+  layout: DagLayout;
+  byId: Map<string, TopoNode>;
+  linkByKey: Map<string, TopoLink>;
+  width: number;
+  height: number;
+  usedStatuses: Array<NonNullable<TopoLink["status"]> | "up">;
+} {
+  const rank = new Map(ROLE_ORDER.map((r, i) => [r, i]));
+  const ordered = [...nodes].sort(
+    (a, b) =>
+      (rank.get(a.role ?? "server") ?? UNKNOWN_RANK) -
+      (rank.get(b.role ?? "server") ?? UNKNOWN_RANK),
+  );
+  const W = fitNodeWidth(
+    nodes.flatMap((n) => (n.sub ? [n.label, n.sub] : [n.label])),
+    {
+      min: NODE_FIT.min,
+      max: NODE_FIT.max,
+      size: NODE_FIT.size,
+      pad: NODE_FIT.pad,
+    },
+  );
+  const H = LAYOUT.NODE_H;
+  const layout = layoutDag(
+    ordered.map((n) => n.id),
+    links,
+    {
+      direction,
+      nodeW: W,
+      nodeH: H,
+      gapX: LAYOUT.GAP_X,
+      gapY: LAYOUT.GAP_Y,
+      minW: LAYOUT.MIN_W,
+      maxNodes: LAYOUT.MAX_NODES,
+    },
+  );
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const linkByKey = new Map(
+    links.map((l) => [`${l.from}→${l.to}`, l] as const),
+  );
+  const usedStatuses = [
+    ...new Set(links.map((l) => l.status ?? "up")),
+  ] as Array<NonNullable<TopoLink["status"]> | "up">;
+  return {
+    layout,
+    byId,
+    linkByKey,
+    width: Math.max(1, layout.width),
+    height: Math.max(1, layout.height),
+    usedStatuses,
+  };
 }
 
 /**
@@ -146,43 +367,21 @@ export function NetworkTopology({
   links,
   ariaLabel,
   direction = "TB",
-  emptyTitle = "Sin datos todavía",
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  nodes: TopoNode[];
-  links: TopoLink[];
-  ariaLabel: string;
-  direction?: "TB" | "LR";
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+  className,
+  style,
+  ariaDescribedBy,
+}: NetworkTopologyProps) {
   if (nodes.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const rank = new Map(ROLE_ORDER.map((r, i) => [r, i]));
-  const ordered = [...nodes].sort(
-    (a, b) =>
-      (rank.get(a.role ?? "server") ?? 99) -
-      (rank.get(b.role ?? "server") ?? 99),
-  );
-  const W = fitNodeWidth(
-    nodes.flatMap((n) => (n.sub ? [n.label, n.sub] : [n.label])),
-    { min: 150, max: 220, size: 12, pad: 52 },
-  );
-  const H = 60;
-  const layout = layoutDag(
-    ordered.map((n) => n.id),
-    links,
-    { direction, nodeW: W, nodeH: H, gapX: 48, gapY: 72, minW: 560 },
-  );
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  const width = Math.max(1, layout.width);
-  const height = Math.max(1, layout.height);
-  const usedStatuses = [...new Set(links.map((l) => l.status ?? "up"))];
+  const { layout, byId, linkByKey, width, height, usedStatuses } =
+    computeTopologyLayout(nodes, links, direction);
 
   return (
-    <div>
+    <div className={className} style={style}>
       <div className="overflow-x-auto">
         <svg
           viewBox={`0 0 ${width} ${height}`}
@@ -190,40 +389,38 @@ export function NetworkTopology({
           style={{ minWidth: width }}
           role="img"
           aria-label={ariaLabel}
+          aria-describedby={ariaDescribedBy}
         >
           <title>{ariaLabel}</title>
           <defs>
             <marker
               id="charts-topo-arrow"
-              viewBox="0 0 10 10"
-              refX="8"
-              refY="5"
-              markerWidth="7"
-              markerHeight="7"
+              viewBox={`0 0 ${ARROW_MARKER.SIZE} ${ARROW_MARKER.SIZE}`}
+              refX={ARROW_MARKER.REF_X}
+              refY={ARROW_MARKER.REF_Y}
+              markerWidth={ARROW_MARKER.WIDTH}
+              markerHeight={ARROW_MARKER.HEIGHT}
               orient="auto-start-reverse"
             >
-              <path
-                d="M 0 1 L 9 5 L 0 9 z"
-                fill="var(--color-muted-foreground)"
-              />
+              <path d="M 0 1 L 9 5 L 0 9 z" fill={CHART_TOKEN.muted} />
             </marker>
           </defs>
           {layout.edges.map((e, i) => {
-            const link = links.find((x) => x.from === e.from && x.to === e.to);
+            const link = linkByKey.get(`${e.from}→${e.to}`);
             const status = link?.status ?? "up";
             return (
               <path
-                key={`${e.from}-${e.to}-${i}`}
+                key={stableKey([e.from, e.to], i)}
                 d={e.d}
                 fill="none"
                 stroke={statusColor(status)}
-                strokeWidth={status === "down" ? 2 : 1.5}
-                strokeDasharray={status === "down" ? "5 4" : undefined}
+                strokeWidth={status === "down" ? NODE_BORDER_WIDTH : EDGE_WIDTH}
+                strokeDasharray={status === "down" ? DASH_DOWN : undefined}
                 markerEnd="url(#charts-topo-arrow)"
               />
             );
           })}
-          {[...layout.nodes.values()].map((p) => {
+          {[...layout.nodes.values()].map((p, i) => {
             const n = byId.get(p.id);
             if (!n) return null;
             const role = n.role ?? "server";
@@ -232,35 +429,35 @@ export function NetworkTopology({
               (n.sub ? ` · ${n.sub}` : "") +
               ` · ${links.filter((l) => l.from === p.id || l.to === p.id).length} enlaces`;
             return (
-              <g key={p.id}>
+              <g key={stableKey([p.id], i)}>
                 <title>{tip}</title>
                 <rect
                   x={p.x}
                   y={p.y}
                   width={p.w}
                   height={p.h}
-                  rx={8}
-                  fill="var(--card)"
+                  rx={NODE_RX_PROCESS}
+                  fill={CHART_TOKEN.card}
                   stroke={roleColor(role)}
-                  strokeWidth={1.5}
+                  strokeWidth={EDGE_WIDTH}
                   data-chart-tip={tip}
                 />
-                <RoleGlyph role={role} x={p.x + 24} y={p.cy} />
+                <RoleGlyph role={role} x={p.x + GLYPH_X} y={p.cy} />
                 <text
-                  x={p.x + 38}
-                  y={p.cy + (n.sub ? -3 : 4)}
-                  fontSize={12}
-                  fontWeight={600}
-                  fill="var(--color-foreground)"
+                  x={p.x + LABEL_X}
+                  y={p.cy + (n.sub ? LABEL_DY_WITH_SUB : LABEL_DY)}
+                  fontSize={NODE_FONT_SIZE}
+                  fontWeight={FONT_SEMIBOLD}
+                  fill={CHART_TOKEN.foreground}
                 >
                   {truncateLabel(n.label, 18)}
                 </text>
                 {n.sub ? (
                   <text
-                    x={p.x + 38}
-                    y={p.cy + 12}
-                    fontSize={10}
-                    fill="var(--color-muted-foreground)"
+                    x={p.x + LABEL_X}
+                    y={p.cy + SUB_DY}
+                    fontSize={EDGE_LABEL_FONT_SIZE}
+                    fill={CHART_TOKEN.muted}
                   >
                     {truncateLabel(n.sub, 22)}
                   </text>
@@ -268,11 +465,11 @@ export function NetworkTopology({
               </g>
             );
           })}
-          {layout.edges.map((e) => {
-            const link = links.find((x) => x.from === e.from && x.to === e.to);
+          {layout.edges.map((e, i) => {
+            const link = linkByKey.get(`${e.from}→${e.to}`);
             return link?.label ? (
               <EdgeLabel
-                key={`${e.from}-${e.to}-${link.label}`}
+                key={stableKey([e.from, e.to, link.label], i)}
                 mx={e.mx}
                 my={e.my}
                 text={link.label}

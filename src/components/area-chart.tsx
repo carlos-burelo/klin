@@ -1,24 +1,69 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { max } from "d3-array";
 import { scaleLinear, scalePoint } from "d3-scale";
 import { area, curveMonotoneX, line } from "d3-shape";
-import { formatDefault, seriesColor } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import type { CSSProperties } from "react";
+import type { ValueAnnotation } from "../lib/api";
+import { domainWithZero } from "../lib/domain";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+  YGrid,
+} from "../lib/frame";
+import { stableKey } from "../lib/keys";
+import { toNumber } from "../lib/number";
+import type { ValueFormatter } from "../lib/palette";
+import { formatDefault, seriesColors } from "../lib/palette";
+import type { ChartSeries } from "../lib/series";
+import {
+  ANNOTATION_DASH,
+  ANNOTATION_WIDTH,
+  AREA_FILL_OPACITY,
+  CHART_TOKEN,
+  GRID_TICKS,
+  LINE_WIDTH,
+  PERCENT_FACTOR,
+  POINT_BORDER,
+  POINT_RADIUS,
+  TICK_FONT_SIZE,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
-export type AreaSeries = {
-  key: string;
-  label: string;
-  color?: string;
-};
+export type AreaSeries = ChartSeries;
 
-const W = 640;
-const MARGIN = { top: 12, right: 12, bottom: 32, left: 44 };
+const POINT_PADDING = 0.5;
+const AXIS_LABEL_OFFSET = 10;
+const ANNOTATION_LABEL_DX = 4;
+const ANNOTATION_LABEL_DY = -4;
+
+/** Props de AreaChart. */
+export type AreaChartProps = {
+  data: Array<Record<string, string | number>>;
+  xKey: string;
+  series: AreaSeries[];
+  height?: number;
+  ariaLabel: string;
+  formatY?: ValueFormatter;
+  stacked?: boolean;
+  /** Apila a 100 % (implica `stacked`). */
+  normalize?: boolean;
+  locale?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+  showLegend?: boolean;
+  annotations?: ValueAnnotation[];
+  emptyTitle?: string;
+  emptyDescription?: string;
+};
 
 /**
  * Áreas SSR (superpuestas o apiladas). Eje X por categorías.
+ * Soporta negativos en modo superpuesto; en apilado/normalizado los
+ * negativos se clamp a 0 (no se apilan negativos).
  */
 export function AreaChart({
   data,
@@ -26,24 +71,18 @@ export function AreaChart({
   series,
   height = 260,
   ariaLabel,
-  formatY = formatDefault,
+  formatY,
   stacked = false,
   normalize = false,
-  emptyTitle = "Sin datos todavía",
+  locale = "es-MX",
+  className,
+  style,
+  ariaDescribedBy,
+  showLegend = true,
+  annotations,
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  data: Array<Record<string, string | number>>;
-  xKey: string;
-  series: AreaSeries[];
-  height?: number;
-  ariaLabel: string;
-  formatY?: (value: number) => string;
-  stacked?: boolean;
-  /** Apila a 100 % (implica `stacked`). */
-  normalize?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+}: AreaChartProps) {
   if (data.length === 0 || series.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
@@ -51,83 +90,102 @@ export function AreaChart({
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
   const labels = data.map((d) => String(d[xKey] ?? ""));
-  const totals = data.map((d) =>
-    series.reduce((acc, s) => acc + Number(d[s.key] ?? 0), 0),
+  // En apilado/normalize los negativos se clamp a 0: no se apilan negativos.
+  const stackedTotals = data.map((d) =>
+    series.reduce((acc, s) => acc + Math.max(0, toNumber(d[s.key])), 0),
   );
+  const flat = data.flatMap((d) => series.map((s) => toNumber(d[s.key])));
+  const [lo, hi] = domainWithZero(stacked || normalize ? stackedTotals : flat);
 
-  const top = stacked
-    ? (max(totals) ?? 0)
-    : (max(data, (d) =>
-        Math.max(...series.map((s) => Number(d[s.key] ?? 0))),
-      ) ?? 0);
-
-  const x = scalePoint().domain(labels).range([0, innerW]).padding(0.5);
+  const x = scalePoint()
+    .domain(labels)
+    .range([0, innerW])
+    .padding(POINT_PADDING);
   const y = (
     normalize
       ? scaleLinear().domain([0, 1])
       : scaleLinear()
-          .domain([0, Math.max(1, top)])
-          .nice(4)
+          .domain([lo, Math.max(hi, lo + 1)])
+          .nice(GRID_TICKS)
   ).range([innerH, 0]);
-  const ticks = y.ticks(4);
-  const colors = series.map((s, i) => seriesColor(i, s.color));
-  const fmt = normalize ? (v: number) => `${Math.round(v * 100)}%` : formatY;
+  const ticks = y.ticks(GRID_TICKS);
+  const colors = seriesColors(series);
+  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmt = normalize
+    ? (v: number) => `${Math.round(v * PERCENT_FACTOR)}%`
+    : fmtY;
 
   // Base acumulada por etiqueta cuando es apilada.
   const bases = new Map<string, number>(labels.map((l) => [l, 0]));
 
   return (
-    <div>
-      <svg
-        viewBox={`0 0 ${W} ${height}`}
-        className="h-auto w-full"
-        role="img"
-        aria-label={ariaLabel}
+    <div className={className} style={style}>
+      <ChartSvg
+        width={W}
+        height={height}
+        ariaLabel={ariaLabel}
+        ariaDescribedBy={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
-        {ticks.map((t) => (
-          <g key={t}>
-            <line
-              x1={MARGIN.left}
-              x2={W - MARGIN.right}
-              y1={MARGIN.top + y(t)}
-              y2={MARGIN.top + y(t)}
-              stroke="var(--border)"
-              strokeWidth={1}
-            />
-            <text
-              x={MARGIN.left - 8}
-              y={MARGIN.top + y(t)}
-              dy={4}
-              textAnchor="end"
-              fontSize={11}
-              fill="var(--color-muted-foreground)"
-            >
-              {fmt(t)}
-            </text>
-          </g>
-        ))}
-        {labels.map((label) => (
+        <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={fmt} />
+        {(annotations ?? []).map((a, ai) => {
+          const annLo = normalize ? 0 : lo;
+          const annHi = normalize ? 1 : hi;
+          if (a.value < annLo || a.value > annHi) return null;
+          const ay = MARGIN.top + y(a.value);
+          return (
+            <g key={`ann-${a.value}-${ai}`}>
+              <title>{a.label ?? String(a.value)}</title>
+              <line
+                x1={MARGIN.left}
+                x2={W - MARGIN.right}
+                y1={ay}
+                y2={ay}
+                stroke={a.color ?? CHART_TOKEN.accent}
+                strokeWidth={ANNOTATION_WIDTH}
+                strokeDasharray={ANNOTATION_DASH}
+              />
+              <text
+                x={W - MARGIN.right - ANNOTATION_LABEL_DX}
+                y={ay}
+                dy={ANNOTATION_LABEL_DY}
+                textAnchor="end"
+                fontSize={TICK_FONT_SIZE}
+                fill={a.color ?? CHART_TOKEN.muted}
+              >
+                {a.label ?? String(a.value)}
+              </text>
+            </g>
+          );
+        })}
+        {labels.map((label, li) => (
           <text
-            key={label}
+            key={stableKey([label], li)}
             x={MARGIN.left + (x(label) ?? 0)}
-            y={height - 10}
+            y={height - AXIS_LABEL_OFFSET}
             textAnchor="middle"
-            fontSize={11}
-            fill="var(--color-muted-foreground)"
+            fontSize={TICK_FONT_SIZE}
+            fill={CHART_TOKEN.muted}
           >
             {label}
           </text>
         ))}
         {series.map((s, si) => {
+          const color = colors[si] ?? CHART_TOKEN.chart1;
           const pts = data.map((d, di) => {
             const label = String(d[xKey] ?? "");
-            const raw = Number(d[s.key] ?? 0);
-            const total = totals[di] ?? 0;
-            const value = normalize && total > 0 ? raw / total : raw;
+            const raw = toNumber(d[s.key]);
+            // En apilado/normalize los negativos se clamp a 0.
+            const clamped = Math.max(0, raw);
+            const total = stackedTotals[di] ?? 0;
+            const value =
+              normalize && total > 0
+                ? clamped / total
+                : stacked || normalize
+                  ? clamped
+                  : raw;
             const base = stacked || normalize ? (bases.get(label) ?? 0) : 0;
             if (stacked || normalize)
-              bases.set(label, base + (normalize ? value : raw));
+              bases.set(label, base + (normalize ? value : clamped));
             return { label, value, raw, base };
           });
           const areaPath =
@@ -146,29 +204,33 @@ export function AreaChart({
               key={s.key}
               transform={`translate(${MARGIN.left},${MARGIN.top})`}
             >
-              <title>{`${s.label}: total ${formatY(pts.reduce((a, p) => a + p.raw, 0))}`}</title>
-              <path d={areaPath} fill={colors[si]} opacity={0.22} />
+              <title>{`${s.label}: total ${fmtY(pts.reduce((a, p) => a + p.raw, 0))}`}</title>
+              <path d={areaPath} fill={color} opacity={AREA_FILL_OPACITY} />
               <path
                 d={linePath}
                 fill="none"
-                stroke={colors[si]}
-                strokeWidth={2}
+                stroke={color}
+                strokeWidth={LINE_WIDTH}
                 strokeLinecap="round"
               />
-              {pts.map((p) => {
+              {pts.map((p, pi) => {
+                const baseTip = `${p.label} · ${s.label}: ${fmtY(p.raw)}`;
+                const total = stackedTotals[pi] ?? 0;
                 const tip = normalize
-                  ? `${p.label} · ${s.label}: ${formatY(p.raw)} (${Math.round(p.value * 100)}%)`
-                  : `${p.label} · ${s.label}: ${formatY(p.raw)}`;
+                  ? `${p.label} · ${s.label}: ${fmtY(p.raw)} (${Math.round(p.value * PERCENT_FACTOR)}%)`
+                  : stacked && series.length >= 2 && total > 0
+                    ? `${baseTip} (${Math.round((Math.max(0, p.raw) / total) * PERCENT_FACTOR)}% del grupo)`
+                    : baseTip;
                 return (
-                  <g key={p.label}>
+                  <g key={stableKey([s.key, p.label], pi)}>
                     <title>{tip}</title>
                     <circle
                       cx={x(p.label) ?? 0}
                       cy={y(p.base + p.value)}
-                      r={3.5}
-                      fill={colors[si]}
-                      stroke="var(--background)"
-                      strokeWidth={1.5}
+                      r={POINT_RADIUS}
+                      fill={color}
+                      stroke={CHART_TOKEN.background}
+                      strokeWidth={POINT_BORDER}
                       data-chart-tip={tip}
                     />
                   </g>
@@ -177,13 +239,15 @@ export function AreaChart({
             </g>
           );
         })}
-      </svg>
-      <ChartLegend
-        items={series.map((s, i) => ({
-          label: s.label,
-          color: colors[i] ?? "var(--chart-1)",
-        }))}
-      />
+      </ChartSvg>
+      {showLegend ? (
+        <ChartLegend
+          items={series.map((s, i) => ({
+            label: s.label,
+            color: colors[i] ?? CHART_TOKEN.chart1,
+          }))}
+        />
+      ) : null}
     </div>
   );
 }

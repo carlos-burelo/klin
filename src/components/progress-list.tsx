@@ -1,14 +1,34 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
+import type { CSSProperties } from "react";
+import { stableKey } from "../lib/keys";
+import { toNumber } from "../lib/number";
+import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import { PERCENT_FACTOR } from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
+/** Fila de progreso (etiqueta, valor, total y detalle opcionales). */
 export type ProgressRow = {
   label: string;
   value: number;
   total?: number;
   detail?: string;
+};
+
+/** Props de la lista de medidores lineales SSR. */
+export type ProgressListProps = {
+  rows: ProgressRow[];
+  ariaLabel: string;
+  formatValue?: ValueFormatter;
+  locale?: string;
+  color?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
 };
 
 /**
@@ -17,34 +37,47 @@ export type ProgressRow = {
 export function ProgressList({
   rows,
   ariaLabel,
-  formatValue = formatDefault,
+  locale = "es-MX",
+  formatValue = (v: number) => formatDefault(v, locale),
   color,
-  emptyTitle = "Sin datos todavía",
+  className,
+  style,
+  ariaDescribedBy,
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  rows: ProgressRow[];
-  ariaLabel: string;
-  formatValue?: (value: number) => string;
-  color?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+}: ProgressListProps) {
   if (rows.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
   const fill = seriesColor(0, color);
 
   return (
-    <div role="img" aria-label={ariaLabel} className="flex flex-col gap-3">
+    <div
+      role="img"
+      aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
+      className={
+        className ? `flex flex-col gap-3 ${className}` : "flex flex-col gap-3"
+      }
+      style={style}
+    >
       <title>{ariaLabel}</title>
-      {rows.map((row) => {
-        const total = Math.max(row.total ?? row.value, 1);
-        const pct = Math.min(100, Math.max(0, (row.value / total) * 100));
+      {rows.map((row, ri) => {
+        const value = toNumber(row.value);
+        const total = Math.max(toNumber(row.total ?? row.value), 1);
+        const pct = Math.min(
+          PERCENT_FACTOR,
+          Math.max(0, (value / total) * PERCENT_FACTOR),
+        );
         const tip =
-          `${row.label}: ${formatValue(row.value)} de ${formatValue(row.total ?? row.value)}` +
+          `${row.label}: ${formatValue(value)} de ${formatValue(toNumber(row.total ?? row.value))}` +
           (row.detail ? ` (${row.detail})` : "");
         return (
-          <div key={row.label} title={tip} data-chart-tip={tip}>
+          <div
+            key={stableKey([row.label], ri)}
+            title={tip}
+            data-chart-tip={tip}
+          >
             <div className="mb-1 flex items-baseline justify-between gap-2">
               <span
                 className="truncate text-xs text-muted-foreground"
@@ -53,7 +86,7 @@ export function ProgressList({
                 {row.label}
               </span>
               <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums">
-                {formatValue(row.value)}
+                {formatValue(value)}
               </span>
             </div>
             <div

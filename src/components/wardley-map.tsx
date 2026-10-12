@@ -1,9 +1,28 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
-import { ChartEmpty } from "./empty";
 
+import type { CSSProperties } from "react";
+import type { ChartMargin } from "../lib/frame";
+import { stableKey } from "../lib/keys";
+import { clamp01, toNumber } from "../lib/number";
+import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import {
+  CHART_TOKEN,
+  EDGE_LABEL_FONT_SIZE,
+  EDGE_WIDTH,
+  FONT_MONO,
+  FONT_SEMIBOLD,
+  GRID_WIDTH,
+  LABEL_GAP_PX,
+  NODE_BORDER_WIDTH,
+  NODE_RADIUS,
+  PERCENT_FACTOR,
+  TICK_FONT_SIZE,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
+
+/** Nodo de Wardley (posición x/y normalizada 0–1). */
 export type WardleyNode = {
   id: string;
   label: string;
@@ -14,17 +33,60 @@ export type WardleyNode = {
   color?: string;
 };
 
+/** Enlace de Wardley (ids de origen y destino). */
 export type WardleyLink = {
   from: string;
   to: string;
 };
 
+/** Props del mapa de Wardley SSR (cadena de valor vs. evolución). */
+export type WardleyMapProps = {
+  nodes: WardleyNode[];
+  links: WardleyLink[];
+  ariaLabel: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+};
+
 const W = 640;
 const H = 420;
-const MARGIN = { top: 16, right: 16, bottom: 44, left: 16 };
+const MARGIN: ChartMargin = { top: 16, right: 16, bottom: 44, left: 16 };
 const STAGES = ["Génesis", "Custom", "Producto", "Commodity"];
+/** Fracciones de grid vertical, trazo punteado y geometría de etiquetas. */
+const GRID_FRACTIONS = [0.25, 0.5, 0.75];
+const GRID_DASHARRAY = "4 4";
+const STAGE_LABEL_BOTTOM_PAD = 24;
+const AXIS_LABEL_BOTTOM_PAD = 8;
+const Y_LABEL_X = 12;
+const NODE_LABEL_DX = 13;
+const NODE_VALUE_DY = 22;
+/** Máximo de truncado de etiqueta de nodo. */
+const LABEL_MAX_NODE = 20;
 
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+/**
+ * Cómputo puro de posiciones Wardley (normaliza con toNumber + clamp01).
+ */
+export function computeWardleyLayout(
+  nodes: WardleyNode[],
+  links: WardleyLink[],
+): {
+  points: Array<WardleyNode & { nx: number; ny: number }>;
+  cleanLinks: WardleyLink[];
+  byId: Map<string, WardleyNode>;
+} {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const known = new Set(nodes.map((n) => n.id));
+  const cleanLinks = links.filter((l) => known.has(l.from) && known.has(l.to));
+  const points = nodes.map((n) => ({
+    ...n,
+    nx: clamp01(toNumber(n.x)),
+    ny: clamp01(toNumber(n.y)),
+  }));
+  return { points, cleanLinks, byId };
+}
 
 /**
  * Mapa de Wardley SSR (cadena de valor vs. evolución).
@@ -33,128 +95,127 @@ export function WardleyMap({
   nodes,
   links,
   ariaLabel,
-  emptyTitle = "Sin datos todavía",
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  nodes: WardleyNode[];
-  links: WardleyLink[];
-  ariaLabel: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+  className,
+  style,
+  ariaDescribedBy,
+}: WardleyMapProps) {
   if (nodes.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const { points, cleanLinks } = computeWardleyLayout(nodes, links);
+  const pointById = new Map(points.map((p) => [p.id, p]));
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = H - MARGIN.top - MARGIN.bottom;
   const px = (v: number) => MARGIN.left + clamp01(v) * innerW;
   const py = (v: number) => MARGIN.top + (1 - clamp01(v)) * innerH;
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  const known = new Set(nodes.map((n) => n.id));
 
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="h-auto w-full"
+      className={className ? `h-auto w-full ${className}` : "h-auto w-full"}
+      style={style}
       role="img"
       aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
     >
       <title>{ariaLabel}</title>
-      {[0.25, 0.5, 0.75].map((f) => (
+      {GRID_FRACTIONS.map((f, i) => (
         <line
-          key={f}
+          key={stableKey([f], i)}
           x1={MARGIN.left + f * innerW}
           x2={MARGIN.left + f * innerW}
           y1={MARGIN.top}
           y2={MARGIN.top + innerH}
-          stroke="var(--border)"
-          strokeWidth={1}
-          strokeDasharray="4 4"
+          stroke={CHART_TOKEN.border}
+          strokeWidth={GRID_WIDTH}
+          strokeDasharray={GRID_DASHARRAY}
         />
       ))}
       {STAGES.map((s, i) => (
         <text
-          key={s}
+          key={stableKey([s], i)}
           x={MARGIN.left + (i / (STAGES.length - 1)) * innerW}
-          y={H - 24}
+          y={H - STAGE_LABEL_BOTTOM_PAD}
           textAnchor="middle"
-          fontSize={11}
-          fill="var(--color-muted-foreground)"
+          fontSize={TICK_FONT_SIZE}
+          fill={CHART_TOKEN.muted}
         >
           {s}
         </text>
       ))}
       <text
         x={MARGIN.left + innerW / 2}
-        y={H - 8}
+        y={H - AXIS_LABEL_BOTTOM_PAD}
         textAnchor="middle"
-        fontSize={11}
-        fill="var(--color-muted-foreground)"
+        fontSize={TICK_FONT_SIZE}
+        fill={CHART_TOKEN.muted}
       >
         Evolución →
       </text>
       <text
-        x={12}
+        x={Y_LABEL_X}
         y={MARGIN.top + innerH / 2}
         textAnchor="middle"
-        fontSize={11}
-        fill="var(--color-muted-foreground)"
-        transform={`rotate(-90, 12, ${MARGIN.top + innerH / 2})`}
+        fontSize={TICK_FONT_SIZE}
+        fill={CHART_TOKEN.muted}
+        transform={`rotate(-90, ${Y_LABEL_X}, ${MARGIN.top + innerH / 2})`}
       >
         Cadena de valor →
       </text>
-      {links
-        .filter((l) => known.has(l.from) && known.has(l.to))
-        .map((l, i) => {
-          const a = byId.get(l.from);
-          const b = byId.get(l.to);
-          if (!a || !b) return null;
-          return (
-            <line
-              key={`${l.from}-${l.to}-${i}`}
-              x1={px(a.x)}
-              y1={py(a.y)}
-              x2={px(b.x)}
-              y2={py(b.y)}
-              stroke="var(--color-muted-foreground)"
-              strokeWidth={1.5}
-            />
-          );
-        })}
-      {nodes.map((n, i) => {
-        const color = seriesColor(i, n.color);
-        const tip = `${n.label} (${STAGES[Math.round(clamp01(n.x) * (STAGES.length - 1))]})`;
+      {cleanLinks.map((l, i) => {
+        const a = pointById.get(l.from);
+        const b = pointById.get(l.to);
+        if (!a || !b) return null;
         return (
-          <g key={n.id}>
+          <line
+            key={stableKey([l.from, l.to], i)}
+            x1={px(a.nx)}
+            y1={py(a.ny)}
+            x2={px(b.nx)}
+            y2={py(b.ny)}
+            stroke={CHART_TOKEN.muted}
+            strokeWidth={EDGE_WIDTH}
+          />
+        );
+      })}
+      {points.map((n, i) => {
+        const color = seriesColor(i, n.color);
+        const stageIdx = Math.round(n.nx * (STAGES.length - 1));
+        const tip = `${n.label} (${STAGES[stageIdx] ?? ""})`;
+        return (
+          <g key={stableKey([n.id], i)}>
             <title>{tip}</title>
             <circle
-              cx={px(n.x)}
-              cy={py(n.y)}
-              r={9}
+              cx={px(n.nx)}
+              cy={py(n.ny)}
+              r={NODE_RADIUS}
               fill={color}
-              stroke="var(--background)"
-              strokeWidth={2}
+              stroke={CHART_TOKEN.background}
+              strokeWidth={NODE_BORDER_WIDTH}
               data-chart-tip={tip}
             />
             <text
-              x={px(n.x) + 13}
-              y={py(n.y) + 4}
-              fontSize={11}
-              fontWeight={600}
-              fill="var(--color-foreground)"
+              x={px(n.nx) + NODE_LABEL_DX}
+              y={py(n.ny) + LABEL_GAP_PX}
+              fontSize={TICK_FONT_SIZE}
+              fontWeight={FONT_SEMIBOLD}
+              fill={CHART_TOKEN.foreground}
             >
-              {truncateLabel(n.label, 20)}
+              {truncateLabel(n.label, LABEL_MAX_NODE)}
             </text>
             <text
-              x={px(n.x)}
-              y={py(n.y) + 22}
+              x={px(n.nx)}
+              y={py(n.ny) + NODE_VALUE_DY}
               textAnchor="middle"
-              fontSize={10}
-              fontFamily="var(--font-mono, monospace)"
-              fill="var(--color-muted-foreground)"
+              fontSize={EDGE_LABEL_FONT_SIZE}
+              fontFamily={FONT_MONO}
+              fill={CHART_TOKEN.muted}
             >
-              {`${formatDefault(Math.round(clamp01(n.x) * 100))}%`}
+              {`${formatDefault(Math.round(n.nx * PERCENT_FACTOR))}%`}
             </text>
           </g>
         );

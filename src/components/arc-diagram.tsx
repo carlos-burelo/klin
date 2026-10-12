@@ -1,8 +1,18 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
+import type { CSSProperties } from "react";
+import { stableKey } from "../lib/keys";
+import { DEFAULT_MAX_LINKS, DEFAULT_MAX_NODES } from "../lib/limits";
 import { seriesColor, truncateLabel } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import {
+  CHART_TOKEN,
+  DIAGRAM_MIN_SCROLL,
+  EDGE_WIDTH,
+  NODE_BORDER_WIDTH,
+  TICK_FONT_SIZE,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 export type ArcNode = {
   id: string;
@@ -16,9 +26,60 @@ export type ArcLink = {
   label?: string;
 };
 
-const W = 680;
+/** Props del diagrama de arcos. */
+export type ArcDiagramProps = {
+  nodes: ArcNode[];
+  links: ArcLink[];
+  ariaLabel: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+};
+
+const ARC_W = 680;
 const BASE_Y = 120;
 const R = 7;
+const MAX_STEP = 150;
+const AXIS_PAD_X = 48;
+const VIEW_PAD_BOTTOM = 48;
+const LABEL_DY = 22;
+const ARC_MIN_H = 24;
+const ARC_JITTER = 37;
+const ARC_SPREAD = 90;
+const MAX_GROWTH = 5;
+const ARC_OPACITY = 0.8;
+
+/** Caps SSR (alias de los límites centrales, compat). */
+export const MAX_ARC_NODES = DEFAULT_MAX_NODES;
+export const MAX_ARC_LINKS = DEFAULT_MAX_LINKS;
+
+/**
+ * Cómputo puro del layout de arcos (eje de nodos + grado + orden).
+ * Trunca determinista para SSR.
+ */
+export function computeArcLayout(nodes: ArcNode[], links: ArcLink[]) {
+  const cappedNodes = nodes.slice(0, MAX_ARC_NODES);
+  const known = new Set(cappedNodes.map((n) => n.id));
+  const clean = links
+    .filter((l) => known.has(l.from) && known.has(l.to))
+    .slice(0, MAX_ARC_LINKS);
+  const step = Math.min(
+    MAX_STEP,
+    (ARC_W - AXIS_PAD_X) / Math.max(1, cappedNodes.length),
+  );
+  const totalW = step * Math.max(0, cappedNodes.length - 1);
+  const ox = (ARC_W - totalW) / 2;
+  const H = BASE_Y + VIEW_PAD_BOTTOM;
+  const degree = new Map<string, number>(cappedNodes.map((n) => [n.id, 0]));
+  for (const l of clean) {
+    degree.set(l.from, (degree.get(l.from) ?? 0) + 1);
+    degree.set(l.to, (degree.get(l.to) ?? 0) + 1);
+  }
+  const order = new Map(cappedNodes.map((n, i) => [n.id, i]));
+  return { cappedNodes, clean, step, totalW, ox, H, degree, order };
+}
 
 /**
  * Diagrama de arcos SSR (relaciones sobre un eje de nodos).
@@ -27,41 +88,34 @@ export function ArcDiagram({
   nodes,
   links,
   ariaLabel,
-  emptyTitle = "Sin datos todavía",
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  nodes: ArcNode[];
-  links: ArcLink[];
-  ariaLabel: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+  className,
+  style,
+  ariaDescribedBy,
+}: ArcDiagramProps) {
   if (nodes.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const known = new Set(nodes.map((n) => n.id));
-  const clean = links.filter((l) => known.has(l.from) && known.has(l.to));
-  const step = Math.min(150, (W - 48) / Math.max(1, nodes.length));
-  const totalW = step * Math.max(0, nodes.length - 1);
-  const ox = (W - totalW) / 2;
-  const H = BASE_Y + 48;
-  const degree = new Map<string, number>(nodes.map((n) => [n.id, 0]));
-  for (const l of clean) {
-    degree.set(l.from, (degree.get(l.from) ?? 0) + 1);
-    degree.set(l.to, (degree.get(l.to) ?? 0) + 1);
-  }
-  const order = new Map(nodes.map((n, i) => [n.id, i]));
+  const { cappedNodes, clean, step, ox, H, degree, order } = computeArcLayout(
+    nodes,
+    links,
+  );
   const xOf = (id: string) => ox + (order.get(id) ?? 0) * step;
 
   return (
-    <div className="overflow-x-auto">
+    <div
+      className={className ? `overflow-x-auto ${className}` : "overflow-x-auto"}
+      style={style}
+    >
       <svg
-        viewBox={`0 0 ${W} ${H}`}
+        viewBox={`0 0 ${ARC_W} ${H}`}
         className="h-auto"
-        style={{ minWidth: Math.min(W, 560) }}
+        style={{ minWidth: Math.min(ARC_W, DIAGRAM_MIN_SCROLL) }}
         role="img"
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
       >
         <title>{ariaLabel}</title>
         {clean.map((l, i) => {
@@ -69,46 +123,46 @@ export function ArcDiagram({
           const b = xOf(l.to);
           const left = Math.min(a, b);
           const right = Math.max(a, b);
-          const h = 24 + ((i * 37) % 90);
+          const h = ARC_MIN_H + ((i * ARC_JITTER) % ARC_SPREAD);
           const tip = l.label
             ? `${l.from} ↔ ${l.to}: ${l.label}`
             : `${l.from} ↔ ${l.to}`;
           return (
-            <g key={`${l.from}-${l.to}-${i}`}>
+            <g key={stableKey([l.from, l.to], i)}>
               <title>{tip}</title>
               <path
                 d={`M ${left} ${BASE_Y} C ${left} ${BASE_Y - h}, ${right} ${BASE_Y - h}, ${right} ${BASE_Y}`}
                 fill="none"
-                stroke="var(--color-chart-2)"
-                strokeWidth={1.5}
-                strokeOpacity={0.8}
+                stroke={CHART_TOKEN.accent}
+                strokeWidth={EDGE_WIDTH}
+                strokeOpacity={ARC_OPACITY}
                 data-chart-tip={tip}
               />
             </g>
           );
         })}
-        {nodes.map((n, i) => {
+        {cappedNodes.map((n, i) => {
           const deg = degree.get(n.id) ?? 0;
           const color = seriesColor(i, n.color);
           const tip = `${n.label} (${deg} relaciones)`;
           return (
-            <g key={n.id}>
+            <g key={stableKey([n.id], i)}>
               <title>{tip}</title>
               <circle
                 cx={xOf(n.id)}
                 cy={BASE_Y}
-                r={R + Math.min(5, deg)}
+                r={R + Math.min(MAX_GROWTH, deg)}
                 fill={color}
-                stroke="var(--background)"
-                strokeWidth={2}
+                stroke={CHART_TOKEN.background}
+                strokeWidth={NODE_BORDER_WIDTH}
                 data-chart-tip={tip}
               />
               <text
                 x={xOf(n.id)}
-                y={BASE_Y + 22}
+                y={BASE_Y + LABEL_DY}
                 textAnchor="middle"
-                fontSize={11}
-                fill="var(--color-muted-foreground)"
+                fontSize={TICK_FONT_SIZE}
+                fill={CHART_TOKEN.muted}
               >
                 {truncateLabel(n.label, 14)}
               </text>

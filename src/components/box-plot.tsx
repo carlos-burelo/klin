@@ -3,8 +3,30 @@
  */
 import { max, min, quantileSorted } from "d3-array";
 import { scaleBand, scaleLinear } from "d3-scale";
+import type { CSSProperties } from "react";
+import type { ValueAnnotation } from "../lib/api";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+  YGrid,
+} from "../lib/frame";
+import { stableKey } from "../lib/keys";
+import { toNumber } from "../lib/number";
+import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
-import { ChartEmpty } from "./empty";
+import {
+  ANNOTATION_DASH,
+  ANNOTATION_WIDTH,
+  BAR_RADIUS,
+  CHART_TOKEN,
+  GRID_TICKS,
+  LINE_WIDTH,
+  POINT_BORDER,
+  TICK_FONT_SIZE,
+  ZERO_MARK_PX,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
 export type BoxGroup = {
@@ -13,8 +35,30 @@ export type BoxGroup = {
   color?: string;
 };
 
-const W = 640;
-const MARGIN = { top: 12, right: 12, bottom: 32, left: 44 };
+const GROUP_BAND_PADDING = 0.45;
+const AXIS_LABEL_OFFSET = 10;
+const BOX_MAX_WIDTH = 56;
+const BOX_LINE_WIDTH = 1.5;
+const BOX_FILL_OPACITY = 0.35;
+const OUTLIER_RADIUS = 3;
+const ANNOTATION_LABEL_DX = 4;
+const ANNOTATION_LABEL_DY = -4;
+
+/** Props de BoxPlot. */
+export type BoxPlotProps = {
+  groups: BoxGroup[];
+  ariaLabel: string;
+  height?: number;
+  formatY?: ValueFormatter;
+  locale?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+  showLegend?: boolean;
+  annotations?: ValueAnnotation[];
+  emptyTitle?: string;
+  emptyDescription?: string;
+};
 
 type Stats = {
   min: number;
@@ -26,7 +70,10 @@ type Stats = {
 };
 
 function statsOf(values: number[]): Stats | null {
-  const sorted = [...values].sort((a, b) => a - b);
+  const clean = values
+    .map((v) => toNumber(v, Number.NaN))
+    .filter((v) => Number.isFinite(v));
+  const sorted = [...clean].sort((a, b) => a - b);
   if (sorted.length === 0) return null;
   const q1 = quantileSorted(sorted, 0.25) ?? sorted[0] ?? 0;
   const median = quantileSorted(sorted, 0.5) ?? sorted[0] ?? 0;
@@ -47,22 +94,22 @@ function statsOf(values: number[]): Stats | null {
 
 /**
  * Cajas y bigotes SSR (distribución por grupo: min, Q1, mediana, Q3, max).
+ * Soporta negativos; filtra no-finitos.
  */
 export function BoxPlot({
   groups,
   ariaLabel,
   height = 260,
-  formatY = formatDefault,
-  emptyTitle = "Sin datos todavía",
+  formatY,
+  locale = "es-MX",
+  className,
+  style,
+  ariaDescribedBy,
+  showLegend = true,
+  annotations,
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  groups: BoxGroup[];
-  ariaLabel: string;
-  height?: number;
-  formatY?: (value: number) => string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+}: BoxPlotProps) {
   const computed = groups
     .map((g) => ({ group: g, stats: statsOf(g.values) }))
     .filter((c) => c.stats !== null);
@@ -77,68 +124,77 @@ export function BoxPlot({
     c.stats?.max ?? 0,
     ...(c.stats?.outliers ?? []),
   ]);
+  const blo = Math.min(0, min(all) ?? 0);
+  const bhi = max(all) ?? 1;
+  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
   const y = scaleLinear()
-    .domain([Math.min(0, min(all) ?? 0), max(all) ?? 1])
-    .nice(4)
+    .domain([blo, bhi])
+    .nice(GRID_TICKS)
     .range([innerH, 0]);
   const x = scaleBand()
     .domain(computed.map((c) => c.group.label))
     .range([0, innerW])
-    .padding(0.45);
-  const ticks = y.ticks(4);
-  const boxW = Math.min(56, x.bandwidth());
+    .padding(GROUP_BAND_PADDING);
+  const ticks = y.ticks(GRID_TICKS);
+  const boxW = Math.min(BOX_MAX_WIDTH, x.bandwidth());
 
   return (
-    <div>
-      <svg
-        viewBox={`0 0 ${W} ${height}`}
-        className="h-auto w-full"
-        role="img"
-        aria-label={ariaLabel}
+    <div className={className} style={style}>
+      <ChartSvg
+        width={W}
+        height={height}
+        ariaLabel={ariaLabel}
+        ariaDescribedBy={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
-        {ticks.map((t) => (
-          <g key={t}>
-            <line
-              x1={MARGIN.left}
-              x2={W - MARGIN.right}
-              y1={MARGIN.top + y(t)}
-              y2={MARGIN.top + y(t)}
-              stroke="var(--border)"
-              strokeWidth={1}
-            />
-            <text
-              x={MARGIN.left - 8}
-              y={MARGIN.top + y(t)}
-              dy={4}
-              textAnchor="end"
-              fontSize={11}
-              fill="var(--color-muted-foreground)"
-            >
-              {formatY(t)}
-            </text>
-          </g>
-        ))}
+        <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={fmtY} />
+        {(annotations ?? []).map((a, ai) => {
+          if (a.value < blo || a.value > bhi) return null;
+          const ay = MARGIN.top + y(a.value);
+          return (
+            <g key={`ann-${a.value}-${ai}`}>
+              <title>{a.label ?? String(a.value)}</title>
+              <line
+                x1={MARGIN.left}
+                x2={W - MARGIN.right}
+                y1={ay}
+                y2={ay}
+                stroke={a.color ?? CHART_TOKEN.accent}
+                strokeWidth={ANNOTATION_WIDTH}
+                strokeDasharray={ANNOTATION_DASH}
+              />
+              <text
+                x={W - MARGIN.right - ANNOTATION_LABEL_DX}
+                y={ay}
+                dy={ANNOTATION_LABEL_DY}
+                textAnchor="end"
+                fontSize={TICK_FONT_SIZE}
+                fill={a.color ?? CHART_TOKEN.muted}
+              >
+                {a.label ?? String(a.value)}
+              </text>
+            </g>
+          );
+        })}
         {computed.map(({ group, stats }, gi) => {
           const s = stats;
           if (!s) return null;
           const cx = MARGIN.left + (x(group.label) ?? 0) + x.bandwidth() / 2;
           const color = seriesColor(gi, group.color);
           const tip =
-            `${group.label}: min ${formatY(s.min)} · Q1 ${formatY(s.q1)} · ` +
-            `mediana ${formatY(s.median)} · Q3 ${formatY(s.q3)} · max ${formatY(s.max)}` +
+            `${group.label}: min ${fmtY(s.min)} · Q1 ${fmtY(s.q1)} · ` +
+            `mediana ${fmtY(s.median)} · Q3 ${fmtY(s.q3)} · max ${fmtY(s.max)}` +
             (s.outliers.length > 0
-              ? ` · atípicos ${s.outliers.map(formatY).join(", ")}`
+              ? ` · atípicos ${s.outliers.map(fmtY).join(", ")}`
               : "");
           return (
-            <g key={group.label}>
+            <g key={stableKey([group.label], gi)}>
               <title>{tip}</title>
               <text
                 x={cx}
-                y={height - 10}
+                y={height - AXIS_LABEL_OFFSET}
                 textAnchor="middle"
-                fontSize={11}
-                fill="var(--color-muted-foreground)"
+                fontSize={TICK_FONT_SIZE}
+                fill={CHART_TOKEN.muted}
               >
                 <title>{group.label}</title>
                 {truncateLabel(group.label)}
@@ -149,7 +205,7 @@ export function BoxPlot({
                 y1={MARGIN.top + y(s.max)}
                 y2={MARGIN.top + y(s.min)}
                 stroke={color}
-                strokeWidth={1.5}
+                strokeWidth={BOX_LINE_WIDTH}
               />
               <line
                 x1={cx - boxW / 2}
@@ -157,7 +213,7 @@ export function BoxPlot({
                 y1={MARGIN.top + y(s.max)}
                 y2={MARGIN.top + y(s.max)}
                 stroke={color}
-                strokeWidth={1.5}
+                strokeWidth={BOX_LINE_WIDTH}
               />
               <line
                 x1={cx - boxW / 2}
@@ -165,18 +221,18 @@ export function BoxPlot({
                 y1={MARGIN.top + y(s.min)}
                 y2={MARGIN.top + y(s.min)}
                 stroke={color}
-                strokeWidth={1.5}
+                strokeWidth={BOX_LINE_WIDTH}
               />
               <rect
                 x={cx - boxW / 2}
                 y={MARGIN.top + y(s.q3)}
                 width={boxW}
-                height={Math.max(2, y(s.q1) - y(s.q3))}
-                rx={4}
+                height={Math.max(ZERO_MARK_PX, y(s.q1) - y(s.q3))}
+                rx={BAR_RADIUS}
                 fill={color}
-                fillOpacity={0.35}
+                fillOpacity={BOX_FILL_OPACITY}
                 stroke={color}
-                strokeWidth={1.5}
+                strokeWidth={BOX_LINE_WIDTH}
                 data-chart-tip={tip}
               />
               <line
@@ -185,29 +241,32 @@ export function BoxPlot({
                 y1={MARGIN.top + y(s.median)}
                 y2={MARGIN.top + y(s.median)}
                 stroke={color}
-                strokeWidth={2}
+                strokeWidth={LINE_WIDTH}
               />
-              {s.outliers.map((o) => (
+              {s.outliers.map((o, oi) => (
                 <circle
-                  key={o}
+                  // biome-ignore lint/suspicious/noArrayIndexKey: atípicos pueden duplicar valor
+                  key={`${o}__${oi}`}
                   cx={cx}
                   cy={MARGIN.top + y(o)}
-                  r={3}
-                  fill="var(--background)"
+                  r={OUTLIER_RADIUS}
+                  fill={CHART_TOKEN.background}
                   stroke={color}
-                  strokeWidth={1.5}
+                  strokeWidth={POINT_BORDER}
                 />
               ))}
             </g>
           );
         })}
-      </svg>
-      <ChartLegend
-        items={[
-          { label: "Q1 – Q3", color: "var(--chart-1)" },
-          { label: "Mediana", color: "var(--chart-2)" },
-        ]}
-      />
+      </ChartSvg>
+      {showLegend ? (
+        <ChartLegend
+          items={[
+            { label: "Q1 – Q3", color: CHART_TOKEN.chart1 },
+            { label: "Mediana", color: CHART_TOKEN.chart2 },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }

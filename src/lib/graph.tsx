@@ -9,6 +9,33 @@
  * orden baricentro (2 pasadas) y rutas curvas. Las aristas se dibujan centro
  * a centro y los nodos se pintan encima, así no hay que recortar extremos.
  */
+import {
+  CHART_TOKEN,
+  EDGE_LABEL_CHAR_WIDTH,
+  EDGE_LABEL_DY,
+  EDGE_LABEL_FONT_SIZE,
+  EDGE_LABEL_HEIGHT,
+  EDGE_LABEL_MAX_CHARS,
+  EDGE_LABEL_MIN_WIDTH,
+  EDGE_LABEL_PAD_X,
+  ELLIPSIS,
+  GRID_WIDTH,
+  TEXT_MONO_RATIO,
+  TEXT_SANS_RATIO,
+  TICK_FONT_SIZE,
+} from "./theme";
+
+/** Defaults del layout DAG (dimensiones de nodo y canales). */
+export const DAG_DEFAULTS = {
+  nodeW: 150,
+  nodeH: 52,
+  gapX: 36,
+  gapY: 56,
+  backtrackLane: 48,
+  backtrackSagMin: 56,
+  backtrackPad: 32,
+  selfLoopPad: 14,
+} as const;
 
 export type DagNode = {
   id: string;
@@ -61,27 +88,44 @@ export function layoutDag(
     /** Ancho/alto mínimos del lienzo (evita diagramas gigantes). */
     minW?: number;
     minH?: number;
+    /** Capas de seguridad SSR: trunca determinista si se exceden. */
+    maxNodes?: number;
+    maxEdges?: number;
   },
 ): DagLayout {
   const direction = opts?.direction ?? "TB";
-  const w = opts?.nodeW ?? 150;
-  const h = opts?.nodeH ?? 52;
-  const gapX = opts?.gapX ?? 36;
-  const gapY = opts?.gapY ?? 56;
+  const w = opts?.nodeW ?? DAG_DEFAULTS.nodeW;
+  const h = opts?.nodeH ?? DAG_DEFAULTS.nodeH;
+  const gapX = opts?.gapX ?? DAG_DEFAULTS.gapX;
+  const gapY = opts?.gapY ?? DAG_DEFAULTS.gapY;
   const minW = opts?.minW ?? 0;
   const minH = opts?.minH ?? 0;
+  const maxNodes = opts?.maxNodes ?? 400;
+  const maxEdges = opts?.maxEdges ?? 1000;
 
-  const known = new Set(ids);
-  const clean = edges.filter((e) => known.has(e.from) && known.has(e.to));
+  // Dedup preservando orden + ignora ids vacíos (Map/Set colapsarían).
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    deduped.push(id);
+    if (deduped.length >= maxNodes) break;
+  }
+
+  const known = new Set(deduped);
+  const clean = edges
+    .filter((e) => e.from && e.to && known.has(e.from) && known.has(e.to))
+    .slice(0, maxEdges);
 
   // Capas por Kahn: en cada nivel salen los nodos sin entrantes pendientes.
   // Si solo quedan ciclos, se avanza con el primero (ruptura estable).
-  const indeg = new Map<string, number>(ids.map((id) => [id, 0]));
+  const indeg = new Map<string, number>(deduped.map((id) => [id, 0]));
   for (const e of clean) {
     if (e.from !== e.to) indeg.set(e.to, (indeg.get(e.to) ?? 0) + 1);
   }
   const depth = new Map<string, number>();
-  const remaining = new Set(ids);
+  const remaining = new Set(deduped);
   let layer = 0;
   while (remaining.size > 0) {
     const ready = [...remaining].filter((id) => (indeg.get(id) ?? 0) === 0);
@@ -99,7 +143,7 @@ export function layoutDag(
   }
 
   const layers = new Map<number, string[]>();
-  for (const id of ids) {
+  for (const id of deduped) {
     const l = depth.get(id) ?? 0;
     const arr = layers.get(l) ?? [];
     arr.push(id);
@@ -156,8 +200,14 @@ export function layoutDag(
     const da = depth.get(e.from) ?? 0;
     const db = depth.get(e.to) ?? 0;
     if (db > da) continue;
-    if (direction === "TB") extraRight = Math.max(48, gapX * 1.25) + 48;
-    else extraBottom = Math.max(56, gapY) + 32;
+    if (direction === "TB")
+      extraRight =
+        Math.max(DAG_DEFAULTS.backtrackLane, gapX * 1.25) +
+        DAG_DEFAULTS.backtrackLane;
+    else
+      extraBottom =
+        Math.max(DAG_DEFAULTS.backtrackSagMin, gapY) +
+        DAG_DEFAULTS.backtrackPad;
   }
 
   const width = Math.max(1, Math.max(minW, spanX) + extraRight);
@@ -206,7 +256,7 @@ export function layoutDag(
     if (!a || !b)
       return { from: e.from, to: e.to, d: "", mx: 0, my: 0, self: false };
     if (e.from === e.to) {
-      const rx = a.w / 2 + 14;
+      const rx = a.w / 2 + DAG_DEFAULTS.selfLoopPad;
       const d = `M ${a.cx + a.w / 2 - 6} ${a.cy} C ${a.cx + a.w / 2 + rx} ${a.cy - a.h}, ${a.cx + a.w / 2 + rx} ${a.cy + a.h}, ${a.cx + a.w / 2 - 6} ${a.cy + 10}`;
       return {
         from: e.from,
@@ -223,7 +273,7 @@ export function layoutDag(
     const backTB = vertical && b.cy < a.cy;
     const backLR = !vertical && b.cx < a.cx;
     if (backTB) {
-      const off = Math.max(48, gapX * 1.25);
+      const off = Math.max(DAG_DEFAULTS.backtrackLane, gapX * 1.25);
       const sx = a.x + a.w;
       const sy = a.cy;
       const tx = b.x + b.w;
@@ -238,7 +288,7 @@ export function layoutDag(
       };
     }
     if (backLR) {
-      const sag = Math.max(56, gapY);
+      const sag = Math.max(DAG_DEFAULTS.backtrackSagMin, gapY);
       const sx = a.cx;
       const sy = a.y + a.h;
       const tx = b.cx;
@@ -267,37 +317,44 @@ export function layoutDag(
   return { nodes, edges: routed, width, height };
 }
 
-/** Etiqueta de arista: píldora mono centrada en (mx, my). */
-export function EdgeLabel({
-  mx,
-  my,
-  text,
-}: {
+export type EdgeLabelProps = {
   mx: number;
   my: number;
   text: string;
-}) {
-  const w = Math.max(28, text.length * 6.5 + 12);
+};
+
+/** Etiqueta de arista: píldora mono centrada en (mx, my). */
+export function EdgeLabel({ mx, my, text }: EdgeLabelProps) {
+  const chars = Array.from(text);
+  const short =
+    chars.length > EDGE_LABEL_MAX_CHARS
+      ? `${chars.slice(0, EDGE_LABEL_MAX_CHARS - 1).join("")}${ELLIPSIS}`
+      : text;
+  const w = Math.max(
+    EDGE_LABEL_MIN_WIDTH,
+    Array.from(short).length * EDGE_LABEL_CHAR_WIDTH + EDGE_LABEL_PAD_X,
+  );
   return (
     <g transform={`translate(${mx},${my})`}>
       <rect
         x={-w / 2}
-        y={-9}
+        y={-EDGE_LABEL_HEIGHT / 2}
         width={w}
-        height={18}
-        rx={9}
-        fill="var(--background)"
-        stroke="var(--border)"
-        strokeWidth={1}
+        height={EDGE_LABEL_HEIGHT}
+        rx={EDGE_LABEL_HEIGHT / 2}
+        fill={CHART_TOKEN.background}
+        stroke={CHART_TOKEN.border}
+        strokeWidth={GRID_WIDTH}
       />
       <text
         textAnchor="middle"
-        dy={3.5}
-        fontSize={10}
+        dy={EDGE_LABEL_DY}
+        fontSize={EDGE_LABEL_FONT_SIZE}
         fontFamily="var(--font-mono, monospace)"
-        fill="var(--color-muted-foreground)"
+        fill={CHART_TOKEN.muted}
       >
-        {text}
+        {short}
+        <title>{text}</title>
       </text>
     </g>
   );
@@ -307,8 +364,16 @@ export function EdgeLabel({
  * Ancho estimado de un texto SVG (sin medir el DOM): `0.6em` por carácter
  * en monoespaciada, `0.58em` en sans. Suficiente para dimensionar nodos.
  */
-export function measureText(text: string, fontSize = 11, mono = false): number {
-  return text.length * fontSize * (mono ? 0.6 : 0.58);
+export function measureText(
+  text: string,
+  fontSize = TICK_FONT_SIZE,
+  mono = false,
+): number {
+  return (
+    Array.from(text).length *
+    fontSize *
+    (mono ? TEXT_MONO_RATIO : TEXT_SANS_RATIO)
+  );
 }
 
 /**

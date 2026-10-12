@@ -1,18 +1,85 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { formatDefault, truncateLabel } from "../lib/palette";
-import { ChartEmpty } from "./empty";
 
+import type { CSSProperties } from "react";
+import type { ChartMargin } from "../lib/frame";
+import { stableKey } from "../lib/keys";
+import { clamp01, toNumber } from "../lib/number";
+import { formatDefault, truncateLabel } from "../lib/palette";
+import {
+  CHART_TOKEN,
+  EDGE_LABEL_FONT_SIZE,
+  FONT_SEMIBOLD,
+  NODE_BORDER_WIDTH,
+  NODE_RADIUS,
+  PERCENT_FACTOR,
+  POINT_BORDER,
+  TICK_FONT_SIZE,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
+
+/** Punto del cuadrante (x/y en 0–100 con etiqueta). */
 export type QuadrantPoint = {
   x: number;
   y: number;
   label: string;
 };
 
+/** Props de cuadrantes SSR (matriz 2×2 con puntos). */
+export type QuadrantChartProps = {
+  points: QuadrantPoint[];
+  ariaLabel: string;
+  xLabel?: string;
+  yLabel?: string;
+  /** [arriba-izq, arriba-der, abajo-izq, abajo-der]. */
+  quads?: [string, string, string, string];
+  locale?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+};
+
 const W = 560;
 const H = 460;
-const MARGIN = { top: 36, right: 16, bottom: 36, left: 16 };
+const MARGIN: ChartMargin = { top: 36, right: 16, bottom: 36, left: 16 };
+/** Posición de etiquetas de cuadrante, radio y opacidades de fondo. */
+const QUAD_LABEL_PAD_X = 10;
+const QUAD_LABEL_PAD_TOP = 18;
+const QUAD_LABEL_PAD_BOTTOM = 10;
+const QUAD_RADIUS = 8;
+const QUAD_FILL_HIGH = 0.12;
+const QUAD_FILL_LOW = 0.05;
+const QUAD_POINT_OPACITY = 0.85;
+/** Tipografía de etiqueta de cuadrante e índice/label de punto. */
+const QUAD_LABEL_FONT_SIZE = 12;
+const QUAD_INDEX_FONT_SIZE = 8;
+const QUAD_INDEX_FONT_WEIGHT = 700;
+const QUAD_INDEX_DY = 3.5;
+const QUAD_POINT_LABEL_DY = 13;
+/** Separación del eje inferior y posición de la etiqueta Y. */
+const AXIS_LABEL_BOTTOM_PAD = 6;
+const Y_LABEL_X = 10;
+/** Máximo de truncado de etiqueta de punto. */
+const LABEL_MAX_POINT = 16;
+
+/**
+ * Cómputo puro de posiciones del cuadrante ( clamp 0–100 → px ).
+ * Normaliza valores externos con toNumber.
+ */
+export function computeQuadrantPositions(points: QuadrantPoint[]): Array<{
+  cx: number;
+  cy: number;
+}> {
+  const innerW = W - MARGIN.left - MARGIN.right;
+  const innerH = H - MARGIN.top - MARGIN.bottom;
+  return points.map((p) => ({
+    cx: MARGIN.left + clamp01(toNumber(p.x) / PERCENT_FACTOR) * innerW,
+    cy: MARGIN.top + (1 - clamp01(toNumber(p.y) / PERCENT_FACTOR)) * innerH,
+  }));
+}
 
 /**
  * Cuadrantes SSR (matriz 2×2 con puntos). x/y en 0–100.
@@ -23,46 +90,42 @@ export function QuadrantChart({
   xLabel = "→ Esfuerzo",
   yLabel = "↑ Impacto",
   quads = ["Apuestas", "Ganancias rápidas", "Relleno", "Evitar"],
-  emptyTitle = "Sin datos todavía",
+  locale = "es-MX",
+  emptyTitle = EMPTY_TITLE,
   emptyDescription,
-}: {
-  points: QuadrantPoint[];
-  ariaLabel: string;
-  xLabel?: string;
-  yLabel?: string;
-  /** [arriba-izq, arriba-der, abajo-izq, abajo-der]. */
-  quads?: [string, string, string, string];
-  emptyTitle?: string;
-  emptyDescription?: string;
-}) {
+  className,
+  style,
+  ariaDescribedBy,
+}: QuadrantChartProps) {
   if (points.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = H - MARGIN.top - MARGIN.bottom;
-  const px = (v: number) =>
-    MARGIN.left + (Math.min(100, Math.max(0, v)) / 100) * innerW;
-  const py = (v: number) =>
-    MARGIN.top + (1 - Math.min(100, Math.max(0, v)) / 100) * innerH;
+  const pos = computeQuadrantPositions(points);
   const midX = MARGIN.left + innerW / 2;
   const midY = MARGIN.top + innerH / 2;
 
   const quadPos = [
-    { x: MARGIN.left + 10, y: MARGIN.top + 18, anchor: "start" as const },
     {
-      x: MARGIN.left + innerW - 10,
-      y: MARGIN.top + 18,
-      anchor: "end" as const,
-    },
-    {
-      x: MARGIN.left + 10,
-      y: MARGIN.top + innerH - 10,
+      x: MARGIN.left + QUAD_LABEL_PAD_X,
+      y: MARGIN.top + QUAD_LABEL_PAD_TOP,
       anchor: "start" as const,
     },
     {
-      x: MARGIN.left + innerW - 10,
-      y: MARGIN.top + innerH - 10,
+      x: MARGIN.left + innerW - QUAD_LABEL_PAD_X,
+      y: MARGIN.top + QUAD_LABEL_PAD_TOP,
+      anchor: "end" as const,
+    },
+    {
+      x: MARGIN.left + QUAD_LABEL_PAD_X,
+      y: MARGIN.top + innerH - QUAD_LABEL_PAD_BOTTOM,
+      anchor: "start" as const,
+    },
+    {
+      x: MARGIN.left + innerW - QUAD_LABEL_PAD_X,
+      y: MARGIN.top + innerH - QUAD_LABEL_PAD_BOTTOM,
       anchor: "end" as const,
     },
   ];
@@ -70,9 +133,11 @@ export function QuadrantChart({
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="h-auto w-full"
+      className={className ? `h-auto w-full ${className}` : "h-auto w-full"}
+      style={style}
       role="img"
       aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
     >
       <title>{ariaLabel}</title>
       <rect
@@ -80,101 +145,102 @@ export function QuadrantChart({
         y={MARGIN.top}
         width={innerW / 2}
         height={innerH / 2}
-        rx={8}
-        fill="var(--chart-1)"
-        fillOpacity={0.12}
+        rx={QUAD_RADIUS}
+        fill={CHART_TOKEN.chart1}
+        fillOpacity={QUAD_FILL_HIGH}
       />
       <rect
         x={MARGIN.left}
         y={midY}
         width={innerW / 2}
         height={innerH / 2}
-        rx={8}
-        fill="var(--chart-1)"
-        fillOpacity={0.05}
+        rx={QUAD_RADIUS}
+        fill={CHART_TOKEN.chart1}
+        fillOpacity={QUAD_FILL_LOW}
       />
       <line
         x1={midX}
         x2={midX}
         y1={MARGIN.top}
         y2={MARGIN.top + innerH}
-        stroke="var(--border)"
-        strokeWidth={1.5}
+        stroke={CHART_TOKEN.border}
+        strokeWidth={POINT_BORDER}
       />
       <line
         x1={MARGIN.left}
         x2={MARGIN.left + innerW}
         y1={midY}
         y2={midY}
-        stroke="var(--border)"
-        strokeWidth={1.5}
+        stroke={CHART_TOKEN.border}
+        strokeWidth={POINT_BORDER}
       />
       {quads.map((q, i) => (
         <text
-          key={q}
+          key={stableKey([q], i)}
           x={quadPos[i]?.x ?? 0}
           y={quadPos[i]?.y ?? 0}
           textAnchor={quadPos[i]?.anchor ?? "start"}
-          fontSize={12}
-          fontWeight={600}
-          fill="var(--color-muted-foreground)"
+          fontSize={QUAD_LABEL_FONT_SIZE}
+          fontWeight={FONT_SEMIBOLD}
+          fill={CHART_TOKEN.muted}
         >
           {q}
         </text>
       ))}
       {points.map((p, i) => {
-        const tip = `${p.label} (${formatDefault(p.x)}, ${formatDefault(p.y)})`;
+        const tip = `${p.label} (${formatDefault(toNumber(p.x), locale)}, ${formatDefault(toNumber(p.y), locale)})`;
+        const c = pos[i] ?? { cx: 0, cy: 0 };
         return (
-          <g key={`${p.label}-${i}`}>
+          <g key={stableKey([p.label], i)}>
             <title>{tip}</title>
             <circle
-              cx={px(p.x)}
-              cy={py(p.y)}
-              r={9}
-              fill="var(--color-primary)"
-              fillOpacity={0.85}
-              stroke="var(--background)"
-              strokeWidth={2}
+              cx={c.cx}
+              cy={c.cy}
+              r={NODE_RADIUS}
+              fill={CHART_TOKEN.primary}
+              fillOpacity={QUAD_POINT_OPACITY}
+              stroke={CHART_TOKEN.background}
+              strokeWidth={NODE_BORDER_WIDTH}
               data-chart-tip={tip}
             />
             <text
-              x={px(p.x)}
-              y={py(p.y) + 3.5}
+              x={c.cx}
+              y={c.cy + QUAD_INDEX_DY}
               textAnchor="middle"
-              fontSize={8}
-              fontWeight={700}
-              fill="var(--color-primary-foreground)"
+              fontSize={QUAD_INDEX_FONT_SIZE}
+              fontWeight={QUAD_INDEX_FONT_WEIGHT}
+              fill={CHART_TOKEN.primaryForeground}
             >
               {i + 1}
             </text>
             <text
-              x={px(p.x)}
-              y={py(p.y) - 13}
+              x={c.cx}
+              y={c.cy - QUAD_POINT_LABEL_DY}
               textAnchor="middle"
-              fontSize={10}
-              fill="var(--color-foreground)"
+              fontSize={EDGE_LABEL_FONT_SIZE}
+              fill={CHART_TOKEN.foreground}
             >
-              {truncateLabel(p.label, 16)}
+              {truncateLabel(p.label, LABEL_MAX_POINT)}
             </text>
           </g>
         );
       })}
       <text
         x={MARGIN.left + innerW / 2}
-        y={H - 6}
+        y={H - AXIS_LABEL_BOTTOM_PAD}
         textAnchor="middle"
-        fontSize={11}
-        fill="var(--color-muted-foreground)"
+        fontSize={TICK_FONT_SIZE}
+        fill={CHART_TOKEN.muted}
       >
         {xLabel}
       </text>
       <text
-        x={10}
+        x={Y_LABEL_X}
         y={MARGIN.top + innerH / 2}
         textAnchor="middle"
-        fontSize={11}
-        fill="var(--color-muted-foreground)"
-        transform={`rotate(-90, 10, ${MARGIN.top + innerH / 2})`}
+        fontSize={TICK_FONT_SIZE}
+        fill={CHART_TOKEN.muted}
+        transform={`rotate(-90, ${Y_LABEL_X}, ${MARGIN.top + innerH / 2})`}
       >
         {yLabel}
       </text>
