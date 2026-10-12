@@ -4,3 +4,4 @@ out/
 .build/
 *.tsbuildinfo
 *.tgz
+next-env.d.ts

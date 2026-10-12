@@ -5,6 +5,7 @@ packages:
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 
-# tsx necesita el postinstall de esbuild; el resto no ejecuta scripts.
+# Builds nativos: esbuild (tsx) sí; sharp (opt de next, sin next/image) no.
 allowBuilds:
   esbuild: true
+  sharp: false

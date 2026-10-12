@@ -2,18 +2,20 @@
   "name": "@carlos-burelo/klin-site",
   "version": "1.0.0",
   "private": true,
-  "description": "Página y demos de klin (SSG estático, no se publica)",
+  "description": "Página y demos de klin (Next.js estático, no se publica)",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
-    "build": "esbuild scripts/build-site.ts --bundle --platform=node --format=esm --jsx=automatic --external:react --external:react-dom --external:react-dom/server --external:react/jsx-runtime --external:react/jsx-dev-runtime --external:postcss --external:@tailwindcss/postcss --outfile=.build/build-site.mjs && node .build/build-site.mjs",
-    "dev": "pnpm build && node scripts/serve.ts",
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@carlos-burelo/klin": "workspace:*",
+    "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -25,7 +27,6 @@
     "@types/react-dom": "^19",
     "postcss": "^8",
     "tailwindcss": "^4",
-    "esbuild": "^0.28.0",
     "typescript": "^5"
   },
   "packageManager": "pnpm@12.0.0"
