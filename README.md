@@ -43,6 +43,13 @@ import { BarChart, ChartLegend, ChartTooltipPortal } from "@carlos-burelo/klin";
 </ChartTooltipPortal>
 ```
 
+## Sitio (demos y página, mismo repo, fuera del bundle)
+
+`site/` prerenderiza las 52 demos a HTML estático (`site/out/`) sin framework:
+`pnpm site:build`, previsualiza con `pnpm site:dev` (`:3100`). El tarball no lo
+incluye (`files` solo lleva `src` + raíz; verificado con `pnpm pack --dry-run`).
+Detalle en `site/README.md`.
+
 ## Componentes
 
 | Componente | Para qué |

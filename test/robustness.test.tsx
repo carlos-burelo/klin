@@ -444,3 +444,16 @@ describe("API universal (passthrough + flags)", () => {
     expect(html).toContain("1,234.5");
   });
 });
+
+describe("bundle limpio (site fuera del tarball)", () => {
+  test("files no incluye site/demo/docs", async () => {
+    const pkg = (await import("../package.json")).default as {
+      files: string[];
+    };
+    const joined = pkg.files.join("\n");
+    expect(joined).not.toContain("site");
+    expect(joined).not.toContain("demo");
+    expect(joined).not.toContain("docs");
+    expect(pkg.files).toContain("src");
+  });
+});
