@@ -1,0 +1,233 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
+
+import { scaleLinear } from "d3-scale";
+import type { CSSProperties } from "react";
+import { topPositive } from "../lib/domain";
+import type { ChartMargin } from "../lib/frame";
+import { stableKey } from "../lib/keys";
+import { toNumber } from "../lib/number";
+import type { ValueFormatter } from "../lib/palette";
+import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import {
+  BAR_RADIUS,
+  CHART_TOKEN,
+  GRID_TICKS,
+  GRID_WIDTH,
+  PERCENT_FACTOR,
+  TICK_DY,
+  TICK_FONT_SIZE,
+  ZERO_MARK_PX,
+} from "../lib/theme";
+import { ChartEmpty, EMPTY_TITLE } from "./empty";
+import { ChartLegend } from "./legend";
+
+/** Props de pirámide poblacional SSR (dos series espejadas). */
+export type PyramidChartProps = {
+  groups: string[];
+  left: { label: string; values: number[]; color?: string };
+  right: { label: string; values: number[]; color?: string };
+  ariaLabel: string;
+  formatX?: ValueFormatter;
+  /** Etiquetas de grupo a la izquierda (clásica) o en la banda central. */
+  labels?: "left" | "center";
+  locale?: string;
+  /**
+   * Color por grupo y lado. Si retorna `undefined` se usan los colores
+   * de cada lado (`left.color` / `right.color` primero).
+   */
+  itemColor?: (
+    group: string,
+    side: "left" | "right",
+    index: number,
+  ) => string | undefined;
+  showLegend?: boolean;
+  className?: string;
+  style?: CSSProperties;
+  ariaDescribedBy?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+};
+
+const W = 640;
+const MARGIN: ChartMargin = { top: 8, right: 16, bottom: 34, left: 84 };
+const LABEL_BAND = 96;
+/** Alto de fila, alto mínimo del lienzo y relleno vertical de barra. */
+const ROW_H = 34;
+const PYRAMID_MIN_H = 140;
+const BAR_Y_PAD = 5;
+/** Máximos de truncado de etiqueta (banda central / lateral). */
+const LABEL_MAX_CENTER = 14;
+const LABEL_MAX_SIDE = 12;
+/** Separación de la etiqueta del eje inferior. */
+const AXIS_LABEL_BOTTOM_PAD = 12;
+/** Opacidad del borde de barra. */
+const BAR_STROKE_OPACITY = 0.25;
+
+/**
+ * Pirámide poblacional SSR (dos series espejadas): etiquetas a la izquierda,
+ * barras al centro y escala abajo, como la clásica de población.
+ */
+export function PyramidChart({
+  groups,
+  left,
+  right,
+  ariaLabel,
+  locale = "es-MX",
+  formatX = (v: number) => formatDefault(v, locale),
+  labels = "left",
+  itemColor,
+  showLegend = true,
+  className,
+  style,
+  ariaDescribedBy,
+  emptyTitle = EMPTY_TITLE,
+  emptyDescription,
+}: PyramidChartProps) {
+  if (groups.length === 0) {
+    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
+  }
+
+  const rowH = ROW_H;
+  const height = Math.max(
+    PYRAMID_MIN_H,
+    MARGIN.top + MARGIN.bottom + groups.length * rowH,
+  );
+  const band = labels === "center" ? LABEL_BAND : 0;
+  const plotW = W - MARGIN.left - MARGIN.right - band;
+  const halfW = plotW / 2;
+  const top = topPositive([...left.values, ...right.values]);
+
+  const scale = scaleLinear()
+    .domain([0, top])
+    .nice(GRID_TICKS)
+    .range([0, halfW]);
+  const ticks = scale.ticks(GRID_TICKS).filter((t) => t > 0);
+  const leftColor = seriesColor(0, left.color);
+  const rightColor = seriesColor(1, right.color);
+  const midX = MARGIN.left + halfW + band;
+  const leftEdge = midX - band / 2;
+  const rightEdge = midX + band / 2;
+  const totalL = left.values.reduce(
+    (acc, v) => acc + Math.max(0, toNumber(v)),
+    0,
+  );
+  const totalR = right.values.reduce(
+    (acc, v) => acc + Math.max(0, toNumber(v)),
+    0,
+  );
+
+  return (
+    <div className={className} style={style}>
+      <svg
+        viewBox={`0 0 ${W} ${height}`}
+        className="h-auto w-full"
+        role="img"
+        aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
+      >
+        <title>{ariaLabel}</title>
+        <line
+          x1={midX}
+          x2={midX}
+          y1={MARGIN.top}
+          y2={height - MARGIN.bottom}
+          stroke={CHART_TOKEN.border}
+          strokeWidth={GRID_WIDTH}
+        />
+        {groups.map((group, i) => {
+          // Conteos: negativos se fijan a 0.
+          const lv = Math.max(0, toNumber(left.values[i] ?? 0));
+          const rv = Math.max(0, toNumber(right.values[i] ?? 0));
+          const by = MARGIN.top + i * rowH + BAR_Y_PAD;
+          const bh = rowH - BAR_Y_PAD * 2;
+          const lw = Math.max(lv === 0 ? 0 : ZERO_MARK_PX, scale(lv));
+          const rw = Math.max(rv === 0 ? 0 : ZERO_MARK_PX, scale(rv));
+          const leftFill = itemColor?.(group, "left", i) ?? leftColor;
+          const rightFill = itemColor?.(group, "right", i) ?? rightColor;
+          const tipL = `${group} · ${left.label}: ${formatX(lv)} (${totalL > 0 ? Math.round((lv / totalL) * PERCENT_FACTOR) : 0}% de ${left.label})`;
+          const tipR = `${group} · ${right.label}: ${formatX(rv)} (${totalR > 0 ? Math.round((rv / totalR) * PERCENT_FACTOR) : 0}% de ${right.label})`;
+          return (
+            <g key={stableKey([group], i)}>
+              <text
+                x={labels === "center" ? midX : MARGIN.left}
+                y={by + bh / 2}
+                dy={TICK_DY}
+                textAnchor={labels === "center" ? "middle" : "start"}
+                fontSize={TICK_FONT_SIZE}
+                fill={CHART_TOKEN.muted}
+              >
+                <title>{group}</title>
+                {truncateLabel(
+                  group,
+                  labels === "center" ? LABEL_MAX_CENTER : LABEL_MAX_SIDE,
+                )}
+              </text>
+              <g>
+                <title>{tipL}</title>
+                <rect
+                  x={leftEdge - lw}
+                  y={by}
+                  width={lw}
+                  height={bh}
+                  rx={BAR_RADIUS}
+                  fill={leftFill}
+                  stroke={CHART_TOKEN.foreground}
+                  strokeOpacity={BAR_STROKE_OPACITY}
+                  strokeWidth={GRID_WIDTH}
+                  data-chart-tip={tipL}
+                />
+              </g>
+              <g>
+                <title>{tipR}</title>
+                <rect
+                  x={rightEdge}
+                  y={by}
+                  width={rw}
+                  height={bh}
+                  rx={BAR_RADIUS}
+                  fill={rightFill}
+                  stroke={CHART_TOKEN.foreground}
+                  strokeOpacity={BAR_STROKE_OPACITY}
+                  strokeWidth={GRID_WIDTH}
+                  data-chart-tip={tipR}
+                />
+              </g>
+            </g>
+          );
+        })}
+        {ticks.map((t) => (
+          <g key={t}>
+            <text
+              x={leftEdge - scale(t)}
+              y={height - AXIS_LABEL_BOTTOM_PAD}
+              textAnchor="middle"
+              fontSize={TICK_FONT_SIZE}
+              fill={CHART_TOKEN.muted}
+            >
+              {formatX(t)}
+            </text>
+            <text
+              x={rightEdge + scale(t)}
+              y={height - AXIS_LABEL_BOTTOM_PAD}
+              textAnchor="middle"
+              fontSize={TICK_FONT_SIZE}
+              fill={CHART_TOKEN.muted}
+            >
+              {formatX(t)}
+            </text>
+          </g>
+        ))}
+      </svg>
+      {showLegend ? (
+        <ChartLegend
+          items={[
+            { label: left.label, color: leftColor },
+            { label: right.label, color: rightColor },
+          ]}
+        />
+      ) : null}
+    </div>
+  );
+}

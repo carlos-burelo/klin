@@ -1,0 +1,8 @@
+/*
+ * Registro de Tailwind de @carlos-burelo/klin (rutas relativas a ESTE archivo).
+ * La app añade, después de Tailwind y de su tema:
+ *
+ *   @import "@carlos-burelo/klin/styles.css";
+ */
+@source "./components";
+@source "./lib";

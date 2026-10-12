@@ -1,0 +1,30 @@
+/**
+ * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
+ */
+export type LegendItem = {
+  label: string;
+  color: string;
+};
+
+export type ChartLegendProps = {
+  items: LegendItem[];
+};
+
+/** Leyenda HTML SSR (sin JS). */
+export function ChartLegend({ items }: ChartLegendProps) {
+  if (items.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-4 pt-3 text-xs text-muted-foreground">
+      {items.map((item, i) => (
+        <span key={`${item.label}__${i}`} className="flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="size-2 shrink-0 rounded-[2px]"
+            style={{ backgroundColor: item.color }}
+          />
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
