@@ -1,0 +1,17 @@
+{
+  "name": "klin-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo de klin: lib (packages/klin) + site (apps/site)",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "lint": "pnpm --recursive --if-present lint",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "test": "pnpm --recursive --if-present test",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "site:build": "pnpm --filter @carlos-burelo/klin-site build",
+    "site:dev": "pnpm --filter @carlos-burelo/klin-site dev"
+  },
+  "packageManager": "pnpm@12.0.0"
+}

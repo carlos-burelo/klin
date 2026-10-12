@@ -1,0 +1,10 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+
+# tsx necesita el postinstall de esbuild; el resto no ejecuta scripts.
+allowBuilds:
+  esbuild: true
