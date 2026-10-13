@@ -18,6 +18,11 @@ export type DescribedProps = {
 export type ValueAnnotation = {
   /** Posición sobre el eje de valor (dominio del chart). */
   value: number;
+  /**
+   * Fin del intervalo (misma unidad). Si se define y difiere de `value`,
+   * pinta banda sombreada en vez de línea.
+   */
+  to?: number;
   /** Etiqueta corta junto a la línea. */
   label?: string;
   /** Color (token/var). Por defecto acento tenue. */

@@ -1,11 +1,11 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { scaleBand, scaleLinear } from "d3-scale";
+import { scaleBand } from "d3-scale";
 import { type CSSProperties, useId } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { CartesianFrame } from "../lib/cartesian";
-import { domainWithZero } from "../lib/domain";
+import { domainWithZero, logDomain, logFloor } from "../lib/domain";
 import { isBlank } from "../lib/empty";
 import { resolveFormatter } from "../lib/format";
 import { CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
@@ -13,6 +13,7 @@ import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { seriesColors, truncateLabel } from "../lib/palette";
+import { type ValueScaleKind, valueScale } from "../lib/scale";
 import type { ChartSeries } from "../lib/series";
 import {
   BAR_RADIUS,
@@ -79,6 +80,12 @@ export type BarChartProps = {
   yMax?: number;
   /** Ticks del grid horizontal. */
   gridTicks?: number;
+  /**
+   * Escala del eje Y (`log` para magnitudes; ignora no-positivos en
+   * geometría, el tip conserva el valor crudo). Se ignora con `percent`
+   * y con `yMin`/`yMax` (dominio log desde los datos).
+   */
+  yScale?: ValueScaleKind;
   /** Orden de grupos por total (suma de series). */
   sortGroups?: "none" | "asc" | "desc";
   /** Acento (trazo) en el grupo con mayor total. */
@@ -117,6 +124,7 @@ export function BarChart({
   gridTicks = GRID_TICKS,
   sortGroups = "none",
   highlightMax = false,
+  yScale = "linear",
   id,
 }: BarChartProps) {
   // useId arriba: hooks siempre en mismo orden (antes del early return).
@@ -164,13 +172,19 @@ export function BarChart({
   const [dlo, dhi] = percent
     ? ([0, 1] as const)
     : domainWithZero(stacked ? [...posSums, ...negSums] : flat);
-  const lo = yMin == null ? dlo : toNumber(yMin, dlo);
-  const hiBase = yMax == null ? dhi : toNumber(yMax, dhi);
-  const y = scaleLinear()
-    .domain([lo, Math.max(hiBase, lo + 1)])
-    .nice(ticksCount)
-    .range([innerH, 0]);
-  const y0 = y(0);
+  const log = yScale === "log" && !percent;
+  const [llo, lhi] = log
+    ? logDomain(stacked ? [...posSums, ...negSums] : flat)
+    : ([dlo, dhi] as const);
+  const lo = log ? llo : yMin == null ? dlo : toNumber(yMin, dlo);
+  const hiBase = log ? lhi : yMax == null ? dhi : toNumber(yMax, dhi);
+  const y = valueScale(
+    log ? "log" : "linear",
+    [lo, Math.max(hiBase, lo + 1)],
+    [innerH, 0],
+  ).nice(ticksCount);
+  const y0 = y(log ? lo : 0);
+  const lv = (v: number) => (log ? logFloor(v, lo) : v);
   const x0 = scaleBand()
     .domain(ordered.map((d) => String(d[xKey] ?? "")))
     .range([0, innerW])
@@ -226,8 +240,8 @@ export function BarChart({
           const posTotal = posSums[di] ?? 0;
           const topVal = percent ? 1 : posTotal;
           const bottomVal = percent ? 0 : (negSums[di] ?? 0);
-          const yTopPix = y(topVal);
-          const yBottomPix = y(bottomVal);
+          const yTopPix = y(lv(topVal));
+          const yBottomPix = y(lv(bottomVal));
           const colX = MARGIN.left + (x0(group) ?? 0);
           const colW = x0.bandwidth();
           const clipId = `${prefix}-bc-${di}`;
@@ -260,8 +274,8 @@ export function BarChart({
                   const v1 = base + frac;
                   if (frac < 0) negBase = v1;
                   else posBase = v1;
-                  const yA = y(v0);
-                  const yB = y(v1);
+                  const yA = y(lv(v0));
+                  const yB = y(lv(v1));
                   const pixH = Math.abs(yB - yA);
                   const multi = series.length >= 2;
                   const baseTip = `${group} · ${s.label}: ${fmtY(raw)}`;
@@ -317,7 +331,7 @@ export function BarChart({
               const value = toNumber(d[s.key]);
               const bw = x1.bandwidth();
               const bx = MARGIN.left + (x0(group) ?? 0) + (x1(s.key) ?? 0);
-              const yV = y(value);
+              const yV = y(lv(value));
               const rectY =
                 value === 0
                   ? MARGIN.top + y0 - ZERO_MARK_PX / 2

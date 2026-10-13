@@ -3,14 +3,15 @@
  */
 
 import { max, min } from "d3-array";
-import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
+import { logDomain, logFloor } from "../lib/domain";
 import { isBlank } from "../lib/empty";
 import { resolveFormatter } from "../lib/format";
 import { ChartSvg, YGrid } from "../lib/frame";
 import { sumNumbers, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { seriesColor } from "../lib/palette";
+import { type ValueScaleKind, valueScale } from "../lib/scale";
 import {
   ANNOTATION_DASH,
   CHART_TOKEN,
@@ -51,6 +52,16 @@ export type ScatterPlotProps = {
   itemColor?: (point: ScatterPoint, index: number) => string | undefined;
   /** Dibuja una cruz en las medias de X e Y (cuadrantes). */
   quadrants?: boolean;
+  /**
+   * Escala del eje X (`log` para magnitudes; no-positivos se fijan al piso
+   * del dominio en geometría, el tip conserva el valor crudo).
+   */
+  xScale?: ValueScaleKind;
+  /**
+   * Escala del eje Y (`log` para magnitudes; no-positivos se fijan al piso
+   * del dominio en geometría, el tip conserva el valor crudo).
+   */
+  yScale?: ValueScaleKind;
   className?: string;
   style?: CSSProperties;
   ariaDescribedBy?: string;
@@ -73,6 +84,8 @@ export function ScatterPlot({
   color,
   itemColor,
   quadrants = false,
+  xScale = "linear",
+  yScale = "linear",
   className,
   style,
   ariaDescribedBy,
@@ -97,14 +110,22 @@ export function ScatterPlot({
 
   const xs = clean.map((p) => p.x);
   const ys = clean.map((p) => p.y);
-  const x = scaleLinear()
-    .domain([Math.min(0, min(xs) ?? 0), max(xs) ?? 1])
-    .nice(GRID_TICKS)
-    .range([0, innerW]);
-  const y = scaleLinear()
-    .domain([Math.min(0, min(ys) ?? 0), max(ys) ?? 1])
-    .nice(GRID_TICKS)
-    .range([innerH, 0]);
+  const logX = xScale === "log";
+  const logY = yScale === "log";
+  const [xLo, xHi] = logX
+    ? logDomain(xs)
+    : ([Math.min(0, min(xs) ?? 0), max(xs) ?? 1] as const);
+  const [yLo, yHi] = logY
+    ? logDomain(ys)
+    : ([Math.min(0, min(ys) ?? 0), max(ys) ?? 1] as const);
+  const x = valueScale(logX ? "log" : "linear", [xLo, xHi], [0, innerW]).nice(
+    GRID_TICKS,
+  );
+  const y = valueScale(logY ? "log" : "linear", [yLo, yHi], [innerH, 0]).nice(
+    GRID_TICKS,
+  );
+  const lx = (v: number) => (logX ? logFloor(v, xLo) : v);
+  const ly = (v: number) => (logY ? logFloor(v, yLo) : v);
   const ticks = y.ticks(GRID_TICKS);
 
   const fmt = resolveFormatter(format, locale);
@@ -126,8 +147,8 @@ export function ScatterPlot({
         <g>
           <title>{`medias (${fmt(meanX)}, ${fmt(meanY)})`}</title>
           <line
-            x1={MARGIN.left + x(meanX)}
-            x2={MARGIN.left + x(meanX)}
+            x1={MARGIN.left + x(lx(meanX))}
+            x2={MARGIN.left + x(lx(meanX))}
             y1={MARGIN.top}
             y2={MARGIN.top + innerH}
             stroke={CHART_TOKEN.muted}
@@ -137,8 +158,8 @@ export function ScatterPlot({
           <line
             x1={MARGIN.left}
             x2={MARGIN.left + innerW}
-            y1={MARGIN.top + y(meanY)}
-            y2={MARGIN.top + y(meanY)}
+            y1={MARGIN.top + y(ly(meanY))}
+            y2={MARGIN.top + y(ly(meanY))}
             stroke={CHART_TOKEN.muted}
             strokeWidth={GRID_WIDTH}
             strokeDasharray={ANNOTATION_DASH}
@@ -148,7 +169,7 @@ export function ScatterPlot({
       {x.ticks(X_TICKS).map((t) => (
         <text
           key={`x${t}`}
-          x={MARGIN.left + x(t)}
+          x={MARGIN.left + x(lx(t))}
           y={height - X_TICK_LABEL_OFFSET}
           textAnchor="middle"
           fontSize={TICK_FONT_SIZE}
@@ -172,8 +193,8 @@ export function ScatterPlot({
           <g key={`${p.x}-${p.y}-${i}`}>
             <title>{tip}</title>
             <circle
-              cx={MARGIN.left + x(p.x)}
-              cy={MARGIN.top + y(p.y)}
+              cx={MARGIN.left + x(lx(p.x))}
+              cy={MARGIN.top + y(ly(p.y))}
               r={POINT_RADIUS_SCATTER}
               fill={itemColor?.(p, i) ?? fill}
               fillOpacity={SCATTER_FILL_OPACITY}

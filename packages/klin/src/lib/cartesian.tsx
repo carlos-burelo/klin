@@ -15,6 +15,7 @@ import { stableKey } from "./keys";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
+  AREA_FILL_OPACITY,
   CHART_TOKEN,
   TICK_FONT_SIZE,
 } from "./theme";
@@ -46,7 +47,7 @@ export type AnnotationLayerProps = {
   margin?: ChartMargin;
 };
 
-/** Líneas de referencia sobre el eje de valor (fuera de rango se omiten). */
+/** Líneas y bandas de referencia sobre el eje de valor (fuera de rango se omiten). */
 export function AnnotationLayer({
   annotations,
   lo,
@@ -58,8 +59,43 @@ export function AnnotationLayer({
   return (
     <>
       {(annotations ?? []).map((a, ai) => {
+        const end = a.to === undefined ? a.value : a.to;
+        const bLo = Math.min(a.value, end);
+        const bHi = Math.max(a.value, end);
+        const cLo = Math.max(bLo, lo);
+        const cHi = Math.min(bHi, hi);
+        // Banda sombreada cuando el intervalo recorta algo visible.
+        if (end !== a.value && cHi > cLo) {
+          const yTop = margin.top + y(cHi);
+          const yBottom = margin.top + y(cLo);
+          if (!Number.isFinite(yTop) || !Number.isFinite(yBottom)) return null;
+          return (
+            <g key={`ann-${a.value}-${end}-${ai}`}>
+              <title>{a.label ?? `${a.value} – ${end}`}</title>
+              <rect
+                x={margin.left}
+                y={yTop}
+                width={width - margin.left - margin.right}
+                height={Math.max(0, yBottom - yTop)}
+                fill={a.color ?? CHART_TOKEN.accent}
+                opacity={AREA_FILL_OPACITY}
+              />
+              <text
+                x={width - margin.right - ANNOTATION_LABEL_DX}
+                y={yTop}
+                dy={ANNOTATION_LABEL_DY}
+                textAnchor="end"
+                fontSize={TICK_FONT_SIZE}
+                fill={a.color ?? CHART_TOKEN.muted}
+              >
+                {a.label ?? `${a.value} – ${end}`}
+              </text>
+            </g>
+          );
+        }
         if (a.value < lo || a.value > hi) return null;
         const ay = margin.top + y(a.value);
+        if (!Number.isFinite(ay)) return null;
         return (
           <g key={`ann-${a.value}-${ai}`}>
             <title>{a.label ?? String(a.value)}</title>

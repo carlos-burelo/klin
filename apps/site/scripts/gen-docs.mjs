@@ -152,7 +152,8 @@ const PROP_DOCS = {
   className: "Clase extra en el contenedor (aditivo, no rompe estilos).",
   style: "Estilos inline extra en el contenedor.",
   showLegend: "Muestra la leyenda HTML SSR (por defecto true donde aplica).",
-  annotations: "Líneas de referencia SSR (valor + etiqueta + color opcional).",
+  annotations:
+    "Líneas o bandas de referencia SSR (valor + `to` opcional + etiqueta + color).",
   emptyTitle: "Título del estado vacío (por defecto EMPTY_TITLE).",
   emptyDescription: "Descripción del estado vacío.",
   itemColor: "Color por dato (token/var) o undefined para el de la serie.",
@@ -165,6 +166,22 @@ const PROP_DOCS = {
   maxNodes: "Cap SSR de nodos (dedupa ids, ignora vacíos).",
   maxEdges: "Cap SSR de aristas.",
   maxRows: "Cap SSR de filas.",
+  yScale: "Escala del eje Y (`linear` o `log` para magnitudes).",
+  xScale: "Escala del eje X (`linear` o `log` para magnitudes).",
+  bars: "Series de barras (agrupadas, eje Y izquierdo).",
+  lines: "Series de línea (puntos en el centro de cada grupo).",
+  yAxisRight: "Las líneas usan escala propia con ticks a la derecha.",
+  cohorts: "Cohortes con retención por periodo (fracciones 0–1).",
+  periodLabels: "Etiquetas de periodo (`P1`, `P2`… por defecto).",
+  axes: "Dimensiones del paralelo (clave + etiqueta opcional).",
+  rows: "Filas a dibujar (etiqueta + valor por dimensión).",
+  jitter: "Dispersión horizontal 0–1 (0 = columna recta).",
+  seed: "Semilla del jitter determinista.",
+  bands: "Bandas de plegado por carril.",
+  mode: "Modo de plegado (`mirror` pliega |v|, `offset` respeta el signo).",
+  labels: "Etiquetas del eje X (por defecto el índice).",
+  showCurve: "Curva de densidad KDE sobre las cubetas.",
+  bandwidth: "Ancho de banda KDE (`auto` = Silverman).",
 };
 
 function docFor(name, fallback) {

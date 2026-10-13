@@ -93,7 +93,7 @@ export default function OverviewPage() {
             Lee los conceptos una vez
           </h2>
           <p className="pb-6 text-sm text-muted-foreground">
-            Todo lo que las 74 páginas asumen: SSR, tema, tooltip y
+            Todo lo que las 80 páginas asumen: SSR, tema, tooltip y
             accesibilidad.
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

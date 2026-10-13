@@ -3,6 +3,7 @@
  */
 import { bin, extent, quantileSorted } from "d3-array";
 import { scaleLinear } from "d3-scale";
+import { area, curveMonotoneX, line } from "d3-shape";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { topPositive } from "../lib/domain";
@@ -20,15 +21,18 @@ import { seriesColor } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
+  AREA_FILL_OPACITY,
   BAR_RADIUS,
   CHART_TOKEN,
   DEFAULT_LOCALE,
   GRID_TICKS,
+  LINE_WIDTH,
   MIN_SHAPE_PX,
   TICK_FONT_SIZE,
 } from "../lib/theme";
 import { pctOf } from "../lib/tips";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
+import { kdeOf } from "./violin-plot";
 
 /** Props de Histogram. */
 export type HistogramProps = {
@@ -41,6 +45,10 @@ export type HistogramProps = {
   locale?: string;
   /** Dibuja las líneas de media y mediana con su valor. */
   showMean?: boolean;
+  /** Curva de densidad KDE sobre las cubetas (reusa la KDE de ViolinPlot). */
+  showCurve?: boolean;
+  /** Ancho de banda KDE (`auto` = Silverman). */
+  bandwidth?: "auto" | number;
   /** Recorta los valores a [mínimo, máximo] (outliers fuera). */
   domain?: [number, number];
   className?: string;
@@ -71,6 +79,8 @@ export function Histogram({
   color,
   locale = DEFAULT_LOCALE,
   showMean = false,
+  showCurve = false,
+  bandwidth = "auto",
   domain,
   className,
   style,
@@ -125,6 +135,32 @@ export function Histogram({
     0;
   const meanInRange = mean >= binDomain[0] && mean <= binDomain[1];
   const medianInRange = median >= binDomain[0] && median <= binDomain[1];
+  const given = bandwidth === "auto" ? 0 : toNumber(bandwidth);
+  const kde = showCurve ? kdeOf(scoped, given, binDomain[0], binDomain[1]) : [];
+  // La rejilla KDE es uniforme: conteo ≈ densidad · n · ancho de paso.
+  const kdeStep =
+    kde.length > 1
+      ? (binDomain[1] - binDomain[0]) / (kde.length - 1)
+      : binDomain[1] - binDomain[0];
+  const kdeCount = (density: number) => density * scoped.length * kdeStep;
+  // La curva nunca sale del lienzo: se fija al tope del dominio Y.
+  const kdeY = (density: number) =>
+    y(Math.min(Math.max(0, kdeCount(density)), top));
+  const curvePath =
+    kde.length > 0
+      ? (line<{ value: number; density: number }>()
+          .x((p) => MARGIN.left + x(p.value))
+          .y((p) => kdeY(p.density))
+          .curve(curveMonotoneX)(kde) ?? "")
+      : "";
+  const curveArea =
+    kde.length > 0
+      ? (area<{ value: number; density: number }>()
+          .x((p) => MARGIN.left + x(p.value))
+          .y0(() => MARGIN.top + innerH)
+          .y1((p) => kdeY(p.density))
+          .curve(curveMonotoneX)(kde) ?? "")
+      : "";
 
   return (
     <ChartSvg
@@ -186,6 +222,19 @@ export function Histogram({
           </g>
         );
       })}
+      {showCurve && kde.length > 0 ? (
+        <g>
+          <title>Densidad estimada (KDE)</title>
+          <path d={curveArea} fill={fill} opacity={AREA_FILL_OPACITY} />
+          <path
+            d={curvePath}
+            fill="none"
+            stroke={fill}
+            strokeWidth={LINE_WIDTH}
+            strokeLinecap="round"
+          />
+        </g>
+      ) : null}
       {showMean && meanInRange ? (
         <g>
           <title>{`media ${fmtTick(mean)}`}</title>

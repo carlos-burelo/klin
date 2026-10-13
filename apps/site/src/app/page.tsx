@@ -58,7 +58,7 @@ const STATS = [
 ] as const;
 
 const TRUST = [
-  "74 componentes tipados",
+  "80 componentes tipados",
   "Núcleo sin JavaScript",
   "ESM + tipos",
 ] as const;
@@ -157,7 +157,7 @@ const FAQS = [
   },
   {
     q: "¿Qué incluye el paquete?",
-    a: "74 componentes, tipos por componente, funciones puras de layout exportadas y el CSS del tema. Sin demos ni docs en el tarball.",
+    a: "80 componentes, tipos por componente, funciones puras de layout exportadas y el CSS del tema. Sin demos ni docs en el tarball.",
   },
   {
     q: "¿Accesibilidad?",
@@ -211,7 +211,7 @@ const JSON_LD = {
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Any",
   description:
-    "Catálogo de 74 gráficas React con props tipadas: d3 para cálculo, SVG puro, núcleo sin JavaScript cliente.",
+    "Catálogo de 80 gráficas React con props tipadas: d3 para cálculo, SVG puro, núcleo sin JavaScript cliente.",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
 };
 
@@ -256,7 +256,7 @@ export default function HomePage() {
           </h1>
           <p className="max-w-lg text-base leading-7 text-muted-foreground text-balance sm:text-lg sm:leading-8">
             <strong className="font-semibold text-foreground">
-              74 componentes con props tipadas y layout determinista.
+              80 componentes con props tipadas y layout determinista.
             </strong>{" "}
             d3 calcula, el servidor entrega SVG puro: accesible, tematizado y
             sin JavaScript cliente en el núcleo.

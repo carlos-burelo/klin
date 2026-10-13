@@ -48,7 +48,7 @@ todo; el código compartido vive en chunks internos.
 
 ## Sitio (demos y página, mismo repo, fuera del bundle)
 
-`apps/site/` prerenderiza las 74 demos a HTML estático (`apps/site/out/`):
+`apps/site/` prerenderiza las 80 demos a HTML estático (`apps/site/out/`):
 `pnpm site:build` (desde la raíz), previsualiza con `pnpm site:dev` (`:3100`). El tarball no lo
 incluye (`files` solo lleva `dist` + raíz; verificado con `pnpm pack --dry-run`).
 Detalle en `apps/site/README.md`.
@@ -102,6 +102,12 @@ Detalle en `apps/site/README.md`.
 | `SunburstChart` | Jerarquía en anillos (`d3.partition`) |
 | `OrgChart` | Organigrama vertical |
 | `WaffleChart` | 100 cuadros para partes |
+| `ComboChart` | Barras y líneas con doble eje opcional |
+| `CohortChart` | Retención triangular por cohorte |
+| `ParallelCoordinates` | Multivariado con ejes normalizados |
+| `StripPlot` | Puntos 1D con jitter determinista |
+| `HorizonChart` | Series densas plegadas en bandas |
+| `ECDFChart` | Distribución acumulada en escalones |
 | `LollipopChart` | Puntos sobre palos con valor |
 | `Streamgraph` | Capas con desplazamiento central |
 | `ArcDiagram` | Relaciones sobre un eje |

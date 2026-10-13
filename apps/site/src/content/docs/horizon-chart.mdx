@@ -1,0 +1,108 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/horizon-chart";
+import Examples from "../../demos/examples/horizon-chart";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Series densas plegadas en bandas. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, HorizonChart } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<HorizonChart
+  series={/* … */}
+  ariaLabel="Horizon Chart"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/horizon-chart.tsx`)</summary>
+
+```tsx
+/**
+ * Demo Horizonte de series del site (no se publica en el bundle de la lib).
+ */
+import { ChartTooltipPortal, HorizonChart } from "@carlos-burelo/klin";
+
+export default function HorizonChartDemo() {
+  return (
+    <ChartTooltipPortal>
+      <HorizonChart
+        ariaLabel="Horizonte de consumo eléctrico semanal por sede en megavatios"
+        labels={["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"]}
+        series={[
+          { label: "Norte", values: [12, 18, 9, 24, 30, 22, 16, 28] },
+          { label: "Sur", values: [8, -14, 20, -6, 26, 12, -10, 18] },
+        ]}
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "series", type: "HorizonSeries[]", required: true, description: "Series a dibujar (clave + etiqueta + color opcional)." },
+    { name: "labels", type: "string[]", required: false, description: "Etiquetas del eje X (por defecto el índice 1-based)." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "height", type: "number", required: false, description: "Alto del SVG en px (ancho siempre fluido por viewBox)." },
+    { name: "bands", type: "number", required: false, description: "Bandas de plegado por carril (mínimo 1)." },
+    { name: "mode", type: "HorizonMode", required: false, description: "`mirror` pliega |v| hacia arriba; `offset` respeta el signo." },
+    { name: "formatY", type: "ValueFormatter", required: false, description: "Formateador del eje Y (por defecto es-MX)." },
+    { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+    { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda HTML SSR (por defecto true donde aplica)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+]} />
+
+*Tipo completo: `HorizonChartProps` en `horizon-chart.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`horizon-chart.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/horizon-chart.tsx)
+- Guías: [SSR-first](/docs/ssr-first) · [Tema](/docs/tema) · [Tooltip](/docs/tooltip)

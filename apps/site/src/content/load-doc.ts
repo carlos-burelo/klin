@@ -101,6 +101,18 @@ export function loadDoc(
       return import("./docs/hexbin-plot.mdx");
     case "table-chart":
       return import("./docs/table-chart.mdx");
+    case "combo-chart":
+      return import("./docs/combo-chart.mdx");
+    case "cohort-chart":
+      return import("./docs/cohort-chart.mdx");
+    case "parallel-coordinates":
+      return import("./docs/parallel-coordinates.mdx");
+    case "strip-plot":
+      return import("./docs/strip-plot.mdx");
+    case "horizon-chart":
+      return import("./docs/horizon-chart.mdx");
+    case "ecdf-chart":
+      return import("./docs/ecdf-chart.mdx");
     case "arc-diagram":
       return import("./docs/arc-diagram.mdx");
     case "architecture-diagram":

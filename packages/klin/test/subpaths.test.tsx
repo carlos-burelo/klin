@@ -8,6 +8,7 @@ const EXCEPTIONS: Record<string, string> = {
   legend: "ChartLegend",
   "tooltip-portal": "ChartTooltipPortal",
   "usecase-diagram": "UseCaseDiagram",
+  "ecdf-chart": "ECDFChart",
 };
 
 function pascal(slug: string): string {

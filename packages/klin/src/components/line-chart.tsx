@@ -1,12 +1,12 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { scaleLinear, scalePoint } from "d3-scale";
+import { scalePoint } from "d3-scale";
 import { area, curveLinear, curveMonotoneX, curveStep, line } from "d3-shape";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { CartesianFrame } from "../lib/cartesian";
-import { domainWithZero } from "../lib/domain";
+import { domainWithZero, logDomain, logFloor } from "../lib/domain";
 import { isBlank } from "../lib/empty";
 import { resolveFormatter } from "../lib/format";
 import { CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
@@ -14,6 +14,7 @@ import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { seriesColors } from "../lib/palette";
+import { type ValueScaleKind, valueScale } from "../lib/scale";
 import type { ChartSeries } from "../lib/series";
 import {
   AREA_FILL_OPACITY,
@@ -49,6 +50,12 @@ export type LineChartProps = {
   yMax?: number;
   /** Ticks del grid Y (por defecto GRID_TICKS). */
   gridTicks?: number;
+  /**
+   * Escala del eje Y (`log` para magnitudes; ignora no-positivos en
+   * geometría, el tip conserva el valor crudo). Se ignora `yMin`/`yMax`
+   * (dominio log desde los datos).
+   */
+  yScale?: ValueScaleKind;
   locale?: string;
   className?: string;
   style?: CSSProperties;
@@ -76,6 +83,7 @@ export function LineChart({
   yMin,
   yMax,
   gridTicks = GRID_TICKS,
+  yScale = "linear",
   locale = DEFAULT_LOCALE,
   className,
   style,
@@ -97,9 +105,11 @@ export function LineChart({
 
   const flat = data.flatMap((d) => series.map((s) => toNumber(d[s.key])));
   const [autoLo, autoHi] = domainWithZero(flat);
-  const lo = yMin === undefined ? autoLo : toNumber(yMin, autoLo);
+  const log = yScale === "log";
+  const [llo, lhi] = log ? logDomain(flat) : ([autoLo, autoHi] as const);
+  const lo = log ? llo : yMin === undefined ? autoLo : toNumber(yMin, autoLo);
   const hi = Math.max(
-    yMax === undefined ? autoHi : toNumber(yMax, autoHi),
+    log ? lhi : yMax === undefined ? autoHi : toNumber(yMax, autoHi),
     lo + 1,
   );
 
@@ -107,12 +117,14 @@ export function LineChart({
     .domain(labels)
     .range([0, innerW])
     .padding(POINT_PADDING);
-  const y = scaleLinear()
-    .domain([lo, Math.max(hi, lo + 1)])
-    .nice(gridTicks)
-    .range([innerH, 0]);
+  const y = valueScale(
+    log ? "log" : "linear",
+    [lo, Math.max(hi, lo + 1)],
+    [innerH, 0],
+  ).nice(gridTicks);
   const ticks = y.ticks(gridTicks);
   const colors = seriesColors(series);
+  const lv = (v: number) => (log ? logFloor(v, lo) : v);
   const totals = data.map((d) =>
     series.reduce((acc, s) => acc + toNumber(d[s.key]), 0),
   );
@@ -133,7 +145,7 @@ export function LineChart({
   const pathFor = (key: string) =>
     line<{ label: string; value: number }>()
       .x((p) => x(p.label) ?? 0)
-      .y((p) => y(p.value))
+      .y((p) => y(lv(p.value)))
       .curve(lineCurve)(
       data.map((d) => ({
         label: String(d[xKey] ?? ""),
@@ -145,7 +157,7 @@ export function LineChart({
     area<{ label: string; value: number }>()
       .x((p) => x(p.label) ?? 0)
       .y0(() => y(lo))
-      .y1((p) => y(p.value))
+      .y1((p) => y(lv(p.value)))
       .curve(lineCurve)(
       data.map((d) => ({
         label: String(d[xKey] ?? ""),
@@ -206,7 +218,7 @@ export function LineChart({
                     <title>{tip}</title>
                     <circle
                       cx={MARGIN.left + (x(label) ?? 0)}
-                      cy={MARGIN.top + y(value)}
+                      cy={MARGIN.top + y(lv(value))}
                       r={POINT_RADIUS}
                       fill={colors[si] ?? CHART_TOKEN.chart1}
                       stroke={CHART_TOKEN.background}

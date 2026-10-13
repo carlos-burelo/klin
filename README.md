@@ -21,7 +21,7 @@ Gráficas SSR-first + página del proyecto.
 
 - `pnpm install` — instala el workspace.
 - `pnpm lint` / `pnpm typecheck` / `pnpm test` — todo el workspace.
-- `pnpm site:build` — `apps/site/out/` (74 demos prerenderizadas).
+- `pnpm site:build` — `apps/site/out/` (80 demos prerenderizadas).
 - `pnpm site:dev` — Next en `http://localhost:3100/`.
 
 ## Release

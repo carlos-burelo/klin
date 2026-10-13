@@ -1,6 +1,6 @@
 # Site de klin (documentación del proyecto)
 
-App Next.js estática con las 74 demos documentadas en MDX, en el mismo repo
+App Next.js estática con las 80 demos documentadas en MDX, en el mismo repo
 que la lib, **sin salir en su bundle**:
 
 - El tarball solo incluye `dist + LICENSE + EXCEPTION + README.md` (`files` en

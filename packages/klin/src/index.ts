@@ -45,6 +45,10 @@ export type {
   ClassNode,
 } from "./components/class-diagram";
 export { ClassDiagram } from "./components/class-diagram";
+export type { Cohort, CohortChartProps } from "./components/cohort-chart";
+export { CohortChart } from "./components/cohort-chart";
+export type { ComboChartProps } from "./components/combo-chart";
+export { ComboChart } from "./components/combo-chart";
 export type {
   DendrogramChartProps,
   DendrogramNode,
@@ -68,6 +72,8 @@ export type { DotPlotProps } from "./components/dot-plot";
 export { DotPlot } from "./components/dot-plot";
 export type { DumbbellChartProps } from "./components/dumbbell-chart";
 export { DumbbellChart } from "./components/dumbbell-chart";
+export type { ECDFChartProps, EcdfGroup } from "./components/ecdf-chart";
+export { ECDFChart } from "./components/ecdf-chart";
 export type { ChartEmptyProps } from "./components/empty";
 export { ChartEmpty, EMPTY_TITLE } from "./components/empty";
 export type {
@@ -98,6 +104,12 @@ export type { HexbinPlotProps, HexPoint } from "./components/hexbin-plot";
 export { HexbinPlot } from "./components/hexbin-plot";
 export type { HistogramProps } from "./components/histogram";
 export { Histogram } from "./components/histogram";
+export type {
+  HorizonChartProps,
+  HorizonMode,
+  HorizonSeries,
+} from "./components/horizon-chart";
+export { HorizonChart } from "./components/horizon-chart";
 export type { HorizontalBarChartProps } from "./components/horizontal-bar-chart";
 export { HorizontalBarChart } from "./components/horizontal-bar-chart";
 export type { IcicleChartProps, IcicleNode } from "./components/icicle-chart";
@@ -148,6 +160,12 @@ export type {
 export { NightingaleChart } from "./components/nightingale-chart";
 export type { OrgChartProps, OrgNode } from "./components/org-chart";
 export { OrgChart } from "./components/org-chart";
+export type {
+  ParallelAxis,
+  ParallelCoordinatesProps,
+  ParallelRow,
+} from "./components/parallel-coordinates";
+export { ParallelCoordinates } from "./components/parallel-coordinates";
 export type { ParetoChartProps } from "./components/pareto-chart";
 export { ParetoChart } from "./components/pareto-chart";
 export type {
@@ -209,6 +227,12 @@ export type {
 export { StateDiagram } from "./components/state-diagram";
 export type { StreamgraphProps } from "./components/streamgraph";
 export { Streamgraph } from "./components/streamgraph";
+export type { StripGroup, StripPlotProps } from "./components/strip-plot";
+export {
+  computeStripPositions,
+  mulberry32,
+  StripPlot,
+} from "./components/strip-plot";
 export type {
   SunburstChartProps,
   SunburstNode,
@@ -279,7 +303,7 @@ export {
   CARTESIAN_AXIS_OFFSET,
   CartesianFrame,
 } from "./lib/cartesian";
-export { domainWithZero, topPositive } from "./lib/domain";
+export { domainWithZero, logDomain, logFloor, topPositive } from "./lib/domain";
 export { isBlank } from "./lib/empty";
 export { resolveFormatter } from "./lib/format";
 export type { ChartMargin, ChartSvgProps, YGridProps } from "./lib/frame";
@@ -315,6 +339,8 @@ export {
   seriesColors,
   truncateLabel,
 } from "./lib/palette";
+export type { ValueScaleKind } from "./lib/scale";
+export { valueScale } from "./lib/scale";
 export type { ChartSeries } from "./lib/series";
 export {
   ANNOTATION_DASH,

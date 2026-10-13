@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     template: "%s — klin",
   },
   description:
-    "Gráficas SSR-first: d3 para cálculo, SVG puro para render. 74 demos vivas, 0 JS para ver cada gráfica, accesibles y temáticas por tokens.",
+    "Gráficas SSR-first: d3 para cálculo, SVG puro para render. 80 demos vivas, 0 JS para ver cada gráfica, accesibles y temáticas por tokens.",
   keywords: [
     "charts",
     "svg",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     siteName: "klin",
     title: "klin — gráficas SSR-first",
     description:
-      "d3 para cálculo, SVG puro para render. 74 demos vivas renderizadas en el servidor.",
+      "d3 para cálculo, SVG puro para render. 80 demos vivas renderizadas en el servidor.",
   },
   twitter: {
     card: "summary_large_image",
