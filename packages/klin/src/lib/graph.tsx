@@ -19,6 +19,7 @@ import {
   EDGE_LABEL_MIN_WIDTH,
   EDGE_LABEL_PAD_X,
   ELLIPSIS,
+  FONT_MONO,
   GRID_WIDTH,
   TEXT_MONO_RATIO,
   TEXT_SANS_RATIO,
@@ -350,7 +351,7 @@ export function EdgeLabel({ mx, my, text }: EdgeLabelProps) {
         textAnchor="middle"
         dy={EDGE_LABEL_DY}
         fontSize={EDGE_LABEL_FONT_SIZE}
-        fontFamily="var(--font-mono, monospace)"
+        fontFamily={FONT_MONO}
         fill={CHART_TOKEN.muted}
       >
         {short}

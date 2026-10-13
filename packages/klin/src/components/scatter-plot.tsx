@@ -5,13 +5,16 @@
 import { max, min } from "d3-array";
 import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, YGrid } from "../lib/frame";
 import { sumNumbers, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   POINT_BORDER,
@@ -65,8 +68,8 @@ export function ScatterPlot({
   xLabel = "x",
   yLabel = "y",
   height = 260,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   color,
   itemColor,
   quadrants = false,
@@ -83,7 +86,7 @@ export function ScatterPlot({
       label: p.label,
     }))
     .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
-  if (clean.length === 0) {
+  if (isBlank(clean)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -104,6 +107,7 @@ export function ScatterPlot({
     .range([innerH, 0]);
   const ticks = y.ticks(GRID_TICKS);
 
+  const fmt = resolveFormatter(format, locale);
   const fill = seriesColor(0, color);
   const meanX = sumNumbers(xs) / xs.length;
   const meanY = sumNumbers(ys) / ys.length;
@@ -117,10 +121,10 @@ export function ScatterPlot({
       style={style}
       ariaDescribedBy={ariaDescribedBy}
     >
-      <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={format} />
+      <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={fmt} />
       {quadrants ? (
         <g>
-          <title>{`medias (${format(meanX)}, ${format(meanY)})`}</title>
+          <title>{`medias (${fmt(meanX)}, ${fmt(meanY)})`}</title>
           <line
             x1={MARGIN.left + x(meanX)}
             x2={MARGIN.left + x(meanX)}
@@ -150,7 +154,7 @@ export function ScatterPlot({
           fontSize={TICK_FONT_SIZE}
           fill={CHART_TOKEN.muted}
         >
-          {format(t)}
+          {fmt(t)}
         </text>
       ))}
       <text
@@ -163,7 +167,7 @@ export function ScatterPlot({
         {xLabel}
       </text>
       {clean.map((p, i) => {
-        const tip = `${p.label ? `${p.label}: ` : ""}(${format(p.x)}, ${format(p.y)})`;
+        const tip = `${p.label ? `${p.label}: ` : ""}(${fmt(p.x)}, ${fmt(p.y)})`;
         return (
           <g key={`${p.x}-${p.y}-${i}`}>
             <title>{tip}</title>

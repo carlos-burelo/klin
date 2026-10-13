@@ -5,6 +5,7 @@ import { max, min } from "d3-array";
 import { type ContourMultiPolygon, contourDensity } from "d3-contour";
 import { type ScaleLinear, scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import {
   ChartSvg,
   CHART_MARGIN as MARGIN,
@@ -15,9 +16,10 @@ import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   LINE_WIDTH,
@@ -193,7 +195,7 @@ export function DensityContourPlot({
   thresholds = DEFAULT_LEVELS,
   height = 260,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -221,7 +223,7 @@ export function DensityContourPlot({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
   const { x, y } = densityScales(positioned, innerW, innerH, safeTicks);
   const ticks = y.ticks(safeTicks);
   const base = seriesColor(0);

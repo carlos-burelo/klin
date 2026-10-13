@@ -7,12 +7,19 @@ import {
   partition,
 } from "d3-hierarchy";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { CHART_W, ChartSvg } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_NODES } from "../lib/limits";
 import { toNumber } from "../lib/number";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
-import { BAR_RADIUS, CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
+import { seriesColor, truncateLabel } from "../lib/palette";
+import {
+  BAR_RADIUS,
+  CHART_TOKEN,
+  DEFAULT_LOCALE,
+  PERCENT_FACTOR,
+} from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 export type IcicleNode = {
@@ -99,7 +106,7 @@ export function IcicleChart({
   ariaLabel,
   height = ICICLE_H,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   depth = ICICLE_DEPTH_DEFAULT,
   showLabels = true,
   showValues = false,
@@ -117,10 +124,10 @@ export function IcicleChart({
   const maxDepth = toNumber(depth, ICICLE_DEPTH_DEFAULT);
   const minW = Math.max(0, toNumber(minLabelWidth, LABEL_MIN_PX));
   const visible = bands.filter((b) => b.depth <= maxDepth);
-  if (visible.length === 0) {
+  if (isBlank(visible)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
 
   return (
     <ChartSvg
@@ -166,7 +173,7 @@ export function IcicleChart({
                 y={b.y0 + h / 2}
                 dy={NODE_LABEL_DY}
                 fontSize={NODE_FONT_SIZE}
-                fill="white"
+                fill={CHART_TOKEN.onFill}
               >
                 {tag}
               </text>

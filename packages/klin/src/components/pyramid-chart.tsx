@@ -5,14 +5,17 @@
 import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import { topPositive } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import type { ChartMargin } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   PERCENT_FACTOR,
@@ -91,8 +94,8 @@ export function PyramidChart({
   left,
   right,
   ariaLabel,
-  locale = "es-MX",
-  formatX = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  formatX,
   labels = "left",
   itemColor,
   showLegend = true,
@@ -106,9 +109,11 @@ export function PyramidChart({
   centerGap,
   sortGroups = "none",
 }: PyramidChartProps) {
-  if (groups.length === 0) {
+  if (isBlank(groups)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const fmtX = resolveFormatter(formatX, locale);
 
   const rows: PyramidRow[] = groups.map((group, i) => ({
     group,
@@ -188,8 +193,8 @@ export function PyramidChart({
             totalL > 0 ? Math.round((lv / totalL) * PERCENT_FACTOR) : 0;
           const pctR =
             totalR > 0 ? Math.round((rv / totalR) * PERCENT_FACTOR) : 0;
-          const tipL = `${group} · ${left.label}: ${formatX(lv)} (${pctL}% de ${left.label})`;
-          const tipR = `${group} · ${right.label}: ${formatX(rv)} (${pctR}% de ${right.label})`;
+          const tipL = `${group} · ${left.label}: ${fmtX(lv)} (${pctL}% de ${left.label})`;
+          const tipR = `${group} · ${right.label}: ${fmtX(rv)} (${pctR}% de ${right.label})`;
           return (
             <g key={stableKey([group], i)}>
               <text
@@ -272,7 +277,7 @@ export function PyramidChart({
               fontSize={TICK_FONT_SIZE}
               fill={CHART_TOKEN.muted}
             >
-              {formatX(t)}
+              {fmtX(t)}
             </text>
             <text
               x={rightEdge + scale(t)}
@@ -281,7 +286,7 @@ export function PyramidChart({
               fontSize={TICK_FONT_SIZE}
               fill={CHART_TOKEN.muted}
             >
-              {formatX(t)}
+              {fmtX(t)}
             </text>
           </g>
         ))}

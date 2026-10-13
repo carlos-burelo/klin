@@ -3,12 +3,14 @@
  */
 
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import type { ChartMargin } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { clamp01, toNumber } from "../lib/number";
 import { formatDefault, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   EDGE_LABEL_FONT_SIZE,
   FONT_SEMIBOLD,
   NODE_BORDER_WIDTH,
@@ -105,14 +107,14 @@ export function QuadrantChart({
     x: DEFAULT_QUADRANT_THRESHOLD_X,
     y: DEFAULT_QUADRANT_THRESHOLD_Y,
   },
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
   style,
   ariaDescribedBy,
 }: QuadrantChartProps) {
-  if (points.length === 0) {
+  if (isBlank(points)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

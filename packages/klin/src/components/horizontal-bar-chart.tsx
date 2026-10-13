@@ -6,27 +6,30 @@ import { scaleBand, scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { domainWithZero } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import type { ChartMargin } from "../lib/frame";
 import { ChartSvg } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColors, truncateLabel } from "../lib/palette";
+import { seriesColors, truncateLabel } from "../lib/palette";
 import type { ChartSeries } from "../lib/series";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   MIN_SHAPE_PX,
-  PERCENT_FACTOR,
   TICK_DY,
   TICK_FONT_SIZE,
   TICK_GAP_PX,
   ZERO_MARK_PX,
 } from "../lib/theme";
+import { shareTip } from "../lib/tips";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -87,8 +90,8 @@ export function HorizontalBarChart({
   yKey,
   series,
   ariaLabel,
-  locale = "es-MX",
-  formatX = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  formatX,
   annotations,
   showLegend = true,
   className,
@@ -103,7 +106,7 @@ export function HorizontalBarChart({
   gridTicks = GRID_TICKS,
   labelWidth = DEFAULT_LABEL_WIDTH,
 }: HorizontalBarChartProps) {
-  if (data.length === 0 || series.length === 0) {
+  if (isBlank(data) || isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -153,6 +156,7 @@ export function HorizontalBarChart({
 
   const ticks = x.ticks(ticksCount);
   const colors = seriesColors(series);
+  const fmtX = resolveFormatter(formatX, locale);
 
   return (
     <div className={className} style={style}>
@@ -179,7 +183,7 @@ export function HorizontalBarChart({
               fontSize={TICK_FONT_SIZE}
               fill={CHART_TOKEN.muted}
             >
-              {formatX(t)}
+              {fmtX(t)}
             </text>
           </g>
         ))}
@@ -189,7 +193,7 @@ export function HorizontalBarChart({
           const stroke = a.color ?? CHART_TOKEN.accent;
           return (
             <g key={stableKey([a.label ?? `${a.value}`], ai)}>
-              <title>{a.label ?? formatX(a.value)}</title>
+              <title>{a.label ?? fmtX(a.value)}</title>
               <line
                 x1={ax}
                 x2={ax}
@@ -236,11 +240,15 @@ export function HorizontalBarChart({
                 const w =
                   value === 0 ? ZERO_MARK_PX : Math.max(MIN_SHAPE_PX, bw);
                 const by = margin.top + (y0(group) ?? 0) + (y1(s.key) ?? 0);
-                const baseTip = `${group} · ${s.label}: ${formatX(value)}`;
-                const tip =
-                  series.length >= 2 && total > 0
-                    ? `${baseTip} (${Math.round((value / total) * PERCENT_FACTOR)}% del grupo)`
-                    : baseTip;
+                const tip = shareTip({
+                  label: group,
+                  series: s.label,
+                  formatted: fmtX(value),
+                  value,
+                  total,
+                  multi: series.length >= 2,
+                  of: "grupo",
+                });
                 return (
                   <g key={s.key}>
                     <title>{tip}</title>
@@ -261,7 +269,7 @@ export function HorizontalBarChart({
                         fontSize={TICK_FONT_SIZE}
                         fill={CHART_TOKEN.muted}
                       >
-                        {formatX(value)}
+                        {fmtX(value)}
                       </text>
                     ) : null}
                   </g>

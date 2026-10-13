@@ -4,13 +4,16 @@
 import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import { domainWithZero } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, truncateLabel } from "../lib/palette";
+import { truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   LABEL_GAP_PX,
@@ -72,7 +75,7 @@ export function SlopeChart({
   ariaLabel,
   height = 260,
   formatY,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   showLabels = true,
   showValues = true,
   sortGroups = false,
@@ -94,14 +97,14 @@ export function SlopeChart({
     if (!Number.isFinite(from) || !Number.isFinite(to)) continue;
     rows.push({ label: d.label, from, to, color: d.color });
   }
-  if (rows.length === 0) {
+  if (isBlank(rows)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
   const ordered = sortGroups
     ? [...rows].sort((a, b) => b.to - b.from - (a.to - a.from))
     : rows;
 
-  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmtY = resolveFormatter(formatY, locale);
   const innerH = height - SLOPE_MARGIN_TOP - SLOPE_MARGIN_BOTTOM;
   const [lo, hi] = domainWithZero([
     ...ordered.map((r) => r.from),

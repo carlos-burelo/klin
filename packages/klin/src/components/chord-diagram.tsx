@@ -11,12 +11,19 @@ import {
 } from "d3-chord";
 import { arc } from "d3-shape";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
-import { CHART_TOKEN, LINK_OPACITY, TICK_FONT_SIZE } from "../lib/theme";
+import { seriesColor, truncateLabel } from "../lib/palette";
+import {
+  CHART_TOKEN,
+  DEFAULT_LOCALE,
+  LINK_OPACITY,
+  TICK_FONT_SIZE,
+} from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -124,7 +131,7 @@ export function ChordDiagram({
   ariaLabel,
   height = 260,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -135,7 +142,7 @@ export function ChordDiagram({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: ChordDiagramProps) {
-  if (labels.length === 0 || matrix.length === 0) {
+  if (isBlank(labels) || isBlank(matrix)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
   const safeH = toNumber(height, 260);
@@ -147,11 +154,11 @@ export function ChordDiagram({
     sortGroups,
     maxItems,
   });
-  if (capped.length === 0 || chords.groups.length === 0 || total <= 0) {
+  if (isBlank(capped) || isBlank(chords.groups) || total <= 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
   const cx = W / 2;
   const cy = safeH / 2;
   const outerR = Math.max(

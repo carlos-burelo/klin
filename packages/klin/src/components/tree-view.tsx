@@ -2,6 +2,7 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import { stableKey } from "../lib/keys";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
@@ -75,7 +76,7 @@ export function TreeView({
   style,
   ariaDescribedBy,
 }: TreeViewProps) {
-  if (items.length === 0) {
+  if (isBlank(items)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

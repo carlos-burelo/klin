@@ -3,6 +3,7 @@
  */
 import { cluster, type HierarchyPointNode, hierarchy } from "d3-hierarchy";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import { CHART_W, ChartSvg } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_NODES } from "../lib/limits";
@@ -123,7 +124,7 @@ export function DendrogramChart({
   const links = laid.links.filter(
     (l) => visible.has(l.source) && visible.has(l.target),
   );
-  if (nodes.filter((n) => n.depth > 0).length === 0) {
+  if (isBlank(nodes.filter((n) => n.depth > 0))) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

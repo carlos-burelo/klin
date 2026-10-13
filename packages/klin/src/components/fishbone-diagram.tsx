@@ -3,6 +3,7 @@
  */
 import type { CSSProperties } from "react";
 import { useId } from "react";
+import { isBlank } from "../lib/empty";
 import { CHART_W, ChartSvg } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
@@ -10,6 +11,7 @@ import type { ValueFormatter } from "../lib/palette";
 import { truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   EDGE_WIDTH,
   FONT_SEMIBOLD,
   TICK_FONT_SIZE,
@@ -126,7 +128,7 @@ export function computeFishboneLayout(
   effect: string,
   causes: FishboneCause[],
   height = FISH_DEFAULT_H,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   opts?: FishboneLayoutOptions,
 ): FishboneLayout {
   const h = Number.isFinite(height) && height > 0 ? height : FISH_DEFAULT_H;
@@ -208,7 +210,7 @@ export function FishboneDiagram({
   causes,
   ariaLabel,
   height = FISH_DEFAULT_H,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   format,
   className,
   style,
@@ -222,7 +224,7 @@ export function FishboneDiagram({
   emptyDescription,
 }: FishboneDiagramProps) {
   const autoId = useId().replace(/:/g, "");
-  if (causes.length === 0 || effect.trim() === "") {
+  if (isBlank(causes) || isBlank(effect)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

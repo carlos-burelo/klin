@@ -2,6 +2,7 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import { stableKey } from "../lib/keys";
 import { CHART_TOKEN } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
@@ -81,7 +82,7 @@ export function KanbanBoard({
   style,
   ariaDescribedBy,
 }: KanbanBoardProps) {
-  if (columns.length === 0) {
+  if (isBlank(columns)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

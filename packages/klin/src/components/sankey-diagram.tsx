@@ -3,12 +3,15 @@
  */
 import { sankey, sankeyLinkHorizontal } from "d3-sankey";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_LINKS, DEFAULT_MAX_NODES } from "../lib/limits";
 import { toNumber } from "../lib/number";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   DIAGRAM_MIN_SCROLL,
   LINK_OPACITY,
   MIN_SHAPE_PX,
@@ -118,7 +121,7 @@ export function SankeyDiagram({
   flows,
   ariaLabel,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -126,17 +129,17 @@ export function SankeyDiagram({
   ariaDescribedBy,
   showLegend = true,
 }: SankeyDiagramProps) {
-  if (nodes.length === 0 || flows.length === 0) {
+  if (isBlank(nodes) || isBlank(flows)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const { graph, capped, colorById } = computeSankeyLayout(nodes, flows);
 
-  if (graph.links.length === 0) {
+  if (isBlank(graph.links)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
 
   const colorOf = (id: string) => {
     const entry = colorById.get(id);

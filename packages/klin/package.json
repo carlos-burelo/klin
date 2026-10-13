@@ -41,8 +41,8 @@
     "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json",
     "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js"
+      "types": "./dist/components/*.d.ts",
+      "import": "./dist/components/*.js"
     }
   },
   "publishConfig": {
@@ -55,7 +55,7 @@
     "directory": "packages/klin"
   },
   "scripts": {
-    "build": "tsup && tsup --config tsup.client.ts && node scripts/postbuild.mjs",
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json && node scripts/fix-links.mjs && node scripts/copy-css.mjs",
     "prepublishOnly": "pnpm build",
     "typecheck": "tsc --noEmit",
     "lint": "biome check",
@@ -97,7 +97,6 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "tsup": "^8.5.1",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }

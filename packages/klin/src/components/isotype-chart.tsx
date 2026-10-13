@@ -2,15 +2,17 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import type { ChartMargin } from "../lib/frame";
 import { ChartSvg } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   FONT_MONO,
   POINT_BORDER,
   TICK_FONT_SIZE,
@@ -91,8 +93,8 @@ export function IsotypeChart({
   unit,
   ariaLabel,
   height = 260,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   maxPerRow = ISOTYPE_MAX_PER_ROW,
   showLabels = true,
   showCounts = true,
@@ -154,6 +156,8 @@ export function IsotypeChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const fmt = resolveFormatter(format, locale);
+
   const linesOf = (count: number) => Math.max(1, Math.ceil(count / perRow));
   const offsets: number[] = [];
   let cursor = ISOTYPE_MARGIN.top;
@@ -178,7 +182,7 @@ export function IsotypeChart({
         {rows.map((r, ri) => {
           const top = offsets[ri] ?? ISOTYPE_MARGIN.top;
           const midY = top + (linesOf(r.count) * ISOTYPE_CELL) / 2;
-          const tip = `${r.label}: ${format(r.value)} (${r.count} pictogramas)`;
+          const tip = `${r.label}: ${fmt(r.value)} (${r.count} pictogramas)`;
           return (
             <g key={stableKey([r.label], ri)}>
               {showLabels ? (
@@ -202,7 +206,7 @@ export function IsotypeChart({
                   fontFamily={FONT_MONO}
                   fill={CHART_TOKEN.muted}
                 >
-                  {format(r.value)}
+                  {fmt(r.value)}
                 </text>
               ) : null}
               {Array.from({ length: r.count }, (_, k) => {

@@ -7,6 +7,8 @@ import type { CSSProperties } from "react";
 import { useId } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { domainWithZero } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import {
   ChartSvg,
   CHART_MARGIN as MARGIN,
@@ -16,19 +18,21 @@ import {
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColors, truncateLabel } from "../lib/palette";
+import { seriesColors, truncateLabel } from "../lib/palette";
 import type { ChartSeries } from "../lib/series";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   MIN_SHAPE_PX,
   PERCENT_FACTOR,
   TICK_DY,
   TICK_FONT_SIZE,
 } from "../lib/theme";
+import { pctOf, shareTip } from "../lib/tips";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -81,7 +85,7 @@ export function VerticalStackedBar({
   ariaLabel,
   formatY,
   normalize = false,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -96,7 +100,7 @@ export function VerticalStackedBar({
   id,
 }: VerticalStackedBarProps) {
   const uid = useId();
-  if (data.length === 0 || series.length === 0) {
+  if (isBlank(data) || isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -141,7 +145,7 @@ export function VerticalStackedBar({
 
   const ticks = y.ticks(ticksCount);
   const colors = seriesColors(series);
-  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmtY = resolveFormatter(formatY, locale);
   const fmt = normalize
     ? (v: number) => `${Math.round(v * PERCENT_FACTOR)}%`
     : fmtY;
@@ -240,13 +244,18 @@ export function VerticalStackedBar({
                   const y0pix = y(v0);
                   const y1pix = y(v1);
                   const pixH = Math.abs(y1pix - y0pix);
-                  const baseTip = `${group} · ${s.label}: ${fmtY(raw)}`;
                   const total = posTotal + negTotal;
                   const tip = normalize
-                    ? `${group} · ${s.label}: ${fmtY(raw)} (${Math.round((posTotal > 0 ? Math.max(0, raw) / posTotal : 0) * PERCENT_FACTOR)}%)`
-                    : series.length >= 2 && total > 0
-                      ? `${baseTip} (${Math.round((raw / total) * PERCENT_FACTOR)}% del grupo)`
-                      : baseTip;
+                    ? `${group} · ${s.label}: ${fmtY(raw)} (${pctOf(Math.max(0, raw), posTotal)}%)`
+                    : shareTip({
+                        label: group,
+                        series: s.label,
+                        formatted: fmtY(raw),
+                        value: raw,
+                        total,
+                        multi: series.length >= 2,
+                        of: "grupo",
+                      });
                   if (frac === 0) return <g key={s.key} />;
                   return (
                     <g key={s.key}>

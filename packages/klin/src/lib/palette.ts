@@ -1,21 +1,27 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { ELLIPSIS, LABEL_MAX_DEFAULT, MISSING_VALUE } from "./theme";
+import {
+  CHART_TOKEN,
+  DEFAULT_LOCALE,
+  ELLIPSIS,
+  LABEL_MAX_DEFAULT,
+  MISSING_VALUE,
+} from "./theme";
 
 /** Paleta por defecto: tokens del tema (claro/oscuro automáticos). */
 export const CHART_PALETTE = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
+  CHART_TOKEN.chart1,
+  CHART_TOKEN.chart2,
+  CHART_TOKEN.chart3,
+  CHART_TOKEN.chart4,
+  CHART_TOKEN.chart5,
 ] as const;
 
 /** Color de la serie N, salvo override explícito (token o var). */
 export function seriesColor(index: number, override?: string): string {
   if (override) return override;
-  return CHART_PALETTE[index % CHART_PALETTE.length] ?? "var(--chart-1)";
+  return CHART_PALETTE[index % CHART_PALETTE.length] ?? CHART_TOKEN.chart1;
 }
 
 /** Formateador de valores numéricos (unifica format/formatX/formatY). */
@@ -24,7 +30,7 @@ export type ValueFormatter = (value: number) => string;
 /** Formato de un valor numérico (locale configurable, no-finitos → "—"). */
 export function formatDefault(
   value: number,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   options: Intl.NumberFormatOptions = { maximumFractionDigits: 1 },
 ): string {
   if (!Number.isFinite(value)) return MISSING_VALUE;

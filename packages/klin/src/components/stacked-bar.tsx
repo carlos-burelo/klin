@@ -2,11 +2,13 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import { type CSSProperties, useId } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
-import { CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
+import { seriesColor } from "../lib/palette";
+import { CHART_TOKEN, DEFAULT_LOCALE, PERCENT_FACTOR } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -66,8 +68,8 @@ export function StackedBar({
   rows,
   segments,
   ariaLabel,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   percentOf,
   showLegend = true,
   className,
@@ -83,7 +85,7 @@ export function StackedBar({
 }: StackedBarProps) {
   // useId arriba: hooks siempre en mismo orden (antes del early return).
   const autoUid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  if (rows.length === 0 || segments.length === 0) {
+  if (isBlank(rows) || isBlank(segments)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -94,6 +96,7 @@ export function StackedBar({
   const defaultH = barH === TRACK_H;
   const mainKey = percentOf ?? segments[0]?.key ?? "";
   const colors = segments.map((s, i) => seriesColor(i, s.color));
+  const fmt = resolveFormatter(format, locale);
   const totalOf = (values: Record<string, number>) =>
     segments.reduce((acc, s) => acc + toNumber(values[s.key]), 0);
   const maxTotal = Math.max(1, ...rows.map((r) => totalOf(r.values)));
@@ -159,7 +162,7 @@ export function StackedBar({
                         ? 0
                         : Math.round((value / total) * PERCENT_FACTOR);
                     const tip =
-                      `${row.label} · ${seg.label}: ${format(value)} (${pct}% del total)` +
+                      `${row.label} · ${seg.label}: ${fmt(value)} (${pct}% del total)` +
                       (row.detail ? ` (${row.detail})` : "");
                     return (
                       <g key={stableKey([seg.key], si)}>

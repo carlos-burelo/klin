@@ -4,13 +4,16 @@
 import { scaleLinear, scalePoint } from "d3-scale";
 import { curveMonotoneX, line } from "d3-shape";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   LABEL_GAP_PX,
@@ -84,7 +87,7 @@ export function BumpChart({
   series,
   ariaLabel,
   height = 260,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   formatRank,
   className,
   style,
@@ -125,11 +128,11 @@ export function BumpChart({
           .slice(0, wanted)
       : rows;
   const total = visible.length;
-  if (periods.length === 0 || !visible.some((r) => r.points.length > 0)) {
+  if (isBlank(periods) || !visible.some((r) => r.points.length > 0)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const fmtRank = formatRank ?? ((v: number) => formatDefault(v, locale));
+  const fmtRank = resolveFormatter(formatRank, locale);
   const safeTicks = Math.max(
     TICKS_MIN,
     Math.floor(toNumber(gridTicks, GRID_TICKS)),

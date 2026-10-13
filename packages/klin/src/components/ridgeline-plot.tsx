@@ -4,14 +4,16 @@
 import { scaleLinear } from "d3-scale";
 import { area, curveCatmullRom } from "d3-shape";
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { clamp01, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   LINE_WIDTH,
@@ -81,7 +83,7 @@ export function RidgelinePlot({
   height = 260,
   overlap = RIDGE_OVERLAP_DEFAULT,
   formatX,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -122,7 +124,7 @@ export function RidgelinePlot({
     glo -= RIDGE_DEGENERATE_PAD;
     ghi += RIDGE_DEGENERATE_PAD;
   }
-  const fmtX = formatX ?? ((v: number) => formatDefault(v, locale));
+  const fmtX = resolveFormatter(formatX, locale);
   const safeTicks = Math.max(
     TICKS_MIN,
     Math.floor(toNumber(gridTicks, GRID_TICKS)),

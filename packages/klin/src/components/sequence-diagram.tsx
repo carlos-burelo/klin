@@ -2,6 +2,7 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_NODES } from "../lib/limits";
 import { truncateLabel } from "../lib/palette";
@@ -106,7 +107,7 @@ export function SequenceDiagram({
   style,
   ariaDescribedBy,
 }: SequenceDiagramProps) {
-  if (participants.length === 0 || messages.length === 0) {
+  if (isBlank(participants) || isBlank(messages)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

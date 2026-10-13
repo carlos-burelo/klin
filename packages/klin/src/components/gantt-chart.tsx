@@ -5,6 +5,7 @@
 import { max, min } from "d3-array";
 import { scaleTime } from "d3-scale";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import type { ChartMargin } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
@@ -12,6 +13,7 @@ import { formatDefault, truncateLabel } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_WIDTH,
   PERCENT_FACTOR,
   TICK_DY,
@@ -83,7 +85,7 @@ export function GanttChart({
   labelWidth = DEFAULT_LABEL_WIDTH,
   height: heightProp,
   formatDate,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   showLegend = true,
   className,
   style,
@@ -91,7 +93,7 @@ export function GanttChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: GanttChartProps) {
-  if (tasks.length === 0) {
+  if (isBlank(tasks)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -199,7 +201,7 @@ export function GanttChart({
             : null;
           const tip =
             `${task.label}: ${fmt(s)} → ${fmt(e)}` +
-            (pct === null ? "" : ` · ${formatDefault(pct)}%`) +
+            (pct === null ? "" : ` · ${formatDefault(pct, locale)}%`) +
             (days === null ? "" : ` · ${days} d`);
           return (
             <g key={stableKey([task.label], i)}>

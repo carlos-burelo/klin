@@ -3,11 +3,19 @@
  */
 import type { CSSProperties } from "react";
 import { topPositive } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
-import { FONT_SEMIBOLD, PERCENT_FACTOR, TICK_FONT_SIZE } from "../lib/theme";
+import { seriesColor } from "../lib/palette";
+import {
+  CHART_TOKEN,
+  DEFAULT_LOCALE,
+  FONT_SEMIBOLD,
+  PERCENT_FACTOR,
+  TICK_FONT_SIZE,
+} from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 /** Etapa del embudo (etiqueta, valor y color opcional). */
@@ -60,8 +68,8 @@ export function FunnelChart({
   height = 280,
   showDropOff = true,
   baseline = "first",
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   itemColor,
   className,
   style,
@@ -69,9 +77,11 @@ export function FunnelChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: FunnelChartProps) {
-  if (stages.length === 0) {
+  if (isBlank(stages)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const fmt = resolveFormatter(format, locale);
 
   // Conteos: negativos se fijan a 0.
   const counts = stages.map((s) => Math.max(0, toNumber(s.value)));
@@ -109,10 +119,10 @@ export function FunnelChart({
         const shownPct = baseline === "previous" && i > 0 ? step : conv;
         const tip =
           i === 0
-            ? `${stage.label}: ${format(value)} (${conv}% del inicio)`
+            ? `${stage.label}: ${fmt(value)} (${conv}% del inicio)`
             : showDropOff
-              ? `${stage.label}: ${format(value)} (${conv}% del inicio · ${step}% previo)`
-              : `${stage.label}: ${format(value)} (${conv}% del inicio)`;
+              ? `${stage.label}: ${fmt(value)} (${conv}% del inicio · ${step}% previo)`
+              : `${stage.label}: ${fmt(value)} (${conv}% del inicio)`;
         return (
           <g key={stableKey([stage.label], i)}>
             <title>{tip}</title>
@@ -127,7 +137,7 @@ export function FunnelChart({
               textAnchor="middle"
               fontSize={STAGE_LABEL_FONT_SIZE}
               fontWeight={FONT_SEMIBOLD}
-              fill="white"
+              fill={CHART_TOKEN.onFill}
             >
               {stage.label}
             </text>
@@ -136,10 +146,10 @@ export function FunnelChart({
               y={y + rowH / 2 + STAGE_VALUE_DY}
               textAnchor="middle"
               fontSize={TICK_FONT_SIZE}
-              fill="white"
+              fill={CHART_TOKEN.onFill}
               opacity={STAGE_VALUE_OPACITY}
             >
-              {`${format(value)} · ${shownPct}%`}
+              {`${fmt(value)} · ${shownPct}%`}
             </text>
           </g>
         );

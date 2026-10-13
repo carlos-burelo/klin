@@ -3,13 +3,16 @@
  */
 import type { CSSProperties } from "react";
 import { topPositive } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   EMPTY_CELL_OPACITY,
   MISSING_VALUE,
   TICK_DY,
@@ -67,8 +70,8 @@ export function MatrixHeatmap({
   ariaLabel,
   showValues = "auto",
   missingLabel = MISSING_VALUE,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   color,
   className,
   style,
@@ -76,9 +79,11 @@ export function MatrixHeatmap({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: MatrixHeatmapProps) {
-  if (rows.length === 0 || cols.length === 0) {
+  if (isBlank(rows) || isBlank(cols)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const fmt = resolveFormatter(format, locale);
 
   const top = topPositive(values.flat());
   const cell = Math.min(
@@ -138,7 +143,7 @@ export function MatrixHeatmap({
               const v = isMissing ? 0 : toNumber(num);
               const tip = isMissing
                 ? `${row} · ${col}: ${missingLabel}`
-                : `${row} · ${col}: ${format(v)}`;
+                : `${row} · ${col}: ${fmt(v)}`;
               const showText =
                 showValues === "always" ||
                 (showValues === "auto" && cell >= MATRIX_VALUE_MIN_CELL);
@@ -168,7 +173,7 @@ export function MatrixHeatmap({
                       fontSize={TICK_FONT_SIZE}
                       fill={CHART_TOKEN.foreground}
                     >
-                      {isMissing ? missingLabel : format(v)}
+                      {isMissing ? missingLabel : fmt(v)}
                     </text>
                   ) : null}
                 </g>

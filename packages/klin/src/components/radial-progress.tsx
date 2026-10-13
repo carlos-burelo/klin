@@ -9,6 +9,7 @@ import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   FONT_SEMIBOLD,
   PERCENT_FACTOR,
   TICK_FONT_SIZE,
@@ -78,7 +79,7 @@ export function RadialProgress({
   color = CHART_TOKEN.chart1,
   trackColor = CHART_TOKEN.track,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,

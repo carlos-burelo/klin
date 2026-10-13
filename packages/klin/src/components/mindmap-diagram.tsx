@@ -3,12 +3,14 @@
  */
 import { hierarchy, tree } from "d3-hierarchy";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import { stableKey } from "../lib/keys";
 import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
   DIAGRAM_MIN_SCROLL,
   EDGE_WIDTH,
+  FONT_MEDIUM,
   FONT_SEMIBOLD,
   TICK_FONT_SIZE,
 } from "../lib/theme";
@@ -46,7 +48,6 @@ const VIEW_PAD_Y = 32;
 const ORIGIN_PAD_X = 24;
 const ORIGIN_PAD_Y = 16;
 const NODE_RX = 8;
-const FONT_MEDIUM = 500;
 const LABEL_DY = 4;
 
 export const MAX_MINDMAP_DEPTH = 6;
@@ -139,7 +140,7 @@ export function MindmapDiagram({
   style,
   ariaDescribedBy,
 }: MindmapDiagramProps) {
-  if (!root.label && (root.children ?? []).length === 0) {
+  if (!root.label && isBlank(root.children)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -219,7 +220,7 @@ export function MindmapDiagram({
                 height={NODE_H}
                 rx={isRoot ? NODE_H / 2 : NODE_RX}
                 fill={isRoot ? color : CHART_TOKEN.card}
-                stroke={isRoot ? "transparent" : color}
+                stroke={isRoot ? "none" : color}
                 strokeWidth={EDGE_WIDTH}
                 data-chart-tip={tip}
               />

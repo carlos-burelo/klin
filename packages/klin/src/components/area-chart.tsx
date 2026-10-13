@@ -5,37 +5,30 @@ import { scaleLinear, scalePoint } from "d3-scale";
 import { area, curveLinear, curveMonotoneX, curveStep, line } from "d3-shape";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
+import { CartesianFrame } from "../lib/cartesian";
 import { domainWithZero } from "../lib/domain";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
+import { CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColors } from "../lib/palette";
+import { seriesColors } from "../lib/palette";
 import type { ChartSeries } from "../lib/series";
 import {
-  ANNOTATION_DASH,
-  ANNOTATION_WIDTH,
   AREA_FILL_OPACITY,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   LINE_WIDTH,
   PERCENT_FACTOR,
   POINT_BORDER,
   POINT_RADIUS,
-  TICK_FONT_SIZE,
 } from "../lib/theme";
+import { pctOf, shareTip } from "../lib/tips";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
 
 const POINT_PADDING = 0.5;
-const AXIS_LABEL_OFFSET = 10;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
 
 /** Props de AreaChart. */
 export type AreaChartProps = {
@@ -90,7 +83,7 @@ export function AreaChart({
   yMin,
   yMax,
   gridTicks = GRID_TICKS,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -99,7 +92,7 @@ export function AreaChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: AreaChartProps) {
-  if (data.length === 0 || series.length === 0) {
+  if (isBlank(data) || isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -141,7 +134,7 @@ export function AreaChart({
   ).range([innerH, 0]);
   const ticks = y.ticks(gridTicks);
   const colors = seriesColors(series);
-  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmtY = resolveFormatter(formatY, locale);
   const fmt = normalize
     ? (v: number) => `${Math.round(v * PERCENT_FACTOR)}%`
     : fmtY;
@@ -150,137 +143,104 @@ export function AreaChart({
   const bases = new Map<string, number>(labels.map((l) => [l, 0]));
 
   return (
-    <div className={className} style={style}>
-      <ChartSvg
-        width={W}
-        height={height}
-        ariaLabel={ariaLabel}
-        ariaDescribedBy={ariaDescribedBy}
-      >
-        <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={fmt} />
-        {(annotations ?? []).map((a, ai) => {
-          const annLo = normalize ? 0 : lo;
-          const annHi = normalize ? 1 : hi;
-          if (a.value < annLo || a.value > annHi) return null;
-          const ay = MARGIN.top + y(a.value);
-          return (
-            <g key={`ann-${a.value}-${ai}`}>
-              <title>{a.label ?? String(a.value)}</title>
-              <line
-                x1={MARGIN.left}
-                x2={W - MARGIN.right}
-                y1={ay}
-                y2={ay}
-                stroke={a.color ?? CHART_TOKEN.accent}
-                strokeWidth={ANNOTATION_WIDTH}
-                strokeDasharray={ANNOTATION_DASH}
-              />
-              <text
-                x={W - MARGIN.right - ANNOTATION_LABEL_DX}
-                y={ay}
-                dy={ANNOTATION_LABEL_DY}
-                textAnchor="end"
-                fontSize={TICK_FONT_SIZE}
-                fill={a.color ?? CHART_TOKEN.muted}
-              >
-                {a.label ?? String(a.value)}
-              </text>
-            </g>
-          );
-        })}
-        {labels.map((label, li) => (
-          <text
-            key={stableKey([label], li)}
-            x={MARGIN.left + (x(label) ?? 0)}
-            y={height - AXIS_LABEL_OFFSET}
-            textAnchor="middle"
-            fontSize={TICK_FONT_SIZE}
-            fill={CHART_TOKEN.muted}
-          >
-            {label}
-          </text>
-        ))}
-        {series.map((s, si) => {
-          const color = colors[si] ?? CHART_TOKEN.chart1;
-          const pts = data.map((d, di) => {
-            const label = String(d[xKey] ?? "");
-            const raw = toNumber(d[s.key]);
-            // En apilado/normalize los negativos se clamp a 0.
-            const clamped = Math.max(0, raw);
-            const total = stackedTotals[di] ?? 0;
-            const value =
-              normalize && total > 0
-                ? clamped / total
-                : stacked || normalize
-                  ? clamped
-                  : raw;
-            const base = stacked || normalize ? (bases.get(label) ?? 0) : 0;
-            if (stacked || normalize)
-              bases.set(label, base + (normalize ? value : clamped));
-            return { label, value, raw, base };
-          });
-          const areaPath =
-            area<{ label: string; value: number; raw: number; base: number }>()
-              .x((p) => x(p.label) ?? 0)
-              .y0((p) => y(p.base))
-              .y1((p) => y(p.base + p.value))
-              .curve(areaCurve)(pts) ?? "";
-          const linePath =
-            line<{ label: string; value: number; raw: number; base: number }>()
-              .x((p) => x(p.label) ?? 0)
-              .y((p) => y(p.base + p.value))
-              .curve(areaCurve)(pts) ?? "";
-          return (
-            <g
-              key={s.key}
-              transform={`translate(${MARGIN.left},${MARGIN.top})`}
-            >
-              <title>{`${s.label}: total ${fmtY(pts.reduce((a, p) => a + p.raw, 0))}`}</title>
-              <path d={areaPath} fill={color} opacity={opacity} />
-              <path
-                d={linePath}
-                fill="none"
-                stroke={color}
-                strokeWidth={LINE_WIDTH}
-                strokeLinecap="round"
-              />
-              {showPoints
-                ? pts.map((p, pi) => {
-                    const baseTip = `${p.label} · ${s.label}: ${fmtY(p.raw)}`;
-                    const total = stackedTotals[pi] ?? 0;
-                    const tip = normalize
-                      ? `${p.label} · ${s.label}: ${fmtY(p.raw)} (${Math.round(p.value * PERCENT_FACTOR)}%)`
-                      : stacked && series.length >= 2 && total > 0
-                        ? `${baseTip} (${Math.round((Math.max(0, p.raw) / total) * PERCENT_FACTOR)}% del grupo)`
-                        : baseTip;
-                    return (
-                      <g key={stableKey([s.key, p.label], pi)}>
-                        <title>{tip}</title>
-                        <circle
-                          cx={x(p.label) ?? 0}
-                          cy={y(p.base + p.value)}
-                          r={POINT_RADIUS}
-                          fill={color}
-                          stroke={CHART_TOKEN.background}
-                          strokeWidth={POINT_BORDER}
-                          data-chart-tip={tip}
-                        />
-                      </g>
-                    );
-                  })
-                : null}
-            </g>
-          );
-        })}
-      </ChartSvg>
-      {showLegend ? (
-        <ChartLegend
-          items={series.map((s, i) => ({
-            label: s.label,
-            color: colors[i] ?? CHART_TOKEN.chart1,
-          }))}
-        />
-      ) : null}
-    </div>
+    <CartesianFrame
+      height={height}
+      ariaLabel={ariaLabel}
+      ariaDescribedBy={ariaDescribedBy}
+      className={className}
+      style={style}
+      ticks={ticks}
+      y={y}
+      formatY={fmt}
+      annotations={annotations}
+      annLo={normalize ? 0 : lo}
+      annHi={normalize ? 1 : hi}
+      xLabels={labels.map((label) => ({ x: x(label) ?? 0, label }))}
+      legendItems={
+        showLegend
+          ? series.map((s, i) => ({
+              label: s.label,
+              color: colors[i] ?? CHART_TOKEN.chart1,
+            }))
+          : undefined
+      }
+    >
+      {series.map((s, si) => {
+        const color = colors[si] ?? CHART_TOKEN.chart1;
+        const pts = data.map((d, di) => {
+          const label = String(d[xKey] ?? "");
+          const raw = toNumber(d[s.key]);
+          // En apilado/normalize los negativos se clamp a 0.
+          const clamped = Math.max(0, raw);
+          const total = stackedTotals[di] ?? 0;
+          const value =
+            normalize && total > 0
+              ? clamped / total
+              : stacked || normalize
+                ? clamped
+                : raw;
+          const base = stacked || normalize ? (bases.get(label) ?? 0) : 0;
+          if (stacked || normalize)
+            bases.set(label, base + (normalize ? value : clamped));
+          return { label, value, raw, base };
+        });
+        const areaPath =
+          area<{ label: string; value: number; raw: number; base: number }>()
+            .x((p) => x(p.label) ?? 0)
+            .y0((p) => y(p.base))
+            .y1((p) => y(p.base + p.value))
+            .curve(areaCurve)(pts) ?? "";
+        const linePath =
+          line<{ label: string; value: number; raw: number; base: number }>()
+            .x((p) => x(p.label) ?? 0)
+            .y((p) => y(p.base + p.value))
+            .curve(areaCurve)(pts) ?? "";
+        return (
+          <g key={s.key} transform={`translate(${MARGIN.left},${MARGIN.top})`}>
+            <title>{`${s.label}: total ${fmtY(pts.reduce((a, p) => a + p.raw, 0))}`}</title>
+            <path d={areaPath} fill={color} opacity={opacity} />
+            <path
+              d={linePath}
+              fill="none"
+              stroke={color}
+              strokeWidth={LINE_WIDTH}
+              strokeLinecap="round"
+            />
+            {showPoints
+              ? pts.map((p, pi) => {
+                  const total = stackedTotals[pi] ?? 0;
+                  const tip = normalize
+                    ? `${p.label} · ${s.label}: ${fmtY(p.raw)} (${pctOf(Math.max(0, p.raw), total)}%)`
+                    : stacked
+                      ? shareTip({
+                          label: p.label,
+                          series: s.label,
+                          formatted: fmtY(p.raw),
+                          value: Math.max(0, p.raw),
+                          total,
+                          multi: series.length >= 2,
+                          of: "grupo",
+                        })
+                      : `${p.label} · ${s.label}: ${fmtY(p.raw)}`;
+                  return (
+                    <g key={stableKey([s.key, p.label], pi)}>
+                      <title>{tip}</title>
+                      <circle
+                        cx={x(p.label) ?? 0}
+                        cy={y(p.base + p.value)}
+                        r={POINT_RADIUS}
+                        fill={color}
+                        stroke={CHART_TOKEN.background}
+                        strokeWidth={POINT_BORDER}
+                        data-chart-tip={tip}
+                      />
+                    </g>
+                  );
+                })
+              : null}
+          </g>
+        );
+      })}
+    </CartesianFrame>
   );
 }

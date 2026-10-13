@@ -8,12 +8,15 @@ import {
 } from "d3-hierarchy";
 import { arc } from "d3-shape";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_LEAVES } from "../lib/limits";
 import { toNumber } from "../lib/number";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   EDGE_LABEL_DY,
   EDGE_LABEL_FONT_SIZE,
   FONT_SEMIBOLD,
@@ -68,6 +71,8 @@ const DEFAULT_SUNBURST_SHOW_ROOT_LABEL = true;
 const DEFAULT_SUNBURST_CORNER_RADIUS = 0;
 /** Separación angular entre arcos (0 = sin separación actual). */
 const DEFAULT_SUNBURST_PAD_ANGLE = 0;
+/** Truncado de la etiqueta de arco. */
+const SUNBURST_LABEL_MAX = 12;
 
 type SunburstDatum = {
   label: string;
@@ -115,7 +120,7 @@ export function SunburstChart({
   ariaLabel,
   size = DEFAULT_SIZE,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   depth,
   showRootLabel = DEFAULT_SUNBURST_SHOW_ROOT_LABEL,
   cornerRadius = DEFAULT_SUNBURST_CORNER_RADIUS,
@@ -126,15 +131,15 @@ export function SunburstChart({
   style,
   ariaDescribedBy,
 }: SunburstChartProps) {
-  if (data.length === 0) {
+  if (isBlank(data)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const { rings, root, tops } = computeSunburstLayout(data, size, depth);
-  if (rings.length === 0) {
+  if (isBlank(rings)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
 
   const radius = size / 2;
   const total = toNumber(root.value);
@@ -217,10 +222,10 @@ export function SunburstChart({
                     dy={EDGE_LABEL_DY}
                     textAnchor="middle"
                     fontSize={EDGE_LABEL_FONT_SIZE}
-                    fill="white"
+                    fill={CHART_TOKEN.onFill}
                     transform={`rotate(${(midAngle * HALF_CIRCLE_DEG) / Math.PI - 90} ${midR * Math.cos(midAngle - Math.PI / 2)} ${midR * Math.sin(midAngle - Math.PI / 2)})`}
                   >
-                    {truncateLabel(d.data.label, 12)}
+                    {truncateLabel(d.data.label, SUNBURST_LABEL_MAX)}
                   </text>
                 ) : null}
               </g>

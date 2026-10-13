@@ -16,13 +16,16 @@ import {
   stackOrderInsideOut,
 } from "d3-shape";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import type { ChartSeries } from "../lib/series";
 import {
   CHART_TOKEN,
   CHART_WIDTH,
+  DEFAULT_LOCALE,
   GRID_WIDTH,
   POINT_RADIUS,
   TICK_FONT_SIZE,
@@ -112,8 +115,8 @@ export function Streamgraph({
   series,
   height = DEFAULT_HEIGHT,
   ariaLabel,
-  locale = "es-MX",
-  formatY = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  formatY,
   curve = "monotone",
   offset = "wiggle",
   showPoints = false,
@@ -124,7 +127,7 @@ export function Streamgraph({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: StreamgraphProps) {
-  if (data.length === 0 || series.length === 0) {
+  if (isBlank(data) || isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -143,6 +146,7 @@ export function Streamgraph({
     .range([0, innerW])
     .padding(POINT_PADDING);
   const y = scaleLinear().domain([bottom, top]).range([innerH, 0]);
+  const fmtY = resolveFormatter(formatY, locale);
   const colors = series.map((s, i) => seriesColor(i, s.color));
   const streamCurve =
     curve === "step"
@@ -186,7 +190,7 @@ export function Streamgraph({
             (a, _p, i) => a + toNumber(data[i]?.[serie.key]),
             0,
           );
-          const tip = `${serie.label}: total ${formatY(total)}`;
+          const tip = `${serie.label}: total ${fmtY(total)}`;
           return (
             <g
               key={stableKey([serie.key], si)}

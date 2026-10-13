@@ -268,7 +268,20 @@ export type {
   RootStyleProps,
   ValueAnnotation,
 } from "./lib/api";
+export type {
+  AnnotationLayerProps,
+  CartesianFrameProps,
+  CartesianLegendItem,
+  CartesianXLabel,
+} from "./lib/cartesian";
+export {
+  AnnotationLayer,
+  CARTESIAN_AXIS_OFFSET,
+  CartesianFrame,
+} from "./lib/cartesian";
 export { domainWithZero, topPositive } from "./lib/domain";
+export { isBlank } from "./lib/empty";
+export { resolveFormatter } from "./lib/format";
 export type { ChartMargin, ChartSvgProps, YGridProps } from "./lib/frame";
 export { CHART_MARGIN, CHART_W, ChartSvg, YGrid } from "./lib/frame";
 export type {
@@ -310,6 +323,7 @@ export {
   BAR_RADIUS,
   CHART_TOKEN,
   CHART_WIDTH,
+  DEFAULT_LOCALE,
   EDGE_LABEL_CHAR_WIDTH,
   EDGE_LABEL_DY,
   EDGE_LABEL_FONT_SIZE,
@@ -320,7 +334,9 @@ export {
   EDGE_WIDTH,
   ELLIPSIS,
   EMPTY_CELL_OPACITY,
+  FONT_MEDIUM,
   FONT_MONO,
+  FONT_REGULAR,
   FONT_SEMIBOLD,
   GRID_TICKS,
   GRID_WIDTH,
@@ -358,3 +374,5 @@ export {
   TOOLTIP_WIDTH,
   ZERO_MARK_PX,
 } from "./lib/theme";
+export type { ShareTipOptions } from "./lib/tips";
+export { pctOf, shareTip } from "./lib/tips";

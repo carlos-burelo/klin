@@ -2,11 +2,18 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import { type CSSProperties, useId } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
-import { CHART_TOKEN, GRID_WIDTH, ZERO_MARK_PX } from "../lib/theme";
+import { seriesColor } from "../lib/palette";
+import {
+  CHART_TOKEN,
+  DEFAULT_LOCALE,
+  GRID_WIDTH,
+  ZERO_MARK_PX,
+} from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 /** Fila de bala (valor, meta y bandas cualitativas). */
@@ -84,8 +91,8 @@ export function BulletChart({
   scaleMax = "auto",
   height,
   id,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   color,
   className,
   style,
@@ -96,9 +103,11 @@ export function BulletChart({
   // useId arriba: hooks siempre en mismo orden (antes del early return).
   const autoUid = useId().replace(/:/g, "");
   const uid = id ?? autoUid;
-  if (rows.length === 0) {
+  if (isBlank(rows)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const fmt = resolveFormatter(format, locale);
 
   const fill = seriesColor(0, color);
   const trackStyle =
@@ -142,7 +151,7 @@ export function BulletChart({
           const [lo, mid, hi] = row.ranges;
           const clipId = `${uid}-bullet-${ri}`;
           const tip =
-            `${row.label}: ${format(row.value)} (meta ${format(row.target)})` +
+            `${row.label}: ${fmt(row.value)} (meta ${fmt(row.target)})` +
             (row.detail ? ` · ${row.detail}` : "");
           const segs = [
             {
@@ -180,8 +189,8 @@ export function BulletChart({
                 </span>
                 <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums">
                   {showTargetLabel
-                    ? `${format(row.value)} / ${format(row.target)}`
-                    : format(row.value)}
+                    ? `${fmt(row.value)} / ${fmt(row.target)}`
+                    : fmt(row.value)}
                 </span>
               </div>
               <svg

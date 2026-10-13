@@ -3,6 +3,7 @@
  */
 
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import type { DagLayout } from "../lib/graph";
 import { EdgeLabel, fitNodeWidth, layoutDag } from "../lib/graph";
 import { stableKey } from "../lib/keys";
@@ -122,7 +123,7 @@ export function FlowChart({
   style,
   ariaDescribedBy,
 }: FlowChartProps) {
-  if (nodes.length === 0) {
+  if (isBlank(nodes)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -214,7 +215,7 @@ export function FlowChart({
                   fill={fillFor(kind)}
                   stroke={
                     kind === "start" || kind === "end"
-                      ? "transparent"
+                      ? "none"
                       : CHART_TOKEN.border
                   }
                   strokeWidth={EDGE_WIDTH}

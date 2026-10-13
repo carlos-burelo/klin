@@ -3,13 +3,16 @@
  */
 import { type HierarchyCircularNode, hierarchy, pack } from "d3-hierarchy";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { CHART_W, ChartSvg } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_NODES } from "../lib/limits";
 import { toNumber } from "../lib/number";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   NODE_BORDER_WIDTH,
   PERCENT_FACTOR,
   TICK_FONT_SIZE,
@@ -97,7 +100,7 @@ export function CirclePackChart({
   ariaLabel,
   height = PACK_H,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   depth = PACK_DEPTH_DEFAULT,
   showLabels = true,
   showValues = false,
@@ -115,10 +118,10 @@ export function CirclePackChart({
   const maxDepth = toNumber(depth, PACK_DEPTH_DEFAULT);
   const minD = Math.max(0, toNumber(minLabelDiameter, PACK_LABEL_MIN_D));
   const visible = bubbles.filter((b) => b.depth <= maxDepth);
-  if (visible.filter((b) => b.depth > 0).length === 0) {
+  if (isBlank(visible.filter((b) => b.depth > 0))) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
 
   return (
     <ChartSvg

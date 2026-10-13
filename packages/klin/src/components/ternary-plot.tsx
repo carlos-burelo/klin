@@ -2,14 +2,16 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   FONT_SEMIBOLD,
   GRID_TICKS,
   GRID_WIDTH,
@@ -82,8 +84,8 @@ export function TernaryPlot({
   bLabel = "B",
   cLabel = "C",
   height = 260,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   className,
   style,
   ariaDescribedBy,
@@ -115,6 +117,8 @@ export function TernaryPlot({
   if (clean.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const fmt = resolveFormatter(format, locale);
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
@@ -207,9 +211,9 @@ export function TernaryPlot({
           const pos = toXY(p.a, p.b, p.c);
           const head = p.label ? `${p.label}: ` : "";
           const tip =
-            `${head}${format(p.a * PERCENT_FACTOR)}% · ` +
-            `${format(p.b * PERCENT_FACTOR)}% · ` +
-            `${format(p.c * PERCENT_FACTOR)}%`;
+            `${head}${fmt(p.a * PERCENT_FACTOR)}% · ` +
+            `${fmt(p.b * PERCENT_FACTOR)}% · ` +
+            `${fmt(p.c * PERCENT_FACTOR)}%`;
           return (
             <g key={stableKey([p.label ?? `${p.a}-${p.b}-${p.c}`], i)}>
               <title>{tip}</title>

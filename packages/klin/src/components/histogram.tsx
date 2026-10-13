@@ -6,6 +6,8 @@ import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { topPositive } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import {
   ChartSvg,
   CHART_MARGIN as MARGIN,
@@ -14,17 +16,18 @@ import {
 } from "../lib/frame";
 import { sumNumbers, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   MIN_SHAPE_PX,
-  PERCENT_FACTOR,
   TICK_FONT_SIZE,
 } from "../lib/theme";
+import { pctOf } from "../lib/tips";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 /** Props de Histogram. */
@@ -66,7 +69,7 @@ export function Histogram({
   height = 240,
   format,
   color,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   showMean = false,
   domain,
   className,
@@ -89,7 +92,7 @@ export function Histogram({
     hasClip && domain !== undefined
       ? clean.filter((v) => v >= clipLo && v <= clipHi)
       : clean;
-  if (scoped.length === 0) {
+  if (isBlank(scoped)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -111,7 +114,7 @@ export function Histogram({
   const ticks = y.ticks(GRID_TICKS);
   const fill = seriesColor(2, color);
   const total = scoped.length;
-  const fmtTick = format ?? ((v: number) => formatDefault(v, locale));
+  const fmtTick = resolveFormatter(format, locale);
   const mean = sumNumbers(scoped) / scoped.length;
   const median =
     quantileSorted(
@@ -167,7 +170,7 @@ export function Histogram({
           MIN_SHAPE_PX,
           x(b.x1 ?? 0) - x(b.x0 ?? 0) - BUCKET_INSET_PX * 2,
         );
-        const tip = `${fmtTick(b.x0 ?? 0)} – ${fmtTick(b.x1 ?? 0)}: ${b.length} (${total > 0 ? Math.round((b.length / total) * PERCENT_FACTOR) : 0}% · ${total} total)`;
+        const tip = `${fmtTick(b.x0 ?? 0)} – ${fmtTick(b.x1 ?? 0)}: ${b.length} (${pctOf(b.length, total)}% · ${total} total)`;
         return (
           <g key={`${b.x0}-${b.x1}__${i}`}>
             <title>{tip}</title>

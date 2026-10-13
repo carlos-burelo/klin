@@ -2,10 +2,12 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import { stableKey } from "../lib/keys";
 import { truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   DIAGRAM_MIN_SCROLL,
   EDGE_LABEL_FONT_SIZE,
   FONT_MONO,
@@ -48,8 +50,6 @@ const TIMELINE_MARGIN = 24;
 const TIMELINE_LANE = 76;
 /** Carril vertical en densidad compacta. */
 const TIMELINE_LANE_COMPACT = 52;
-/** Locale por defecto (crudo para preservar comportamiento). */
-const TIMELINE_DEFAULT_LOCALE = "es-MX";
 const TIMELINE_BASE_PAD = 56;
 const TIMELINE_MID_PAD = 28;
 const NODE_FONT_SIZE = 12;
@@ -95,7 +95,7 @@ export function TimelineChart({
   side = "alternate",
   showDates = true,
   density = "comfortable",
-  locale = TIMELINE_DEFAULT_LOCALE,
+  locale = DEFAULT_LOCALE,
   formatDate,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -103,7 +103,7 @@ export function TimelineChart({
   style,
   ariaDescribedBy,
 }: TimelineChartProps) {
-  if (events.length === 0) {
+  if (isBlank(events)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -114,7 +114,7 @@ export function TimelineChart({
     const parsed = new Date(`${raw}T12:00:00`);
     if (Number.isNaN(parsed.getTime())) return raw;
     if (formatDate) return formatDate(parsed);
-    if (locale !== TIMELINE_DEFAULT_LOCALE) {
+    if (locale !== DEFAULT_LOCALE) {
       try {
         return parsed.toLocaleDateString(locale, {
           day: "numeric",

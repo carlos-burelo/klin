@@ -3,6 +3,7 @@
  */
 
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import type { DagLayout } from "../lib/graph";
 import { EdgeLabel, fitNodeWidth, layoutDag } from "../lib/graph";
 import { stableKey } from "../lib/keys";
@@ -125,7 +126,7 @@ export function StateDiagram({
   style,
   ariaDescribedBy,
 }: StateDiagramProps) {
-  if (nodes.length === 0) {
+  if (isBlank(nodes)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

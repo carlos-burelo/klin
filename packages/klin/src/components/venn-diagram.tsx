@@ -2,10 +2,18 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
-import { formatDefault, seriesColor } from "../lib/palette";
-import { CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
+import { seriesColor } from "../lib/palette";
+import {
+  CHART_TOKEN,
+  DEFAULT_LOCALE,
+  FONT_SEMIBOLD,
+  LINK_OPACITY,
+  PERCENT_FACTOR,
+  TICK_DY,
+} from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -92,7 +100,7 @@ export function VennDiagram({
   ariaLabel,
   size = 340,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   showPercent = DEFAULT_VENN_SHOW_PERCENT,
   universe,
   emptyTitle = EMPTY_TITLE,
@@ -133,7 +141,7 @@ export function VennDiagram({
       (x) => [x.sets.join(","), toNumber(x.value)] as const,
     ),
   );
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
   const withPercent =
     showPercent && Number.isFinite(universe) && (universe as number) > 0;
   const fmtShare = (v: number) =>
@@ -176,7 +184,7 @@ export function VennDiagram({
                 cy={c.y}
                 r={r}
                 fill={color}
-                fillOpacity={0.35}
+                fillOpacity={LINK_OPACITY}
                 stroke={color}
                 strokeWidth={2}
                 data-chart-tip={tip}
@@ -193,9 +201,9 @@ export function VennDiagram({
                 x={rg.x}
                 y={rg.y}
                 textAnchor="middle"
-                dy={4}
+                dy={TICK_DY}
                 fontSize={12}
-                fontWeight={600}
+                fontWeight={FONT_SEMIBOLD}
                 fill={CHART_TOKEN.foreground}
                 data-chart-tip={tip}
               >
@@ -214,9 +222,9 @@ export function VennDiagram({
               x={lp.x}
               y={lp.y}
               textAnchor="middle"
-              dy={4}
+              dy={TICK_DY}
               fontSize={12}
-              fontWeight={600}
+              fontWeight={FONT_SEMIBOLD}
               fill={CHART_TOKEN.foreground}
             >
               {sets[ci]?.label}

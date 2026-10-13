@@ -10,13 +10,17 @@ import {
   treemapSquarify,
 } from "d3-hierarchy";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_LEAVES } from "../lib/limits";
 import { toNumber } from "../lib/number";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   BAR_RADIUS,
+  CHART_TOKEN,
   CHART_WIDTH,
+  DEFAULT_LOCALE,
   FONT_SEMIBOLD,
   PERCENT_FACTOR,
   TICK_FONT_SIZE,
@@ -34,6 +38,8 @@ export type TreemapNode = {
 export type TreemapChartProps = {
   data: TreemapNode[];
   ariaLabel: string;
+  /** Alto del mapa (layout y viewBox). */
+  height?: number;
   format?: (value: number) => string;
   locale?: string;
   /** Algoritmo de partición del rectángulo. */
@@ -91,12 +97,13 @@ export type TreemapLeaf = HierarchyRectangularNode<TreemapDatum>;
 export function computeTreemapLayout(
   data: TreemapNode[],
   tiling: "squarify" | "slice" | "dice" = DEFAULT_TREEMAP_TILING,
+  height: number = TREEMAP_H,
 ): {
   leaves: TreemapLeaf[];
   topLabels: string[];
 } {
   const root: TreemapLeaf = treemap<TreemapDatum>()
-    .size([CHART_WIDTH, TREEMAP_H])
+    .size([CHART_WIDTH, height])
     .paddingOuter(TREEMAP_GAP)
     .paddingInner(TREEMAP_GAP)
     .tile(TREEMAP_TILING_FNS[tiling] ?? treemapSquarify)
@@ -124,8 +131,9 @@ export function computeTreemapLayout(
 export function TreemapChart({
   data,
   ariaLabel,
+  height = TREEMAP_H,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   tiling = DEFAULT_TREEMAP_TILING,
   showValues = DEFAULT_TREEMAP_SHOW_VALUES,
   minLabelArea,
@@ -136,20 +144,20 @@ export function TreemapChart({
   style,
   ariaDescribedBy,
 }: TreemapChartProps) {
-  if (data.length === 0) {
+  if (isBlank(data)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { leaves, topLabels } = computeTreemapLayout(data, tiling);
-  if (leaves.length === 0) {
+  const { leaves, topLabels } = computeTreemapLayout(data, tiling, height);
+  if (isBlank(leaves)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
   const total = leaves.reduce((acc, l) => acc + toNumber(l.value), 0);
 
   return (
     <svg
-      viewBox={`0 0 ${CHART_WIDTH} ${TREEMAP_H}`}
+      viewBox={`0 0 ${CHART_WIDTH} ${height}`}
       className={className ? `h-auto w-full ${className}` : "h-auto w-full"}
       style={style}
       role="img"
@@ -201,7 +209,7 @@ export function TreemapChart({
                   y={leaf.y0 + LABEL_DY}
                   fontSize={NODE_FONT_SIZE}
                   fontWeight={FONT_SEMIBOLD}
-                  fill="white"
+                  fill={CHART_TOKEN.onFill}
                 >
                   {truncateLabel(leaf.data.label, Math.floor(w / CHAR_PER_PX))}
                 </text>
@@ -210,7 +218,7 @@ export function TreemapChart({
                     x={leaf.x0 + LABEL_X}
                     y={leaf.y0 + VALUE_DY}
                     fontSize={TICK_FONT_SIZE}
-                    fill="white"
+                    fill={CHART_TOKEN.onFill}
                     opacity={VALUE_OPACITY}
                   >
                     {fmt(value)}

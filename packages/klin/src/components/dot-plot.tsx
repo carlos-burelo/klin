@@ -5,17 +5,20 @@ import { scaleBand, scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { domainWithZero } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import type { ChartMargin } from "../lib/frame";
 import { ChartSvg } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   FONT_SEMIBOLD,
   GRID_TICKS,
   GRID_WIDTH,
@@ -90,8 +93,8 @@ export function DotPlot({
   valueKey,
   ariaLabel,
   height = 260,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   color,
   itemColor,
   className,
@@ -125,7 +128,7 @@ export function DotPlot({
       sortMode === "asc" ? a.value - b.value : b.value - a.value,
     );
   }
-  if (computed.length === 0) {
+  if (isBlank(computed)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -141,6 +144,7 @@ export function DotPlot({
     .range([0, innerH])
     .padding(DOT_BAND_PADDING);
   const ticks = x.ticks(safeTicks);
+  const fmt = resolveFormatter(format, locale);
   const fill = seriesColor(0, color);
   const x0 = DOT_MARGIN.left + x(0);
 
@@ -170,7 +174,7 @@ export function DotPlot({
             fontSize={TICK_FONT_SIZE}
             fill={CHART_TOKEN.muted}
           >
-            {format(t)}
+            {fmt(t)}
           </text>
         </g>
       ))}
@@ -180,7 +184,7 @@ export function DotPlot({
         const stroke = a.color ?? CHART_TOKEN.accent;
         return (
           <g key={stableKey([a.label ?? `${a.value}`], ai)}>
-            <title>{a.label ?? format(a.value)}</title>
+            <title>{a.label ?? fmt(a.value)}</title>
             <line
               x1={ax}
               x2={ax}
@@ -206,7 +210,7 @@ export function DotPlot({
       {computed.map((r, ri) => {
         const cy = DOT_MARGIN.top + (y0(r.label) ?? 0) + y0.bandwidth() / 2;
         const cx = DOT_MARGIN.left + x(r.value);
-        const tip = `${r.label}: ${format(r.value)}`;
+        const tip = `${r.label}: ${fmt(r.value)}`;
         const c = itemColor?.(r.datum, ri) ?? fill;
         const right = r.value >= 0;
         return (
@@ -253,7 +257,7 @@ export function DotPlot({
                 fontWeight={FONT_SEMIBOLD}
                 fill={CHART_TOKEN.foreground}
               >
-                {format(r.value)}
+                {fmt(r.value)}
               </text>
             ) : null}
           </g>

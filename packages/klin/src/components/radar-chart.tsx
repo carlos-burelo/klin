@@ -10,6 +10,7 @@ import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_WIDTH,
   LINE_WIDTH,
   POINT_BORDER,
@@ -78,7 +79,7 @@ export function RadarChart({
   fillOpacity = RADAR_FILL_OPACITY,
   showVertices = true,
   scale = "linear",
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   format = (v: number) => formatDefault(v, locale),
   showLegend = true,
   className,

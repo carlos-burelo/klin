@@ -2,12 +2,14 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   DIAGRAM_MIN_SCROLL,
   EDGE_LABEL_FONT_SIZE,
   EMPTY_CELL_OPACITY,
@@ -69,8 +71,8 @@ export function CalendarHeatmap({
   showMonthLabels = true,
   showWeekdayLabels = true,
   showLegend = true,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   color,
   className,
   style,
@@ -82,6 +84,8 @@ export function CalendarHeatmap({
   if (entries.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const fmt = resolveFormatter(format, locale);
 
   const weekCount = Math.max(1, Math.floor(toNumber(weeks)));
   const endDate = end ? new Date(`${end}T12:00:00`) : new Date();
@@ -192,8 +196,8 @@ export function CalendarHeatmap({
               ? ""
               : weekdayFmt.format(fecha);
             const tip = weekday
-              ? `${key} (${weekday}): ${format(v)}`
-              : `${key}: ${format(v)}`;
+              ? `${key} (${weekday}): ${fmt(v)}`
+              : `${key}: ${fmt(v)}`;
             return (
               <g key={key}>
                 <title>{tip}</title>

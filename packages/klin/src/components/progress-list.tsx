@@ -2,11 +2,13 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
-import { CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
+import { seriesColor } from "../lib/palette";
+import { CHART_TOKEN, DEFAULT_LOCALE, PERCENT_FACTOR } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 /** Fila de progreso (etiqueta, valor, total y detalle opcionales). */
@@ -72,8 +74,8 @@ export function ProgressList({
   barHeight = "md",
   showPercent = true,
   status,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   color,
   className,
   style,
@@ -81,9 +83,10 @@ export function ProgressList({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: ProgressListProps) {
-  if (rows.length === 0) {
+  if (isBlank(rows)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+  const fmt = resolveFormatter(format, locale);
   const fill = seriesColor(0, color);
 
   return (
@@ -107,7 +110,7 @@ export function ProgressList({
         const rounded = Math.round(pct);
         const barColor = status ? (STATUS_FILL[status(pct)] ?? fill) : fill;
         const tip =
-          `${row.label}: ${format(value)} de ${format(toNumber(row.total ?? row.value))}` +
+          `${row.label}: ${fmt(value)} de ${fmt(toNumber(row.total ?? row.value))}` +
           (row.detail ? ` (${row.detail})` : "");
         return (
           <div
@@ -123,7 +126,7 @@ export function ProgressList({
                 {row.label}
               </span>
               <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums">
-                {showPercent ? `${format(value)} · ${rounded}%` : format(value)}
+                {showPercent ? `${fmt(value)} · ${rounded}%` : fmt(value)}
               </span>
             </div>
             <div

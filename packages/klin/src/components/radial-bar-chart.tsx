@@ -4,14 +4,17 @@
 
 import { arc } from "d3-shape";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { clamp01, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   FONT_MONO,
   FONT_SEMIBOLD,
   LABEL_GAP_PX,
@@ -88,7 +91,7 @@ export function RadialBarChart({
   ariaLabel,
   height = 260,
   formatValue,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   showLabels = true,
   showValues = true,
   sortSlices = false,
@@ -104,7 +107,7 @@ export function RadialBarChart({
   emptyDescription,
 }: RadialBarChartProps) {
   const base = series.slice(0, DEFAULT_MAX_ROWS);
-  if (base.length === 0) {
+  if (isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
   const fracOf = (s: RadialBarDatum) => {
@@ -116,7 +119,7 @@ export function RadialBarChart({
     ? [...base].sort((a, b) => fracOf(b).frac - fracOf(a).frac)
     : base;
 
-  const fmt = formatValue ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(formatValue, locale);
   const start = toNumber(startAngle, RADIAL_BAR_START);
   const corner = Math.max(0, toNumber(cornerRadius, RING_CORNER_DEFAULT));
   const plotW = W - MARGIN.left - MARGIN.right - LABEL_COL_W;

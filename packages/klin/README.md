@@ -15,7 +15,7 @@ Sin `recharts`, sin `ResponsiveContainer`, sin `"use client"` en el núcleo.
   `mouseover` sobre `[data-chart-tip]` + `createPortal` a `document.body` con Tailwind.
   Nativo `<title>` siempre presente para accesibilidad y táctil.
 - **Tema.** Colores por defecto `var(--chart-1…5)`; se puede pasar cualquier token
-  (`var(--color-primary)`, `var(--color-muted-foreground)`…). Sin hex sueltos.
+  (`var(--primary)`, `var(--muted-foreground)`…). Sin hex sueltos.
 - **A11y.** `role="img"`, `aria-label`, `<title>` por forma.
 
 ## Uso
@@ -154,7 +154,7 @@ Toda gráfica nueva sigue esta spec para que el set se vea uno solo:
 - **Geometría**: barras/buckets/celdas/columnas con `rx=4`; pistas tipo píldora
   (`rounded-full` o recorte); puntos `r=3.5` con borde `var(--background)` de `1.5`
   (dispersión `r=4.5`, radar `r=3`); líneas `2px round`; grid `var(--border)` de `1`.
-- **Texto**: ejes y ticks `11px var(--color-muted-foreground)`; valores destacados
+- **Texto**: ejes y ticks `11px var(--muted-foreground)`; valores destacados
   `tabular-nums` (`font-mono` en HTML); leyenda `text-xs` vía `ChartLegend`.
 - **Color**: solo tokens (`CHART_TOKEN` en `src/lib/theme.ts`, nunca `var(--*)`
   suelto ni hex). Serie N → `seriesColor(N, override)`, fallback `CHART_TOKEN.chart1`.
@@ -163,6 +163,11 @@ Toda gráfica nueva sigue esta spec para que el set se vea uno solo:
   `GRID_TICKS`, `PERCENT_FACTOR`, `CHART_TOKEN`…), layouts en `DAG_DEFAULTS` y
   `src/lib/limits.ts`, resto en const locales (`GROUP_BAND_PADDING`, `NODE_RX_PROCESS`,
   `GLYPH_FRAME`…). Excepciones: `0/1/2` en índices y centrado (`/ 2`).
+- **Sin clonar**: cartesianos usan `CartesianFrame` + `AnnotationLayer`
+  (`src/lib/cartesian.tsx`); tips con `shareTip`/`pctOf` (`src/lib/tips.ts`);
+  guards con `isBlank` (`src/lib/empty.ts`); formateador con
+  `resolveFormatter` (`src/lib/format.ts`). Nuevo patrón repetido =
+  nueva primitiva en `lib/`, no tercer copiado.
 - **Tooltip**: cada forma lleva `<title>` (texto plano) + `data-chart-tip` con el
   mismo texto. Nada de estado ni handlers en el núcleo. El portal acelera con
   `rAF`, sigue `focus`/`touch`, cierra con `Escape` y voltea si no cabe abajo.
@@ -180,7 +185,7 @@ Toda gráfica nueva sigue esta spec para que el set se vea uno solo:
   obligatoria en la raíz.
 - **Diagramas**: layout en `src/lib/graph.tsx` (`layoutDag` + `EdgeLabel`);
   nodos con `rx` de la línea (8 proceso/clase/ER, 12 estados, píldora inicio/fin),
-  flechas `1.5px var(--color-muted-foreground)` y etiquetas de arista en píldora
+  flechas `1.5px var(--muted-foreground)` y etiquetas de arista en píldora
   mono de `10px`.
 - **Variantes**: si el tipo admite multi-serie, apilado o 100 %, se expone por
   props (`series[]`, `stacked`, `normalize`, `percentOf`) en vez de otro componente.

@@ -5,14 +5,16 @@ import { forceCollide, forceSimulation, forceX, forceY } from "d3-force";
 import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import { domainWithZero } from "../lib/domain";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   NETWORK_SEED,
@@ -165,7 +167,7 @@ export function BeeswarmPlot({
   radius = POINT_RADIUS_SCATTER,
   height = 260,
   formatX,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -184,7 +186,7 @@ export function BeeswarmPlot({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const fmtX = formatX ?? ((v: number) => formatDefault(v, locale));
+  const fmtX = resolveFormatter(formatX, locale);
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
   const safeTicks = Math.max(

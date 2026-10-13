@@ -3,12 +3,14 @@
  */
 
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import type { ChartMargin } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { clamp01, toNumber } from "../lib/number";
 import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   EDGE_LABEL_FONT_SIZE,
   EDGE_WIDTH,
   FONT_MONO,
@@ -50,6 +52,8 @@ export type WardleyMapProps = {
   stages?: [string, string, string, string];
   /** Radio fijo o proporcional al grado (nº de enlaces). */
   nodeSize?: "fixed" | "edges";
+  /** Locale del porcentaje de evolución. */
+  locale?: string;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -116,13 +120,14 @@ export function WardleyMap({
   showGridLabels = DEFAULT_WARDLEY_SHOW_GRID_LABELS,
   stages = DEFAULT_WARDLEY_STAGES,
   nodeSize = DEFAULT_WARDLEY_NODE_SIZE,
+  locale = DEFAULT_LOCALE,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
   style,
   ariaDescribedBy,
 }: WardleyMapProps) {
-  if (nodes.length === 0) {
+  if (isBlank(nodes)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -254,7 +259,7 @@ export function WardleyMap({
               fontFamily={FONT_MONO}
               fill={CHART_TOKEN.muted}
             >
-              {`${formatDefault(Math.round(n.nx * PERCENT_FACTOR))}%`}
+              {`${formatDefault(Math.round(n.nx * PERCENT_FACTOR), locale)}%`}
             </text>
           </g>
         );

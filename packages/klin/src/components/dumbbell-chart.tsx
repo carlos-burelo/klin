@@ -5,17 +5,20 @@ import { scaleBand, scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { domainWithZero } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import type { ChartMargin } from "../lib/frame";
 import { ChartSvg } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, truncateLabel } from "../lib/palette";
+import { truncateLabel } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   LINE_WIDTH,
@@ -89,8 +92,8 @@ export function DumbbellChart({
   bLabel,
   ariaLabel,
   height,
-  locale = "es-MX",
-  formatX = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  formatX,
   className,
   style,
   ariaDescribedBy,
@@ -111,7 +114,7 @@ export function DumbbellChart({
     if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
     computed.push({ label: String(d[categoryKey] ?? ""), a, b });
   }
-  if (computed.length === 0) {
+  if (isBlank(computed)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
   const ordered =
@@ -151,6 +154,7 @@ export function DumbbellChart({
     .range([0, innerH])
     .padding(GROUP_BAND_PADDING);
   const ticks = x.ticks(safeTicks);
+  const fmtX = resolveFormatter(formatX, locale);
 
   return (
     <div className={className} style={style}>
@@ -177,7 +181,7 @@ export function DumbbellChart({
               fontSize={TICK_FONT_SIZE}
               fill={CHART_TOKEN.muted}
             >
-              {formatX(t)}
+              {fmtX(t)}
             </text>
           </g>
         ))}
@@ -187,7 +191,7 @@ export function DumbbellChart({
           const stroke = a.color ?? CHART_TOKEN.accent;
           return (
             <g key={stableKey([a.label ?? `${a.value}`], ai)}>
-              <title>{a.label ?? formatX(a.value)}</title>
+              <title>{a.label ?? fmtX(a.value)}</title>
               <line
                 x1={ax}
                 x2={ax}
@@ -215,8 +219,8 @@ export function DumbbellChart({
           const xa = MARGIN.left + x(r.a);
           const xb = MARGIN.left + x(r.b);
           const mid = (xa + xb) / 2;
-          const tipA = `${r.label} · ${aLabel}: ${formatX(r.a)}`;
-          const tipB = `${r.label} · ${bLabel}: ${formatX(r.b)}`;
+          const tipA = `${r.label} · ${aLabel}: ${fmtX(r.a)}`;
+          const tipB = `${r.label} · ${bLabel}: ${fmtX(r.b)}`;
           return (
             <g key={stableKey([r.label], ri)}>
               <text
@@ -280,7 +284,7 @@ export function DumbbellChart({
                     fontSize={TICK_FONT_SIZE}
                     fill={CHART_TOKEN.foreground}
                   >
-                    {formatX(r.a)}
+                    {fmtX(r.a)}
                   </text>
                   <text
                     x={xb + TICK_GAP_PX}
@@ -290,7 +294,7 @@ export function DumbbellChart({
                     fontSize={TICK_FONT_SIZE}
                     fill={CHART_TOKEN.foreground}
                   >
-                    {formatX(r.b)}
+                    {fmtX(r.b)}
                   </text>
                 </>
               ) : null}

@@ -32,6 +32,10 @@ export const TICK_DY = 4;
 export const LABEL_GAP_PX = 4;
 export const NODE_BORDER_WIDTH = 2;
 export const FONT_SEMIBOLD = 600;
+/** Grosor regular (texto de diagrama no destacado). */
+export const FONT_REGULAR = 400;
+/** Grosor medio (títulos de nodo). */
+export const FONT_MEDIUM = 500;
 /** Tipografía de etiqueta de arista. */
 export const EDGE_LABEL_FONT_SIZE = 10;
 /** Ancho aprox por carácter en EdgeLabel. */
@@ -83,10 +87,15 @@ export const CHART_TOKEN = {
   primary: "var(--primary)",
   primaryForeground: "var(--primary-foreground)",
   card: "var(--card)",
+  /** Texto sobre rellenos de color (acromático, legible en ambos temas). */
+  onFill: "#ffffff",
 } as const;
 
 /** Fuente monoespaciada del tema (con fallback). */
 export const FONT_MONO = "var(--font-mono, monospace)";
+
+/** Locale por defecto de todos los formateadores. */
+export const DEFAULT_LOCALE = "es-MX";
 
 /** Truncado de etiquetas de eje. */
 export const LABEL_MAX_DEFAULT = 14;

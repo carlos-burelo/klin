@@ -14,6 +14,7 @@ import {
   ANNOTATION_WIDTH,
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   MIN_SHAPE_PX,
 } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
@@ -77,7 +78,7 @@ export function Sparkline({
   width = 120,
   height = 36,
   color,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,

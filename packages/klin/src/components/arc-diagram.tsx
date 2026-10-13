@@ -2,6 +2,7 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_LINKS, DEFAULT_MAX_NODES } from "../lib/limits";
 import { seriesColor, truncateLabel } from "../lib/palette";
@@ -117,7 +118,7 @@ export function ArcDiagram({
   style,
   ariaDescribedBy,
 }: ArcDiagramProps) {
-  if (nodes.length === 0) {
+  if (isBlank(nodes)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

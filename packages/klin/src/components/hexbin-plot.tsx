@@ -5,6 +5,7 @@ import { max, min } from "d3-array";
 import { hexbin } from "d3-hexbin";
 import { type ScaleLinear, scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import {
   ChartSvg,
   CHART_MARGIN as MARGIN,
@@ -15,15 +16,16 @@ import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
-  PERCENT_FACTOR,
   POINT_BORDER,
   TICK_FONT_SIZE,
 } from "../lib/theme";
+import { pctOf } from "../lib/tips";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -197,7 +199,7 @@ export function HexbinPlot({
   radius = DEFAULT_HEX_RADIUS,
   height = 260,
   formatValue,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -225,7 +227,7 @@ export function HexbinPlot({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const fmt = formatValue ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(formatValue, locale);
   const { x, y } = hexScales(
     cleanHexPoints(points, maxItems),
     innerW,
@@ -275,8 +277,7 @@ export function HexbinPlot({
           : null}
         <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
           {bins.map((b, i) => {
-            const pct =
-              total > 0 ? Math.round((b.count / total) * PERCENT_FACTOR) : 0;
+            const pct = pctOf(b.count, total);
             const tip = showCounts
               ? `celda: ${fmt(b.count)} puntos (${pct}%)`
               : `celda: ${pct}%`;

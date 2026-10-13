@@ -4,11 +4,13 @@
 
 import { arc } from "d3-shape";
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import { clamp01, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { formatDefault } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   EDGE_LABEL_FONT_SIZE,
   FONT_SEMIBOLD,
   PERCENT_FACTOR,
@@ -86,7 +88,7 @@ export function GaugeChart({
   color = CHART_TOKEN.chart1,
   trackColor = CHART_TOKEN.track,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -122,6 +124,8 @@ export function GaugeChart({
     y: radius + needleLen * Math.sin(needleAngle),
   };
   const fmt = format ?? ((v: number) => `${formatDefault(v, locale)}%`);
+  // Ticks con el prop `format` resuelto (sin sufijo %: como hasta ahora).
+  const fmtTick = resolveFormatter(format, locale);
   const tip = `${label ? `${label}: ` : ""}${fmt(clamped)}`;
   const tick = (f: number) => {
     const a = START + f * Math.PI;
@@ -208,7 +212,7 @@ export function GaugeChart({
               fontSize={EDGE_LABEL_FONT_SIZE}
               fill={CHART_TOKEN.muted}
             >
-              {formatDefault(p.value, locale)}
+              {fmtTick(p.value)}
             </text>
           </g>
         );

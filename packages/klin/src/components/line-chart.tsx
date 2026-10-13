@@ -5,37 +5,29 @@ import { scaleLinear, scalePoint } from "d3-scale";
 import { area, curveLinear, curveMonotoneX, curveStep, line } from "d3-shape";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
+import { CartesianFrame } from "../lib/cartesian";
 import { domainWithZero } from "../lib/domain";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
+import { CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColors } from "../lib/palette";
+import { seriesColors } from "../lib/palette";
 import type { ChartSeries } from "../lib/series";
 import {
-  ANNOTATION_DASH,
-  ANNOTATION_WIDTH,
   AREA_FILL_OPACITY,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   LINE_WIDTH,
-  PERCENT_FACTOR,
   POINT_BORDER,
   POINT_RADIUS,
-  TICK_FONT_SIZE,
 } from "../lib/theme";
+import { shareTip } from "../lib/tips";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
 
 const POINT_PADDING = 0.5;
-const AXIS_LABEL_OFFSET = 10;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
 
 /** Props de LineChart. */
 export type LineChartProps = {
@@ -84,7 +76,7 @@ export function LineChart({
   yMin,
   yMax,
   gridTicks = GRID_TICKS,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -93,11 +85,11 @@ export function LineChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: LineChartProps) {
-  if (data.length === 0 || series.length === 0) {
+  if (isBlank(data) || isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmtY = resolveFormatter(formatY, locale);
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
@@ -124,6 +116,12 @@ export function LineChart({
   const totals = data.map((d) =>
     series.reduce((acc, s) => acc + toNumber(d[s.key]), 0),
   );
+  const legendItems = showLegend
+    ? series.map((s, i) => ({
+        label: s.label,
+        color: colors[i] ?? CHART_TOKEN.chart1,
+      }))
+    : undefined;
 
   const lineCurve =
     curve === "step"
@@ -156,109 +154,71 @@ export function LineChart({
     );
 
   return (
-    <div className={className} style={style}>
-      <ChartSvg
-        width={W}
-        height={height}
-        ariaLabel={ariaLabel}
-        ariaDescribedBy={ariaDescribedBy}
-      >
-        <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={fmtY} />
-        {(annotations ?? []).map((a, ai) => {
-          if (a.value < lo || a.value > hi) return null;
-          const ay = MARGIN.top + y(a.value);
-          return (
-            <g key={`ann-${a.value}-${ai}`}>
-              <title>{a.label ?? String(a.value)}</title>
-              <line
-                x1={MARGIN.left}
-                x2={W - MARGIN.right}
-                y1={ay}
-                y2={ay}
-                stroke={a.color ?? CHART_TOKEN.accent}
-                strokeWidth={ANNOTATION_WIDTH}
-                strokeDasharray={ANNOTATION_DASH}
-              />
-              <text
-                x={W - MARGIN.right - ANNOTATION_LABEL_DX}
-                y={ay}
-                dy={ANNOTATION_LABEL_DY}
-                textAnchor="end"
-                fontSize={TICK_FONT_SIZE}
-                fill={a.color ?? CHART_TOKEN.muted}
-              >
-                {a.label ?? String(a.value)}
-              </text>
-            </g>
-          );
-        })}
-        {labels.map((label, li) => (
-          <text
-            key={stableKey([label], li)}
-            x={MARGIN.left + (x(label) ?? 0)}
-            y={height - AXIS_LABEL_OFFSET}
-            textAnchor="middle"
-            fontSize={TICK_FONT_SIZE}
-            fill={CHART_TOKEN.muted}
-          >
-            {label}
-          </text>
-        ))}
-        {series.map((s, si) => (
-          <g key={s.key}>
-            {showArea ? (
-              <path
-                d={areaFor(s.key) ?? ""}
-                transform={`translate(${MARGIN.left},${MARGIN.top})`}
-                fill={colors[si] ?? CHART_TOKEN.chart1}
-                opacity={AREA_FILL_OPACITY}
-              />
-            ) : null}
+    <CartesianFrame
+      height={height}
+      ariaLabel={ariaLabel}
+      ariaDescribedBy={ariaDescribedBy}
+      className={className}
+      style={style}
+      ticks={ticks}
+      y={y}
+      formatY={fmtY}
+      annotations={annotations}
+      annLo={lo}
+      annHi={hi}
+      xLabels={labels.map((label) => ({ x: x(label) ?? 0, label }))}
+      legendItems={legendItems}
+    >
+      {series.map((s, si) => (
+        <g key={s.key}>
+          {showArea ? (
             <path
-              d={pathFor(s.key) ?? ""}
+              d={areaFor(s.key) ?? ""}
               transform={`translate(${MARGIN.left},${MARGIN.top})`}
-              fill="none"
-              stroke={colors[si] ?? CHART_TOKEN.chart1}
-              strokeWidth={LINE_WIDTH}
-              strokeLinecap="round"
+              fill={colors[si] ?? CHART_TOKEN.chart1}
+              opacity={AREA_FILL_OPACITY}
             />
-            {showPoints
-              ? data.map((d, di2) => {
-                  const label = String(d[xKey] ?? "");
-                  const value = toNumber(d[s.key]);
-                  const total = totals[di2] ?? 0;
-                  const baseTip = `${label} · ${s.label}: ${fmtY(value)}`;
-                  const tip =
-                    series.length >= 2 && total > 0
-                      ? `${baseTip} (${Math.round((value / total) * PERCENT_FACTOR)}% del grupo)`
-                      : baseTip;
-                  return (
-                    <g key={stableKey([s.key, label], di2)}>
-                      <title>{tip}</title>
-                      <circle
-                        cx={MARGIN.left + (x(label) ?? 0)}
-                        cy={MARGIN.top + y(value)}
-                        r={POINT_RADIUS}
-                        fill={colors[si] ?? CHART_TOKEN.chart1}
-                        stroke={CHART_TOKEN.background}
-                        strokeWidth={POINT_BORDER}
-                        data-chart-tip={tip}
-                      />
-                    </g>
-                  );
-                })
-              : null}
-          </g>
-        ))}
-      </ChartSvg>
-      {showLegend ? (
-        <ChartLegend
-          items={series.map((s, i) => ({
-            label: s.label,
-            color: colors[i] ?? CHART_TOKEN.chart1,
-          }))}
-        />
-      ) : null}
-    </div>
+          ) : null}
+          <path
+            d={pathFor(s.key) ?? ""}
+            transform={`translate(${MARGIN.left},${MARGIN.top})`}
+            fill="none"
+            stroke={colors[si] ?? CHART_TOKEN.chart1}
+            strokeWidth={LINE_WIDTH}
+            strokeLinecap="round"
+          />
+          {showPoints
+            ? data.map((d, di2) => {
+                const label = String(d[xKey] ?? "");
+                const value = toNumber(d[s.key]);
+                const total = totals[di2] ?? 0;
+                const tip = shareTip({
+                  label,
+                  series: s.label,
+                  formatted: fmtY(value),
+                  value,
+                  total,
+                  multi: series.length >= 2,
+                  of: "grupo",
+                });
+                return (
+                  <g key={stableKey([s.key, label], di2)}>
+                    <title>{tip}</title>
+                    <circle
+                      cx={MARGIN.left + (x(label) ?? 0)}
+                      cy={MARGIN.top + y(value)}
+                      r={POINT_RADIUS}
+                      fill={colors[si] ?? CHART_TOKEN.chart1}
+                      stroke={CHART_TOKEN.background}
+                      strokeWidth={POINT_BORDER}
+                      data-chart-tip={tip}
+                    />
+                  </g>
+                );
+              })
+            : null}
+        </g>
+      ))}
+    </CartesianFrame>
   );
 }

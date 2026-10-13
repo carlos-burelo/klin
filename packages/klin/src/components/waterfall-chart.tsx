@@ -5,16 +5,19 @@ import { max, min } from "d3-array";
 import { scaleBand, scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, YGrid } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, truncateLabel } from "../lib/palette";
+import { truncateLabel } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   FONT_SEMIBOLD,
   GRID_TICKS,
   GRID_WIDTH,
@@ -79,7 +82,7 @@ export function WaterfallChart({
   height = 280,
   totalLabel = "Total",
   formatY,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -92,7 +95,7 @@ export function WaterfallChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: WaterfallChartProps) {
-  if (steps.length === 0) {
+  if (isBlank(steps)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -118,7 +121,7 @@ export function WaterfallChart({
     .padding(GROUP_BAND_PADDING);
   const ticks = y.ticks(GRID_TICKS);
   const bw = x.bandwidth();
-  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmtY = resolveFormatter(formatY, locale);
   const upColor = positiveColor ?? UP;
   const downColor = negativeColor ?? DOWN;
   const grandColor = totalColor ?? TOTAL;

@@ -5,14 +5,16 @@
 import { sum } from "d3-array";
 import { arc, pie } from "d3-shape";
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import { ChartSvg, CHART_W as W } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   FONT_SEMIBOLD,
   NODE_BORDER_WIDTH,
   PERCENT_FACTOR,
@@ -89,7 +91,7 @@ export function NightingaleChart({
   ariaLabel,
   height = 260,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   showLabels = true,
   showValues = false,
   sortSlices = false,
@@ -121,7 +123,7 @@ export function NightingaleChart({
     ? [...clean].sort((a, b) => b.value - a.value)
     : clean;
 
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
   const radius = Math.max(0, Math.min(W, height) / 2 - NIGHTINGALE_OUTER_PAD);
   const top = Math.max(1, ...ordered.map((d) => d.value));
   const cx = W / 2;

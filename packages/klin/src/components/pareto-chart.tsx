@@ -6,17 +6,20 @@ import { curveMonotoneX, line } from "d3-shape";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { topPositive } from "../lib/domain";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import type { ChartMargin } from "../lib/frame";
 import { ChartSvg, YGrid } from "../lib/frame";
 import { stableKey } from "../lib/keys";
 import { sumNumbers, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   GRID_WIDTH,
   LINE_WIDTH,
@@ -28,6 +31,7 @@ import {
   TICK_FONT_SIZE,
   TICK_GAP_PX,
 } from "../lib/theme";
+import { pctOf } from "../lib/tips";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -88,7 +92,7 @@ export function ParetoChart({
   height = 280,
   formatY,
   color,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -100,7 +104,7 @@ export function ParetoChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: ParetoChartProps) {
-  if (data.length === 0) {
+  if (isBlank(data)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -133,7 +137,7 @@ export function ParetoChart({
   const ticks = y.ticks(GRID_TICKS);
   const fill = seriesColor(0, color);
   const lineColor = seriesColor(1, undefined);
-  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmtY = resolveFormatter(formatY, locale);
   const rawThreshold = toNumber(threshold, Number.NaN);
   const thresholdPct = Number.isFinite(rawThreshold)
     ? Math.min(PERCENT_FACTOR, Math.max(0, rawThreshold))
@@ -207,8 +211,7 @@ export function ParetoChart({
         {ordered.map((d, di) => {
           const group = String(d[xKey] ?? "");
           const value = countOf(d);
-          const pct =
-            total === 0 ? 0 : Math.round((value / total) * PERCENT_FACTOR);
+          const pct = pctOf(value, total);
           const cumPct = Math.round(cum[di]?.pct ?? 0);
           const tip = `${group}: ${fmtY(value)} (${pct}% · acumulado ${cumPct}%)`;
           return (

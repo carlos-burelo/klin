@@ -7,6 +7,7 @@ import { area, curveCatmullRom } from "d3-shape";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { domainWithZero } from "../lib/domain";
+import { resolveFormatter } from "../lib/format";
 import {
   ChartSvg,
   CHART_MARGIN as MARGIN,
@@ -17,13 +18,14 @@ import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   AREA_FILL_OPACITY,
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   LINE_WIDTH,
   POINT_BORDER,
@@ -194,7 +196,7 @@ export function ViolinPlot({
   height = 260,
   bandwidth = "auto",
   formatY,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -235,7 +237,7 @@ export function ViolinPlot({
   const fixedHi = toNumber(yMax, Number.NaN);
   const blo = Number.isFinite(fixedLo) ? fixedLo : auto[0];
   const bhi = Number.isFinite(fixedHi) ? fixedHi : auto[1];
-  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmtY = resolveFormatter(formatY, locale);
   const safeTicks = Math.max(
     TICKS_MIN,
     Math.floor(toNumber(gridTicks, GRID_TICKS)),

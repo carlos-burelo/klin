@@ -5,6 +5,7 @@ import { max, min, quantileSorted } from "d3-array";
 import { scaleBand, scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
+import { resolveFormatter } from "../lib/format";
 import {
   ChartSvg,
   CHART_MARGIN as MARGIN,
@@ -14,12 +15,13 @@ import {
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor, truncateLabel } from "../lib/palette";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   LINE_WIDTH,
   POINT_BORDER,
@@ -123,7 +125,7 @@ export function BoxPlot({
   ariaLabel,
   height = 260,
   formatY,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -152,7 +154,7 @@ export function BoxPlot({
   ]);
   const blo = Math.min(0, min(all) ?? 0);
   const bhi = max(all) ?? 1;
-  const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const fmtY = resolveFormatter(formatY, locale);
   const y = scaleLinear()
     .domain([blo, bhi])
     .nice(GRID_TICKS)

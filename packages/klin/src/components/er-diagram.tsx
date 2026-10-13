@@ -3,6 +3,7 @@
  */
 
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import type { DagLayout } from "../lib/graph";
 import { EdgeLabel, fitNodeWidth, layoutDag } from "../lib/graph";
 import { stableKey } from "../lib/keys";
@@ -12,6 +13,7 @@ import {
   DIAGRAM_MIN_SCROLL,
   EDGE_WIDTH,
   FONT_MONO,
+  FONT_REGULAR,
   FONT_SEMIBOLD,
   GRID_WIDTH,
   TICK_FONT_SIZE,
@@ -60,6 +62,8 @@ const ER_WEAK_INSET = 4;
 const ER_CROWFOOT_LEN = 12;
 const ER_CROWFOOT_SPREAD = 6;
 const ER_CROWFOOT_GAP = 6;
+/** Truncado de la etiqueta de entidad. */
+const ER_LABEL_MAX = 22;
 
 /** Indica si el lado destino de una cardinalidad (`1:N`) es múltiple. */
 function isManySide(label: string | undefined): boolean {
@@ -156,7 +160,7 @@ export function ErDiagram({
   style,
   ariaDescribedBy,
 }: ErDiagramProps) {
-  if (entities.length === 0) {
+  if (isBlank(entities)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -302,7 +306,7 @@ export function ErDiagram({
                 fontWeight={FONT_SEMIBOLD}
                 fill={CHART_TOKEN.foreground}
               >
-                {truncateLabel(entity.name, 22)}
+                {truncateLabel(entity.name, ER_LABEL_MAX)}
               </text>
               {entity.attributes.map((a, i) => (
                 <text
@@ -311,7 +315,9 @@ export function ErDiagram({
                   y={y0 + HEADER + ATTR_DY + i * ROW}
                   fontSize={TICK_FONT_SIZE}
                   fontFamily={FONT_MONO}
-                  fontWeight={showKeys && a.key === "PK" ? FONT_SEMIBOLD : 400}
+                  fontWeight={
+                    showKeys && a.key === "PK" ? FONT_SEMIBOLD : FONT_REGULAR
+                  }
                   textDecoration={
                     showKeys && a.key === "PK" ? "underline" : "none"
                   }

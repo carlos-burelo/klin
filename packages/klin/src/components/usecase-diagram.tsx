@@ -3,6 +3,7 @@
  */
 
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
 import type { DagLayout } from "../lib/graph";
 import { EdgeLabel, fitNodeWidth, layoutDag } from "../lib/graph";
 import { stableKey } from "../lib/keys";
@@ -140,7 +141,7 @@ export function UseCaseDiagram({
   style,
   ariaDescribedBy,
 }: UseCaseDiagramProps) {
-  if (actors.length === 0 && usecases.length === 0) {
+  if (isBlank(actors) && isBlank(usecases)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 

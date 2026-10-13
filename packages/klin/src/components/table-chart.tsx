@@ -2,15 +2,13 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { clamp01, toNumber } from "../lib/number";
-import {
-  formatDefault,
-  seriesColor,
-  type ValueFormatter,
-} from "../lib/palette";
-import { CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
+import { seriesColor, type ValueFormatter } from "../lib/palette";
+import { CHART_TOKEN, DEFAULT_LOCALE, PERCENT_FACTOR } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 /** Columna numérica de la tabla (clave + etiqueta + alineación). */
@@ -112,11 +110,11 @@ export function computeTableLayout(
   rows: TableRow[],
   columns: TableColumn[],
   bars: TableBar[] = [],
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   format?: ValueFormatter,
   maxRows = MAX_TABLE_ROWS,
 ): TableLayout {
-  const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const fmt = resolveFormatter(format, locale);
   const cappedCols = columns.slice(0, MAX_TABLE_COLUMNS);
   const rawMax = Math.floor(toNumber(maxRows, MAX_TABLE_ROWS));
   const safeMax =
@@ -185,8 +183,8 @@ export function TableChart({
   rows,
   bars = [],
   ariaLabel,
-  format = (v: number) => formatDefault(v, locale),
-  locale = "es-MX",
+  format,
+  locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
@@ -198,18 +196,12 @@ export function TableChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: TableChartProps) {
-  if (columns.length === 0 || rows.length === 0) {
+  if (isBlank(columns) || isBlank(rows)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const layout = computeTableLayout(
-    rows,
-    columns,
-    bars,
-    locale,
-    format,
-    maxRows,
-  );
+  const fmt = resolveFormatter(format, locale);
+  const layout = computeTableLayout(rows, columns, bars, locale, fmt, maxRows);
   const gridTemplateColumns = `minmax(0,1.1fr) repeat(${layout.columns.length}, minmax(0,1fr))`;
 
   return (
@@ -261,7 +253,7 @@ export function TableChart({
                 style={{ textAlign: cell.align }}
               >
                 <span className="font-mono text-[11px] font-medium tabular-nums">
-                  {format(cell.value)}
+                  {fmt(cell.value)}
                 </span>
                 {showPercent && cell.bar ? (
                   <span className="ml-1 font-mono text-[11px] tabular-nums text-muted-foreground">

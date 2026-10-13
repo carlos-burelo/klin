@@ -2,10 +2,17 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
-import { BAR_RADIUS, CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
+import { seriesColor } from "../lib/palette";
+import {
+  BAR_RADIUS,
+  CHART_TOKEN,
+  DEFAULT_LOCALE,
+  PERCENT_FACTOR,
+} from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -72,8 +79,8 @@ export function WaffleChart({
   columns = WAFFLE_COLS,
   gap = WAFFLE_GAP,
   cellRadius,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   itemColor,
   showLegend = true,
   showLegendValues = true,
@@ -88,9 +95,11 @@ export function WaffleChart({
     value: Math.max(0, toNumber(p.value)),
   }));
   const total = clean.reduce((a, p) => a + p.value, 0);
-  if (clean.length === 0 || total <= 0) {
+  if (isBlank(parts) || total <= 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const fmt = resolveFormatter(format, locale);
 
   const cols = Math.max(1, Math.floor(toNumber(columns, WAFFLE_COLS)));
   const rows = Math.max(1, Math.ceil(PERCENT_FACTOR / cols));
@@ -139,13 +148,13 @@ export function WaffleChart({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{`${ariaLabel}: ${clean.map((p) => `${p.label} ${format((p.value / total) * PERCENT_FACTOR)}%`).join(" · ")}`}</title>
+        <title>{`${ariaLabel}: ${clean.map((p) => `${p.label} ${fmt((p.value / total) * PERCENT_FACTOR)}%`).join(" · ")}`}</title>
         {cells.map((c, i) => {
           const col = i % cols;
           const row = rows - 1 - Math.floor(i / cols);
           const part = clean[c.part];
           if (!part) return null;
-          const tip = `${part.label}: ${format((part.value / total) * PERCENT_FACTOR)}%`;
+          const tip = `${part.label}: ${fmt((part.value / total) * PERCENT_FACTOR)}%`;
           return (
             <g key={`${col}-${row}`}>
               <title>{tip}</title>
@@ -166,7 +175,7 @@ export function WaffleChart({
         <ChartLegend
           items={clean.map((p, i) => ({
             label: showLegendValues
-              ? `${p.label} · ${format((p.value / total) * PERCENT_FACTOR)}%`
+              ? `${p.label} · ${fmt((p.value / total) * PERCENT_FACTOR)}%`
               : p.label,
             color: colors[i] ?? CHART_TOKEN.chart1,
           }))}

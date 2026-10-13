@@ -5,12 +5,14 @@
 import { sum } from "d3-array";
 import { arc, pie } from "d3-shape";
 import type { CSSProperties } from "react";
+import { resolveFormatter } from "../lib/format";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   FONT_SEMIBOLD,
   NODE_BORDER_WIDTH,
   PERCENT_FACTOR,
@@ -140,8 +142,8 @@ export function DonutChart({
   ariaLabel,
   size = 220,
   thickness = 38,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   itemColor,
   totalLabel = "Total",
   showTotal = true,
@@ -169,6 +171,8 @@ export function DonutChart({
   if (clean.length === 0 || total <= 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+
+  const fmt = resolveFormatter(format, locale);
 
   const start = toNumber(startAngle);
   const pad = Math.max(0, toNumber(padAngle));
@@ -220,7 +224,7 @@ export function DonutChart({
               total > 0
                 ? Math.round((datum.value / total) * PERCENT_FACTOR)
                 : 0;
-            const tip = `${datum.label}: ${format(datum.value)} (${pct}% del total)`;
+            const tip = `${datum.label}: ${fmt(datum.value)} (${pct}% del total)`;
             const fitsInner =
               withInner &&
               midRadius > 0 &&
@@ -262,7 +266,7 @@ export function DonutChart({
               fontWeight={FONT_SEMIBOLD}
               fill={CHART_TOKEN.foreground}
             >
-              {format(total)}
+              {fmt(total)}
             </text>
             <text
               x={radius}
@@ -279,7 +283,7 @@ export function DonutChart({
       {showLegend ? (
         <ChartLegend
           items={clean.map((d) => ({
-            label: `${d.label} · ${format(d.value)}`,
+            label: `${d.label} · ${fmt(d.value)}`,
             color: sliceColor(d),
           }))}
         />
@@ -293,8 +297,8 @@ export function PieChart({
   data,
   ariaLabel,
   size = 220,
-  locale = "es-MX",
-  format = (v: number) => formatDefault(v, locale),
+  locale = DEFAULT_LOCALE,
+  format,
   itemColor,
   totalLabel = "Total",
   showTotal = true,

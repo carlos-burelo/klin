@@ -4,6 +4,8 @@
 
 import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
+import { isBlank } from "../lib/empty";
+import { resolveFormatter } from "../lib/format";
 import {
   ChartSvg,
   CHART_MARGIN as MARGIN,
@@ -14,11 +16,12 @@ import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_ROWS } from "../lib/limits";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColors, truncateLabel } from "../lib/palette";
+import { seriesColors, truncateLabel } from "../lib/palette";
 import type { ChartSeries } from "../lib/series";
 import {
   BAR_RADIUS,
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   GRID_TICKS,
   MIN_SHAPE_PX,
   PERCENT_FACTOR,
@@ -79,7 +82,7 @@ export function MarimekkoChart({
   height = 260,
   formatX,
   format,
-  locale = "es-MX",
+  locale = DEFAULT_LOCALE,
   showLabels = true,
   showValues = true,
   showCounts = false,
@@ -96,7 +99,7 @@ export function MarimekkoChart({
   const rows = sortGroups
     ? [...input].sort((a, b) => toNumber(b[widthKey]) - toNumber(a[widthKey]))
     : input;
-  if (rows.length === 0 || series.length === 0) {
+  if (isBlank(rows) || isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
@@ -111,8 +114,8 @@ export function MarimekkoChart({
   const y = scaleLinear().domain([0, 1]).nice(GRID_TICKS).range([innerH, 0]);
   const ticks = y.ticks(GRID_TICKS);
   const colors = seriesColors(series);
-  const fmtX = formatX ?? ((v: number) => formatDefault(v, locale));
-  const fmtV = format ?? ((v: number) => formatDefault(v, locale));
+  const fmtX = resolveFormatter(formatX, locale);
+  const fmtV = resolveFormatter(format, locale);
   const fmtPct = (v: number) => `${Math.round(v * PERCENT_FACTOR)}%`;
   const minPct = Math.max(0, toNumber(minLabelPct, MIN_PCT_LABEL));
 
