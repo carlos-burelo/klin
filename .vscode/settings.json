@@ -1,0 +1,6 @@
+{
+  // Usa el TS del workspace (5.x, entiende el mapa `exports` del monorepo).
+  // Tras clonar o reinstalar: Ctrl+Shift+P → "TypeScript: Restart TS Server".
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}
