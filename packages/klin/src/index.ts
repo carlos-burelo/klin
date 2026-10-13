@@ -316,7 +316,13 @@ export type {
   PlacedNode,
   RoutedEdge,
 } from "./lib/graph";
-export { EdgeLabel, fitNodeWidth, layoutDag, measureText } from "./lib/graph";
+export {
+  EdgeLabel,
+  fitNodeWidth,
+  fitText,
+  layoutDag,
+  measureText,
+} from "./lib/graph";
 export { slugify, stableKey } from "./lib/keys";
 export {
   DEFAULT_MAX_LEAVES,

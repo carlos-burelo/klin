@@ -5,6 +5,7 @@ import { cluster, type HierarchyPointNode, hierarchy } from "d3-hierarchy";
 import type { CSSProperties } from "react";
 import { isBlank } from "../lib/empty";
 import { CHART_W, ChartSvg } from "../lib/frame";
+import { fitText } from "../lib/graph";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_NODES } from "../lib/limits";
 import { toNumber } from "../lib/number";
@@ -54,6 +55,9 @@ const DENDRO_H = 400;
 const DENDRO_MARGIN = { top: 16, right: 120, bottom: 16, left: 16 } as const;
 const LABEL_MAX_CHARS = 18;
 const NODE_LABEL_DY = 4;
+/** Alto de fila para detectar colisiones y aire al final de la etiqueta. */
+const LABEL_ROW_H = 14;
+const LABEL_END_PAD = 4;
 /** Profundidad visible por defecto (sin límite). */
 const DENDRO_DEPTH_DEFAULT = Number.POSITIVE_INFINITY;
 
@@ -137,6 +141,25 @@ export function DendrogramChart({
       ? DENDRO_MARGIN.top + (n.y ?? 0)
       : DENDRO_MARGIN.top + (n.x ?? 0);
 
+  const placed = nodes.map((n) => ({ n, cx: px(n), cy: py(n) }));
+  // Ancho libre a la derecha antes del vecino más cercano en la misma
+  // fila (o el borde): la etiqueta se recorta ahí, nunca encima de otro.
+  const availW = (me: number): number => {
+    const self = placed[me];
+    if (!self) return 0;
+    const x0 = self.cx + POINT_RADIUS + LABEL_GAP_PX;
+    let limit = CHART_W - DENDRO_MARGIN.right;
+    for (let j = 0; j < placed.length; j++) {
+      if (j === me) continue;
+      const other = placed[j];
+      if (!other) continue;
+      if (Math.abs(other.cy - self.cy) < LABEL_ROW_H && other.cx > x0) {
+        limit = Math.min(limit, other.cx);
+      }
+    }
+    return Math.max(0, limit - x0 - LABEL_END_PAD);
+  };
+
   return (
     <ChartSvg
       width={CHART_W}
@@ -171,10 +194,11 @@ export function DendrogramChart({
         const color = seriesColor(n.depth, n.data.color);
         const tip = chainOf(n).join(" > ");
         const kids = n.descendants().length - 1;
-        const tag =
+        const raw =
           showCounts && kids > 0
             ? `${truncateLabel(n.data.label, LABEL_MAX_CHARS)} (${kids})`
             : truncateLabel(n.data.label, LABEL_MAX_CHARS);
+        const tag = fitText(raw, availW(i), TICK_FONT_SIZE);
         return (
           <g key={stableKey([...chainOf(n), n.depth], i)}>
             <title>{tip}</title>
