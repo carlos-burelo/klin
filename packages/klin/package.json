@@ -55,8 +55,8 @@
     "directory": "packages/klin"
   },
   "scripts": {
-    "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json && node scripts/fix-links.mjs && node scripts/copy-css.mjs",
-    "prepublishOnly": "pnpm build",
+    "build": "tsc -p tsconfig.build.json && node scripts/fix-links.mjs && node scripts/copy-css.mjs",
+    "prepublishOnly": "node scripts/clean.mjs && pnpm build",
     "typecheck": "tsc --noEmit",
     "lint": "biome check",
     "lint:fix": "biome check --write",

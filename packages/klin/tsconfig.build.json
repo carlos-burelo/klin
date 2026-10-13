@@ -9,7 +9,9 @@
     "outDir": "dist",
     "rootDir": "src",
     "module": "ESNext",
-    "moduleResolution": "Bundler"
+    "moduleResolution": "Bundler",
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsconfig.build.tsbuildinfo"
   },
   "include": ["src"]
 }
