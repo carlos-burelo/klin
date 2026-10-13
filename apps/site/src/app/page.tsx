@@ -8,6 +8,7 @@ import {
   PackageIcon,
   PaletteIcon,
   ServerIcon,
+  ShieldCheckIcon,
   SigmaIcon,
   TerminalIcon,
   ZapIcon,
@@ -47,16 +48,20 @@ import { DEMO_COUNT, DEMOS } from "../demos/registry";
 import SparklineDemo from "../demos/sparkline";
 
 const STATS = [
-  { icon: LayoutGridIcon, value: `${DEMO_COUNT}`, label: "demos vivas" },
-  { icon: ServerIcon, value: "100%", label: "HTML estático" },
-  { icon: ZapIcon, value: "0 JS", label: "para ver cada gráfica" },
+  {
+    icon: LayoutGridIcon,
+    value: `${DEMO_COUNT}`,
+    label: "componentes con tipos",
+  },
+  { icon: ShieldCheckIcon, value: "429", label: "pruebas automatizadas" },
+  { icon: ZapIcon, value: "0 JS", label: "en el núcleo para render" },
 ] as const;
 
 const TRUST = [
-  "SSR-first real",
-  "A11y con role=img",
-  "Tema por tokens",
-  "Tooltip opcional",
+  "74 componentes tipados",
+  "Núcleo sin JavaScript",
+  "ESM + CJS + .d.ts",
+  "Accesible por defecto",
 ] as const;
 
 const LIVE_WIDE = [
@@ -73,91 +78,95 @@ const STEPS = [
   {
     icon: PackageIcon,
     title: "Instala",
-    body: "Un paquete desde GitHub Packages. Sin plugins, sin CLI.",
+    body: "Un paquete npm con provenance. Sin plugins, sin CLI, sin configurar el bundler.",
   },
   {
     icon: ServerIcon,
     title: "Renderiza",
-    body: "El Server Component calcula con d3 y escupe SVG puro.",
+    body: "Importa el componente y pasa props tipadas. d3 calcula, el servidor entrega SVG.",
   },
   {
     icon: ZapIcon,
     title: "Despliega",
-    body: "HTML estático a cualquier hosting. Sin servidor de Node.",
+    body: "HTML estático o RSC en cualquier hosting. Sin servidor Node dedicado.",
   },
 ] as const;
 
 const PRINCIPLES = [
   {
     icon: ServerIcon,
-    title: "SSR-first",
-    body: "props a SVG. Sin JS la gráfica se ve completa.",
+    title: "Servidor primero",
+    body: "Cada gráfica es función pura de props a SVG. El documento llega completo; el cliente es opcional.",
   },
   {
     icon: SigmaIcon,
-    title: "d3 solo math",
-    body: "scales, shapes, layouts. Nada de selección ni medición del DOM.",
+    title: "d3 solo para cálculo",
+    body: "Scales, shapes y layouts. Sin selection, sin medición del DOM, sin estado.",
   },
   {
     icon: MousePointerClickIcon,
-    title: "Tooltip portal",
-    body: "Un único cliente: delegación + portal. Sin JS queda <title> nativo.",
+    title: "Un único módulo cliente",
+    body: "Solo el portal de tooltip trae JS. Sin él, cada forma conserva su <title> nativo.",
   },
   {
     icon: PaletteIcon,
     title: "Tema por tokens",
-    body: "var(--chart-1…5). Claro/oscuro automáticos, sin hex.",
+    body: "Paleta y superficies por variables del tema. Claro y oscuro sin bifurcar código.",
   },
 ] as const;
 
 const COMPARE_ROWS = [
   {
     label: "Render sin JS",
-    klin: "SVG completo en HTML",
-    otros: "Canvas / hidratación",
+    klin: "SVG completo en el HTML",
+    otros: "Canvas o hidratación",
   },
   {
     label: "Responsivo",
-    klin: "viewBox, 0 listeners",
+    klin: "viewBox, sin listeners",
     otros: "ResizeObserver + estado",
   },
   {
     label: "Tooltip",
-    klin: "<title> + portal opcional",
-    otros: "Siempre cliente",
+    klin: "Nativo + portal opcional",
+    otros: "Solo cliente",
   },
   {
     label: "Tema",
-    klin: "Tokens CSS, dark gratis",
-    otros: "Props de color manual",
+    klin: "Tokens CSS, dark incluido",
+    otros: "Colores por componente",
   },
   {
     label: "Vacío / error",
-    klin: "ChartEmpty homogéneo",
-    otros: "Cada quien improvisa",
+    klin: "Estado homogéneo",
+    otros: "Manual por proyecto",
   },
 ] as const;
 
 const FAQS = [
   {
-    q: "¿Necesito JavaScript para ver las gráficas?",
-    a: "No. El HTML llega con el SVG ya renderizado. El único JS opcional es el portal de tooltip rico; sin él queda el <title> nativo.",
+    q: "¿Qué necesito para usarla?",
+    a: "React 19 y cualquier bundler. ESM, CJS y tipos incluidos; sin plugins ni configuración.",
   },
   {
-    q: "¿Cómo se ve en móvil?",
-    a: "Todo es SVG con viewBox: escala sin listeners ni medición del DOM. Los <title> cubren táctil sin JS.",
+    q: "¿Funciona sin JavaScript?",
+    a: "Sí. El SVG viaja en el HTML. El único JS del paquete vive en el portal de tooltip, que es opcional.",
   },
   {
-    q: "¿Pesa la librería?",
-    a: "Tu bundler solo incluye lo que importas (source-first con transpilePackages). El site con 74 demos exporta a HTML estático.",
+    q: "¿Cómo escala a móvil?",
+    a: "SVG con viewBox, sin listeners ni medición del DOM. Los <title> nativos cubren táctil.",
   },
   {
-    q: "¿Y la accesibilidad?",
-    a: "role=img + ariaLabel obligatoria, <title> por forma, vacíos homogéneos y formato es-MX por defecto.",
+    q: "¿Qué incluye el paquete?",
+    a: "74 componentes, tipos por componente, funciones puras de layout exportadas y el CSS del tema. Sin demos ni docs en el tarball.",
   },
   {
-    q: "¿Dónde empiezo?",
-    a: "Bar Chart cubre el 80% de dashboards. Lee la guía SSR-first una vez y luego copia el ejemplo mínimo de cada doc.",
+    q: "¿Accesibilidad?",
+    a: "role=img con etiqueta obligatoria, <title> por forma, estados vacíos homogéneos y formato es-MX configurable por locale.",
+  },
+  {
+    q: "¿Licencia?",
+    a: "AGPL-3.0-or-later. Consulta LICENSE en el repositorio antes de distribuir.",
   },
 ] as const;
 
@@ -205,7 +214,7 @@ const JSON_LD = {
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Any",
   description:
-    "Gráficas SSR-first: d3 para cálculo, SVG puro para render. 74 demos vivas.",
+    "Catálogo de 74 gráficas React con props tipadas: d3 para cálculo, SVG puro, núcleo sin JavaScript cliente.",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
 };
 
@@ -239,21 +248,21 @@ export default function HomePage() {
               aria-hidden="true"
               className="size-1.5 rounded-full bg-primary"
             />
-            @carlos-burelo/klin · v1 · SSR-first
+            @carlos-burelo/klin · v1 · ESM + CJS + tipos
           </Badge>
           <h1 className="text-5xl font-bold tracking-tighter text-balance sm:text-7xl">
-            Gráficas que llegan{" "}
+            Gráficas de producción{" "}
             <span className="bg-gradient-to-r from-primary to-chart-2 bg-clip-text text-transparent">
-              ya renderizadas
+              para React en el servidor
             </span>
             .
           </h1>
           <p className="max-w-lg text-lg leading-8 text-muted-foreground text-balance">
             <strong className="font-semibold text-foreground">
-              d3 para cálculo, SVG puro para render.
+              74 componentes con props tipadas y layout determinista.
             </strong>{" "}
-            Cada gráfica es un Server Component: función pura de props a SVG.
-            Sin JS la gráfica se ve completa.
+            d3 calcula, el servidor entrega SVG puro: accesible, tematizado y
+            sin JavaScript cliente en el núcleo.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -261,7 +270,7 @@ export default function HomePage() {
               size="lg"
               render={
                 <Link href="/docs">
-                  Explorar las {DEMO_COUNT} demos
+                  Explorar el catálogo
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               }
@@ -290,7 +299,7 @@ export default function HomePage() {
                 render={<Link href="/guias/ssr-first" />}
                 className="h-auto"
               >
-                Por qué SSR →
+                Guía SSR-first →
               </Button>
             </CardContent>
           </Card>
@@ -335,7 +344,7 @@ export default function HomePage() {
             <CardHeader className="flex flex-row items-center justify-between py-4">
               <CardDescription className="inline-flex items-center gap-1.5 font-mono text-[11px]">
                 <ChartLineIcon aria-hidden="true" className="size-3" />
-                line-chart · SSR en vivo
+                line-chart · renderizado en servidor
               </CardDescription>
               <Button
                 nativeButton={false}
@@ -363,11 +372,11 @@ export default function HomePage() {
               En vivo
             </p>
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Nada de mockups
+              Componentes reales, no capturas
             </h2>
             <p className="pt-1 text-sm text-muted-foreground">
-              Todo lo que ves aquí es el componente real, renderizado en el
-              servidor.
+              Cada tarjeta monta el componente publicado, renderizado en el
+              servidor con datos representativos.
             </p>
           </div>
           <Button
@@ -414,10 +423,11 @@ export default function HomePage() {
           Comparativa
         </p>
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Lo que dejas de hacer
+          klin frente al charting cliente
         </h2>
         <p className="pt-1 pb-6 text-sm text-muted-foreground">
-          klin vs. charting cliente clásico (recharts, nivo, victory).
+          Diferencias estructurales con recharts, nivo o victory: nada personal,
+          todo arquitectura.
         </p>
         <Card className="gap-0 py-0">
           <CardContent className="px-0">
@@ -463,10 +473,10 @@ export default function HomePage() {
           Cómo funciona
         </p>
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          De props a píxeles en tres pasos
+          De props a SVG en tres pasos
         </h2>
         <p className="pt-1 pb-6 text-sm text-muted-foreground">
-          Sin ResponsiveContainer, sin medición del DOM, sin estado.
+          Sin ResponsiveContainer, sin medición del DOM, sin estado cliente.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
           {STEPS.map((s, i) => (
@@ -495,7 +505,7 @@ export default function HomePage() {
             lang="tsx"
             code={`import { BarChart } from "@carlos-burelo/klin";
 
-// Esto escupe <svg>, no <canvas>
+// La salida es <svg> en el HTML: nada que hidratar
 <BarChart ariaLabel="Ventas por trimestre" data={data} xKey="t" series={series} />`}
           />
         </div>
@@ -507,11 +517,11 @@ export default function HomePage() {
           Principios
         </p>
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Diseñada para el servidor
+          Cuatro decisiones, cero magia
         </h2>
         <p className="pt-1 pb-6 text-sm text-muted-foreground">
-          Cuatro decisiones que eliminan toda la complejidad del charting en el
-          cliente.
+          Restricciones deliberadas que mantienen el sistema predecible a medida
+          que crece el catálogo.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {PRINCIPLES.map((p) => (
@@ -542,27 +552,24 @@ export default function HomePage() {
               Instalación
             </p>
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Dos pasos y listo
+              Sin configuración
             </h2>
             <p className="pt-1 text-sm leading-6 text-muted-foreground">
-              La lib se consume como TypeScript fuente: tu bundler solo incluye
-              lo que importas. Nada de apps ni demos en el bundle.
+              Paquete npm con ESM, CJS y tipos. El CSS del tema se importa una
+              vez; tu bundler incluye solo lo que usas.
             </p>
           </div>
           <div className="flex flex-col gap-3">
             <CodeBlock
               title="Terminal"
               lang="bash"
-              code={`# .npmrc (GitHub Packages)
-@carlos-burelo:registry=https://npm.pkg.github.com/
-
-pnpm add @carlos-burelo/klin`}
+              code={`pnpm add @carlos-burelo/klin`}
             />
             <CodeBlock
-              title="next.config.ts"
-              lang="tsx"
-              code={`// next.config.ts
-transpilePackages: ["@carlos-burelo/klin"];`}
+              title="globals.css"
+              lang="css"
+              code={`/* Una vez, junto a tu tema */
+@import "@carlos-burelo/klin/styles.css";`}
             />
           </div>
         </div>
@@ -574,11 +581,11 @@ transpilePackages: ["@carlos-burelo/klin"];`}
           Catálogo
         </p>
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {DEMO_COUNT} componentes, cero JS para verlos
+          {DEMO_COUNT} componentes con tipos y docs
         </h2>
         <p className="pt-1 pb-6 text-sm text-muted-foreground">
-          Filtra y abre la doc viva. Cada una con ejemplo mínimo, variantes,
-          props y accesibilidad.
+          Filtra por familia y abre la doc viva: ejemplo mínimo, variantes,
+          props y accesibilidad por componente.
         </p>
         <CatalogExplorer compact />
         <p className="sr-only">{DEMOS.map((d) => d.title).join(", ")}</p>
@@ -590,7 +597,7 @@ transpilePackages: ["@carlos-burelo/klin"];`}
           FAQ
         </p>
         <h2 className="pb-6 text-2xl font-bold tracking-tight sm:text-3xl">
-          Preguntas que sí hacen
+          Preguntas frecuentes
         </h2>
         <Accordion className="grid items-start gap-3 md:grid-cols-2">
           {FAQS.map((f, i) => (
@@ -619,11 +626,11 @@ transpilePackages: ["@carlos-burelo/klin"];`}
             Empieza ahora
           </p>
           <h2 className="relative mx-auto max-w-lg text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-            Tu primera gráfica en cinco minutos
+            Del catálogo a producción
           </h2>
           <p className="relative mx-auto max-w-md pt-3 text-sm leading-6 text-muted-foreground">
-            Copia una demo, cambia los datos, despliega HTML estático. Sin
-            cuenta, sin build raro, sin cliente pesado.
+            Cada componente documenta ejemplo mínimo, variantes, props y
+            accesibilidad. Copia, adapta, despliega.
           </p>
           <div className="relative flex flex-wrap items-center justify-center gap-3 pt-8">
             <Button

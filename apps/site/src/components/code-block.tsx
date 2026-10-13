@@ -18,7 +18,7 @@ export async function CodeBlock({
   bare = false,
 }: {
   code: string;
-  lang: "tsx" | "bash";
+  lang: "tsx" | "bash" | "css";
   title?: string;
   /** Sin ventana: solo el bloque resaltado (para anidar en tarjetas). */
   bare?: boolean;
