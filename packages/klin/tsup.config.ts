@@ -4,7 +4,7 @@ import { deps } from "./tsup.deps";
 // Núcleo servidor: puro, sin "use client".
 export default defineConfig({
   entry: { index: "src/index.ts" },
-  format: ["esm", "cjs"],
+  format: ["esm"],
   dts: true,
   sourcemap: true,
   clean: true,

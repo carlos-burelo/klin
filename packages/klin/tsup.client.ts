@@ -5,7 +5,7 @@ import { deps } from "./tsup.deps";
 // sale sin sourcemap y scripts/postbuild.mjs antepone "use client" después.
 export default defineConfig({
   entry: { "components/tooltip-portal": "src/components/tooltip-portal.tsx" },
-  format: ["esm", "cjs"],
+  format: ["esm"],
   dts: true,
   sourcemap: false,
   clean: false,

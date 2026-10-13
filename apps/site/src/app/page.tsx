@@ -60,8 +60,7 @@ const STATS = [
 const TRUST = [
   "74 componentes tipados",
   "Núcleo sin JavaScript",
-  "ESM + CJS + .d.ts",
-  "Accesible por defecto",
+  "ESM + tipos",
 ] as const;
 
 const LIVE_WIDE = [
@@ -146,7 +145,7 @@ const COMPARE_ROWS = [
 const FAQS = [
   {
     q: "¿Qué necesito para usarla?",
-    a: "React 19 y cualquier bundler. ESM, CJS y tipos incluidos; sin plugins ni configuración.",
+    a: "React 19 y cualquier bundler. ESM con tipos incluidos; sin plugins ni configuración.",
   },
   {
     q: "¿Funciona sin JavaScript?",
@@ -246,7 +245,7 @@ export default function HomePage() {
               aria-hidden="true"
               className="size-1.5 rounded-full bg-primary"
             />
-            @carlos-burelo/klin · v1 · ESM + CJS + tipos
+            @carlos-burelo/klin · v1 · ESM + tipos
           </Badge>
           <h1 className="text-4xl font-bold tracking-tighter text-balance sm:text-6xl">
             Gráficas de producción{" "}
@@ -350,7 +349,7 @@ export default function HomePage() {
               <LineChartDemo />
             </CardContent>
           </Card>
-          <Card className="absolute -bottom-8 -left-3 hidden w-60 gap-0 py-0 shadow-xl shadow-primary/10 sm:block lg:-left-10">
+          <Card className="absolute -bottom-8 -right-3 hidden w-60 gap-0 py-0 shadow-xl shadow-primary/10 sm:block lg:-right-8">
             <CardHeader className="flex flex-row items-center gap-1.5 py-2.5">
               <CardDescription className="font-mono text-[11px]">
                 sparkline · KPI
@@ -564,8 +563,8 @@ export default function HomePage() {
               Sin configuración
             </h2>
             <p className="pt-1 text-sm leading-6 text-muted-foreground">
-              Paquete npm con ESM, CJS y tipos. El CSS del tema se importa una
-              vez; tu bundler incluye solo lo que usas.
+              Paquete npm con ESM y tipos. El CSS del tema se importa una vez;
+              tu bundler incluye solo lo que usas.
             </p>
           </div>
           <div className="flex flex-col gap-3">
