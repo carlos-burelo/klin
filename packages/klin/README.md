@@ -28,6 +28,10 @@ Sin `recharts`, sin `ResponsiveContainer`, sin `"use client"` en el núcleo.
 ```tsx
 import { BarChart, ChartLegend, ChartTooltipPortal } from "@carlos-burelo/klin";
 
+// Corte exacto por componente (mismo export, mejor split):
+import { BarChart } from "@carlos-burelo/klin/bar-chart";
+import type { BarChartProps } from "@carlos-burelo/klin/bar-chart";
+
 <ChartTooltipPortal>
   <BarChart
     ariaLabel="Planeaciones por estado"
@@ -37,6 +41,10 @@ import { BarChart, ChartLegend, ChartTooltipPortal } from "@carlos-burelo/klin";
   />
 </ChartTooltipPortal>
 ```
+
+Cada archivo de `src/components/<nombre>.tsx` es un subpath
+(`@carlos-burelo/klin/<nombre>`, con tipos). El barril raíz reexporta
+todo; el código compartido vive en chunks internos.
 
 ## Sitio (demos y página, mismo repo, fuera del bundle)
 
@@ -179,8 +187,9 @@ Toda gráfica nueva sigue esta spec para que el set se vea uno solo:
 
 ## Agregar una gráfica
 
-1. `src/components/<nombre>.tsx` (sin `"use client"`) + tipos exportados.
+1. `src/components/<nombre>.tsx` (sin `"use client"`, salvo portal) + tipos exportados.
 2. Exportarla en `src/index.ts` (tipos con `export type`, ordenados).
+   El subpath `@carlos-burelo/klin/<nombre>` queda solo (build + `exports` por patrón).
 3. Caso en `test/charts.test.tsx` con `renderToStaticMarkup`: N formas,
    tooltip, vacío y `aria-label` (prueba de SSR).
 4. Fila en la tabla de arriba + demo y `.mdx` en el site
