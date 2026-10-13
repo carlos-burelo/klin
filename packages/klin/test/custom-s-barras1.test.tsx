@@ -88,7 +88,7 @@ describe("BarChart (S)", () => {
   test("highlightMax acentúa el máximo", () => {
     const html = renderToStaticMarkup(<BarChart {...base} highlightMax />);
     expect(html).not.toBe(def);
-    expect(html).toContain("var(--color-chart-2)");
+    expect(html).toContain("var(--chart-2)");
   });
   test("id prefija defs en apilado", () => {
     const html = renderToStaticMarkup(

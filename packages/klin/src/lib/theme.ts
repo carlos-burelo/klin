@@ -63,22 +63,25 @@ export const TOOLTIP_HEIGHT = 80;
 export const TOOLTIP_OFFSET = 12;
 export const TOOLTIP_MARGIN_PX = 8;
 
-/** Tokens CSS del tema (nunca hex). */
+/** Tokens CSS del tema (nunca hex). Solo vars base del tema (shadcn):
+ * `--foreground`, `--muted-*`, `--chart-1…5`, `--primary-*`, etc.
+ * Nada de alias `--color-*`: Tailwind v4 (`@theme inline`) no los emite
+ * como variables runtime y el SVG caería a negro. */
 export const CHART_TOKEN = {
   border: "var(--border)",
-  muted: "var(--color-muted-foreground)",
-  foreground: "var(--color-foreground)",
+  muted: "var(--muted-foreground)",
+  foreground: "var(--foreground)",
   background: "var(--background)",
   track: "var(--muted)",
-  accent: "var(--color-chart-2)",
+  accent: "var(--chart-2)",
   chart1: "var(--chart-1)",
   chart2: "var(--chart-2)",
-  chart3: "var(--color-chart-3)",
-  chart4: "var(--color-chart-4)",
-  chart5: "var(--color-chart-5)",
-  destructive: "var(--color-destructive)",
-  primary: "var(--color-primary)",
-  primaryForeground: "var(--color-primary-foreground)",
+  chart3: "var(--chart-3)",
+  chart4: "var(--chart-4)",
+  chart5: "var(--chart-5)",
+  destructive: "var(--destructive)",
+  primary: "var(--primary)",
+  primaryForeground: "var(--primary-foreground)",
   card: "var(--card)",
 } as const;
 

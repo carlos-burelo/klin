@@ -401,7 +401,7 @@ describe("ProgressList props S", () => {
         status={(pct) => (pct >= 70 ? "ok" : pct >= 40 ? "warn" : "bad")}
       />,
     );
-    expect(html).toContain("var(--color-destructive)");
+    expect(html).toContain("var(--destructive)");
     expect(html).toContain("var(--chart-2)");
     expect(html).not.toBe(base);
   });

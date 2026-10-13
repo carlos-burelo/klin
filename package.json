@@ -11,8 +11,8 @@
     "typecheck": "pnpm --recursive --if-present typecheck",
     "test": "pnpm --recursive --if-present test",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
-    "site:build": "pnpm --filter @carlos-burelo/klin-site build",
-    "site:dev": "pnpm --filter @carlos-burelo/klin-site dev"
+    "site:build": "pnpm --filter @carlos-burelo/klin build && pnpm --filter @carlos-burelo/klin-site build",
+    "site:dev": "pnpm --filter @carlos-burelo/klin build && pnpm --filter @carlos-burelo/klin-site dev"
   },
   "packageManager": "pnpm@12.0.0"
 }
