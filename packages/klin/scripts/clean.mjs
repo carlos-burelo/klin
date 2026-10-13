@@ -3,6 +3,9 @@
 import { rmSync } from "node:fs";
 
 rmSync(new URL("../dist/", import.meta.url), { recursive: true, force: true });
-rmSync(new URL("../node_modules/.cache/tsconfig.build.tsbuildinfo", import.meta.url), {
-  force: true,
-});
+rmSync(
+  new URL("../node_modules/.cache/tsconfig.build.tsbuildinfo", import.meta.url),
+  {
+    force: true,
+  },
+);
