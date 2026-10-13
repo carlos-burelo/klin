@@ -38,8 +38,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CodeBlock } from "../components/code-block";
-import { CopyButton } from "../components/copy-button";
 import { CatalogExplorer } from "../components/docs/catalog-explorer";
+import { InstallTabs } from "../components/install-tabs";
 import BarChartDemo from "../demos/bar-chart";
 import DonutChartDemo from "../demos/donut-chart";
 import LineChartDemo from "../demos/line-chart";
@@ -170,8 +170,6 @@ const FAQS = [
   },
 ] as const;
 
-const NPM_INSTALL = `pnpm add @carlos-burelo/klin`;
-
 function LiveCard({
   slug,
   caption,
@@ -286,23 +284,7 @@ export default function HomePage() {
               <ArrowUpRightIcon data-icon="inline-end" />
             </Button>
           </div>
-          <Card className="gap-0 bg-card/80 py-0 backdrop-blur">
-            <CardContent className="flex flex-wrap items-center gap-2 p-3">
-              <code className="flex-1 truncate px-2 font-mono text-xs">
-                {NPM_INSTALL}
-              </code>
-              <CopyButton text={NPM_INSTALL} size="xs" />
-              <Button
-                nativeButton={false}
-                variant="link"
-                size="sm"
-                render={<Link href="/guias/ssr-first" />}
-                className="h-auto"
-              >
-                Guía SSR-first →
-              </Button>
-            </CardContent>
-          </Card>
+          <InstallTabs />
           <ul aria-label="Garantías" className="flex flex-wrap gap-1.5">
             {TRUST.map((t) => (
               <li key={t}>
@@ -334,12 +316,19 @@ export default function HomePage() {
           </Card>
         </div>
 
-        {/* Demo viva: esto es HTML prerenderizado, no una imagen */}
-        <figure className="relative">
+        {/* Demo viva: HTML prerenderizado, no una imagen */}
+        <figure className="relative mx-auto w-full max-w-xl lg:max-w-none">
           <div
             aria-hidden="true"
             className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-primary/20 via-transparent to-accent blur-2xl"
           />
+          <Badge
+            variant="secondary"
+            className="absolute -top-4 right-6 z-10 shadow-lg"
+          >
+            <ZapIcon aria-hidden="true" className="size-3 text-primary" />
+            SVG puro · sin hidratación
+          </Badge>
           <Card className="gap-0 py-0 shadow-2xl shadow-primary/10">
             <CardHeader className="flex flex-row items-center justify-between py-4">
               <CardDescription className="inline-flex items-center gap-1.5 font-mono text-[11px]">
@@ -359,6 +348,26 @@ export default function HomePage() {
             </CardHeader>
             <CardContent className="pb-4 sm:pb-6">
               <LineChartDemo />
+            </CardContent>
+          </Card>
+          <Card className="absolute -bottom-8 -left-3 hidden w-60 gap-0 py-0 shadow-xl shadow-primary/10 sm:block lg:-left-10">
+            <CardHeader className="flex flex-row items-center gap-1.5 py-2.5">
+              <CardDescription className="font-mono text-[11px]">
+                sparkline · KPI
+              </CardDescription>
+              <Button
+                nativeButton={false}
+                variant="link"
+                size="sm"
+                render={<Link href="/docs/sparkline" />}
+                className="ml-auto h-auto p-0 text-[11px]"
+              >
+                Ver doc
+                <ArrowRightIcon data-icon="inline-end" />
+              </Button>
+            </CardHeader>
+            <CardContent className="pb-3">
+              <SparklineDemo />
             </CardContent>
           </Card>
         </figure>
