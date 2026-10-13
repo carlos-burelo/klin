@@ -15,14 +15,9 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
+import { norm } from "@/lib/utils";
 import { DEMOS } from "../../demos/registry";
-
-function norm(s: string) {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
+import { GUIDES } from "../../guias/guides";
 
 /** Buscador global Cmd+K: palette sobre las 74 docs, sin servidor. */
 export function DocsSearch() {
@@ -83,6 +78,26 @@ export function DocsSearch() {
           <CommandInput placeholder="Busca bar, sankey, gantt…" />
           <CommandList>
             <CommandEmpty>Sin resultados.</CommandEmpty>
+            <CommandGroup heading="Conceptos">
+              {GUIDES.map((g) => (
+                <CommandItem
+                  key={g.slug}
+                  value={`${g.title} ${g.description} conceptos ${g.slug}`}
+                  onSelect={() => go(g.slug)}
+                >
+                  <FileTextIcon />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">
+                      {g.title}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      Conceptos · {g.description}
+                    </span>
+                  </span>
+                  <CommandShortcut>/{g.slug}</CommandShortcut>
+                </CommandItem>
+              ))}
+            </CommandGroup>
             <CommandGroup heading="Documentación">
               {DEMOS.map((d) => (
                 <CommandItem

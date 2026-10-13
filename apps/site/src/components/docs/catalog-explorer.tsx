@@ -11,21 +11,10 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { DEMOS, type DemoSection } from "../../demos/registry";
+import { norm } from "@/lib/utils";
+import { DEMO_SECTIONS, DEMOS, type DemoSection } from "../../demos/registry";
 
-function norm(s: string) {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-const TABS: Array<"Todas" | DemoSection> = [
-  "Todas",
-  "Gráficas",
-  "Diagramas",
-  "Utilidades",
-];
+const TABS: Array<"Todas" | DemoSection> = ["Todas", ...DEMO_SECTIONS];
 
 /** Explorador filtrable del catálogo (landing + índice docs, cliente). */
 export function CatalogExplorer({ compact = false }: { compact?: boolean }) {

@@ -52,7 +52,7 @@ export function InstallTabs() {
             nativeButton={false}
             variant="link"
             size="sm"
-            render={<Link href="/guias/ssr-first" />}
+            render={<Link href="/docs/ssr-first" />}
             className="h-auto"
           >
             Guía SSR-first →

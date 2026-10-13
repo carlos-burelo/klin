@@ -28,9 +28,9 @@ En local (`apps/site`): `pnpm dev|build|start|lint|typecheck|docs:gen`.
   descripciones universales en `scripts/gen-docs.mjs`).
 - `src/content/load-doc.ts` — importa cada MDX por slug (cada página solo
   empaqueta su doc).
-- `src/app/` — portada, índice `/docs` y `docs/[slug]` (estático vía
-  `generateStaticParams`; `output: "export"`). Guías en `/guias` y
-  `/guias/[slug]` desde `src/guias/guides.ts`. `sitemap.ts` + `robots.ts`
+- `src/app/` — portada, índice `/docs` y `docs/[slug]` (componentes y
+  conceptos, estático vía `generateStaticParams`; `output: "export"`).
+  Conceptos desde `src/guias/guides.ts`. `sitemap.ts` + `robots.ts`
   incluidos.
 - `mdx-components.tsx` — mapeo MDX a estilos docs (h2 con ancla `#`,
   tablas, código…).

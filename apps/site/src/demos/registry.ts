@@ -553,6 +553,16 @@ export const DEMO_COUNT = DEMOS.length;
 
 export const DEMO_SLUGS = DEMOS.map((d) => d.slug);
 
+/** Secciones del catálogo en orden de sidebar (única fuente). */
+export const DEMO_SECTIONS: DemoSection[] = [
+  "Gráficas",
+  "Diagramas",
+  "Utilidades",
+];
+
+/** Destacados del overview (título/descripción salen de DEMOS). */
+export const FEATURED_SLUGS = ["bar-chart", "donut-chart", "sankey-diagram"];
+
 export function getDemo(slug: string): DemoEntry | undefined {
   return DEMOS.find((d) => d.slug === slug);
 }

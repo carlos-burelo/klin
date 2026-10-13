@@ -656,7 +656,7 @@ export default function HomePage() {
               nativeButton={false}
               size="lg"
               variant="outline"
-              render={<Link href="/guias/ssr-first" />}
+              render={<Link href="/docs/ssr-first" />}
             >
               Leer guía SSR-first
             </Button>

@@ -69,7 +69,7 @@ export const GUIDES: Guide[] = [
       {
         heading: "Tokens, no hex",
         body: [
-          "Los colores por defecto son var(--chart-1…5). Cualquier serie acepta override con otro token (var(--color-primary), var(--color-muted-foreground)…): la gráfica hereda tu tema sin props extra.",
+          "Los colores por defecto son var(--chart-1…5). Cualquier serie acepta override con otro token (var(--primary), var(--muted-foreground)…): la gráfica hereda tu tema sin props extra.",
           "La serie N usa seriesColor(N, override) con fallback a CHART_TOKEN.chart1. Geometría y tipografía también salen de constantes (BAR_RADIUS, LINE_WIDTH, TICK_FONT_SIZE…), no de mágicos.",
         ],
         code: {
@@ -82,7 +82,7 @@ export const GUIDES: Guide[] = [
         heading: "Claro y oscuro",
         body: [
           "El site conmuta con la clase .dark en <html> y shiki cambia de github-light a github-dark con los mismos tokens. Tus gráficas hacen lo mismo gratis porque solo referencian variables.",
-          "Texto de ejes a 11px var(--color-muted-foreground), valores destacados con tabular-nums, leyenda text-xs vía ChartLegend.",
+          "Texto de ejes a 11px var(--muted-foreground), valores destacados con tabular-nums, leyenda text-xs vía ChartLegend.",
         ],
         tip: "Si tu UI ya define --chart-1…5 (shadcn), klin los respeta sin configuración.",
       },

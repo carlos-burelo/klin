@@ -61,19 +61,19 @@ const FOOT_COLS: Array<{
   {
     title: "Docs",
     links: [
-      { href: "/docs", label: "Índice" },
+      { href: "/docs/overview", label: "Índice" },
       { href: "/docs/bar-chart", label: "Bar Chart" },
       { href: "/docs/line-chart", label: "Line Chart" },
       { href: "/docs/sankey-diagram", label: "Sankey" },
     ],
   },
   {
-    title: "Guías",
+    title: "Conceptos",
     links: [
-      { href: "/guias/ssr-first", label: "SSR-first" },
-      { href: "/guias/tema", label: "Tema por tokens" },
-      { href: "/guias/tooltip", label: "Tooltip portal" },
-      { href: "/guias/accesibilidad", label: "Accesibilidad" },
+      { href: "/docs/ssr-first", label: "SSR-first" },
+      { href: "/docs/tema", label: "Tema por tokens" },
+      { href: "/docs/tooltip", label: "Tooltip portal" },
+      { href: "/docs/accesibilidad", label: "Accesibilidad" },
     ],
   },
   {
@@ -127,22 +127,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 klin
               </Link>
               <Link
-                href="/"
-                className="hidden text-muted-foreground hover:text-foreground sm:inline"
-              >
-                Inicio
-              </Link>
-              <Link
-                href="/docs"
+                href="/docs/overview"
                 className="text-muted-foreground hover:text-foreground"
               >
                 Docs
-              </Link>
-              <Link
-                href="/guias/ssr-first"
-                className="hidden text-muted-foreground hover:text-foreground md:inline"
-              >
-                Guías
               </Link>
             </nav>
             <div className="flex items-center gap-2">

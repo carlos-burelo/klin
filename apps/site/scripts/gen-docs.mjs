@@ -261,7 +261,7 @@ ${usage}
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
     Envuelve en \`ChartTooltipPortal\` solo si quieres tooltip rico; sin JS queda \`\\<title\\>\` nativo.
-    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+    Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
 
@@ -285,16 +285,30 @@ ${propsBlock}
 - Toda gráfica exige \`ariaLabel\` descriptivo; el SVG usa \`role="img"\` con \`\\<title\\>\`.
 - Cada forma lleva \`\\<title\\>\` nativo (tooltip sin JS) y \`data-chart-tip\` para el portal rico.
 - Sin datos se renderiza estado vacío homogéneo (\`ChartEmpty\`), nunca SVG roto.
-- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+- Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 
 ## Recursos
 
 - Fuente del componente: [\`${e.source}\`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/${e.source})
-- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)
+- Guías: [SSR-first](/docs/ssr-first) · [Tema](/docs/tema) · [Tooltip](/docs/tooltip)
 `;
 
   writeFileSync(outPath, mdx);
   generated++;
 }
+
+// load-doc.ts se genera siempre (registry = única fuente; sin fallback mudo).
+const loadDoc = `/** Carga perezosa del MDX por slug (GENERADO por scripts/gen-docs.mjs: no editar). */
+export function loadDoc(
+  slug: string,
+): Promise<{ default: React.ComponentType }> {
+  switch (slug) {
+${entries.map((e) => `    case "${e.slug}":\n      return import("./docs/${e.slug}.mdx");`).join("\n")}
+    default:
+      throw new Error(\`doc desconocida (falta en registry): \${slug}\`);
+  }
+}
+`;
+writeFileSync(join(site, "src", "content", "load-doc.ts"), loadDoc);
 
 console.log(`MDX generados: ${generated}, omitidos: ${skipped}`);

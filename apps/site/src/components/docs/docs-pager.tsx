@@ -8,13 +8,37 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DEMOS } from "../../demos/registry";
+import { GUIDES } from "../../guias/guides";
+
+type Page = {
+  slug: string;
+  title: string;
+  description: string;
+  section: string;
+};
+
+/** Conceptos primero, luego componentes: una sola secuencia circular. */
+const PAGES: Page[] = [
+  ...GUIDES.map((g) => ({
+    slug: g.slug,
+    title: g.title,
+    description: g.description,
+    section: "Conceptos",
+  })),
+  ...DEMOS.map((d) => ({
+    slug: d.slug,
+    title: d.title,
+    description: d.description,
+    section: d.section,
+  })),
+];
 
 /** Anterior/siguiente con sección y descripción, no solo título. */
 export function DocsPager({ slug }: { slug: string }) {
-  const index = DEMOS.findIndex((d) => d.slug === slug);
+  const index = PAGES.findIndex((d) => d.slug === slug);
   if (index < 0) return null;
-  const prev = DEMOS[(index - 1 + DEMOS.length) % DEMOS.length];
-  const next = DEMOS[(index + 1) % DEMOS.length];
+  const prev = PAGES[(index - 1 + PAGES.length) % PAGES.length];
+  const next = PAGES[(index + 1) % PAGES.length];
   if (!prev || !next) return null;
   return (
     <nav aria-label="Paginación" className="flex flex-col gap-3">

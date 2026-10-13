@@ -1,96 +1,40 @@
-/** Carga perezosa del MDX por slug (cada página solo empaqueta su doc). */
+/** Carga perezosa del MDX por slug (GENERADO por scripts/gen-docs.mjs: no editar). */
 export function loadDoc(
   slug: string,
 ): Promise<{ default: React.ComponentType }> {
   switch (slug) {
-    case "arc-diagram":
-      return import("./docs/arc-diagram.mdx");
-    case "architecture-diagram":
-      return import("./docs/architecture-diagram.mdx");
     case "area-chart":
       return import("./docs/area-chart.mdx");
     case "bar-chart":
       return import("./docs/bar-chart.mdx");
-    case "beeswarm-plot":
-      return import("./docs/beeswarm-plot.mdx");
     case "box-plot":
       return import("./docs/box-plot.mdx");
     case "bullet-chart":
       return import("./docs/bullet-chart.mdx");
-    case "bump-chart":
-      return import("./docs/bump-chart.mdx");
     case "calendar-heatmap":
       return import("./docs/calendar-heatmap.mdx");
-    case "candlestick-chart":
-      return import("./docs/candlestick-chart.mdx");
-    case "chart-empty":
-      return import("./docs/chart-empty.mdx");
-    case "chart-legend":
-      return import("./docs/chart-legend.mdx");
-    case "circle-pack-chart":
-      return import("./docs/circle-pack-chart.mdx");
-    case "chord-diagram":
-      return import("./docs/chord-diagram.mdx");
-    case "class-diagram":
-      return import("./docs/class-diagram.mdx");
-    case "dendrogram-chart":
-      return import("./docs/dendrogram-chart.mdx");
-    case "density-contour-plot":
-      return import("./docs/density-contour-plot.mdx");
     case "diverging-bar":
       return import("./docs/diverging-bar.mdx");
     case "donut-chart":
       return import("./docs/donut-chart.mdx");
-    case "dot-plot":
-      return import("./docs/dot-plot.mdx");
-    case "dumbbell-chart":
-      return import("./docs/dumbbell-chart.mdx");
-    case "er-diagram":
-      return import("./docs/er-diagram.mdx");
-    case "fishbone-diagram":
-      return import("./docs/fishbone-diagram.mdx");
-    case "flow-chart":
-      return import("./docs/flow-chart.mdx");
+    case "pie-chart":
+      return import("./docs/pie-chart.mdx");
     case "funnel-chart":
       return import("./docs/funnel-chart.mdx");
-    case "gantt-chart":
-      return import("./docs/gantt-chart.mdx");
-    case "hexbin-plot":
-      return import("./docs/hexbin-plot.mdx");
     case "gauge-chart":
       return import("./docs/gauge-chart.mdx");
-    case "histogram":
-      return import("./docs/histogram.mdx");
     case "horizontal-bar-chart":
       return import("./docs/horizontal-bar-chart.mdx");
-    case "icicle-chart":
-      return import("./docs/icicle-chart.mdx");
-    case "isotype-chart":
-      return import("./docs/isotype-chart.mdx");
-    case "kanban-board":
-      return import("./docs/kanban-board.mdx");
+    case "matrix-heatmap":
+      return import("./docs/matrix-heatmap.mdx");
+    case "histogram":
+      return import("./docs/histogram.mdx");
     case "line-chart":
       return import("./docs/line-chart.mdx");
     case "lollipop-chart":
       return import("./docs/lollipop-chart.mdx");
-    case "marimekko-chart":
-      return import("./docs/marimekko-chart.mdx");
-    case "matrix-heatmap":
-      return import("./docs/matrix-heatmap.mdx");
-    case "mindmap-diagram":
-      return import("./docs/mindmap-diagram.mdx");
-    case "nightingale-chart":
-      return import("./docs/nightingale-chart.mdx");
-    case "network-graph":
-      return import("./docs/network-graph.mdx");
-    case "network-topology":
-      return import("./docs/network-topology.mdx");
-    case "org-chart":
-      return import("./docs/org-chart.mdx");
     case "pareto-chart":
       return import("./docs/pareto-chart.mdx");
-    case "pie-chart":
-      return import("./docs/pie-chart.mdx");
     case "progress-list":
       return import("./docs/progress-list.mdx");
     case "pyramid-chart":
@@ -99,59 +43,115 @@ export function loadDoc(
       return import("./docs/quadrant-chart.mdx");
     case "radar-chart":
       return import("./docs/radar-chart.mdx");
-    case "radial-bar-chart":
-      return import("./docs/radial-bar-chart.mdx");
     case "radial-progress":
       return import("./docs/radial-progress.mdx");
-    case "range-chart":
-      return import("./docs/range-chart.mdx");
-    case "ridgeline-plot":
-      return import("./docs/ridgeline-plot.mdx");
     case "sankey-diagram":
       return import("./docs/sankey-diagram.mdx");
     case "scatter-plot":
       return import("./docs/scatter-plot.mdx");
-    case "sequence-diagram":
-      return import("./docs/sequence-diagram.mdx");
-    case "slope-chart":
-      return import("./docs/slope-chart.mdx");
-    case "table-chart":
-      return import("./docs/table-chart.mdx");
-    case "ternary-plot":
-      return import("./docs/ternary-plot.mdx");
     case "sparkline":
       return import("./docs/sparkline.mdx");
     case "stacked-bar":
       return import("./docs/stacked-bar.mdx");
-    case "state-diagram":
-      return import("./docs/state-diagram.mdx");
     case "streamgraph":
       return import("./docs/streamgraph.mdx");
     case "sunburst-chart":
       return import("./docs/sunburst-chart.mdx");
-    case "timeline-chart":
-      return import("./docs/timeline-chart.mdx");
-    case "tooltip-portal":
-      return import("./docs/tooltip-portal.mdx");
-    case "tree-view":
-      return import("./docs/tree-view.mdx");
     case "treemap-chart":
       return import("./docs/treemap-chart.mdx");
-    case "usecase-diagram":
-      return import("./docs/usecase-diagram.mdx");
-    case "venn-diagram":
-      return import("./docs/venn-diagram.mdx");
     case "vertical-stacked-bar":
       return import("./docs/vertical-stacked-bar.mdx");
-    case "violin-plot":
-      return import("./docs/violin-plot.mdx");
-    case "waffle-chart":
-      return import("./docs/waffle-chart.mdx");
-    case "wardley-map":
-      return import("./docs/wardley-map.mdx");
     case "waterfall-chart":
       return import("./docs/waterfall-chart.mdx");
+    case "waffle-chart":
+      return import("./docs/waffle-chart.mdx");
+    case "beeswarm-plot":
+      return import("./docs/beeswarm-plot.mdx");
+    case "bump-chart":
+      return import("./docs/bump-chart.mdx");
+    case "candlestick-chart":
+      return import("./docs/candlestick-chart.mdx");
+    case "dumbbell-chart":
+      return import("./docs/dumbbell-chart.mdx");
+    case "marimekko-chart":
+      return import("./docs/marimekko-chart.mdx");
+    case "nightingale-chart":
+      return import("./docs/nightingale-chart.mdx");
+    case "radial-bar-chart":
+      return import("./docs/radial-bar-chart.mdx");
+    case "range-chart":
+      return import("./docs/range-chart.mdx");
+    case "ridgeline-plot":
+      return import("./docs/ridgeline-plot.mdx");
+    case "slope-chart":
+      return import("./docs/slope-chart.mdx");
+    case "violin-plot":
+      return import("./docs/violin-plot.mdx");
+    case "ternary-plot":
+      return import("./docs/ternary-plot.mdx");
+    case "dot-plot":
+      return import("./docs/dot-plot.mdx");
+    case "isotype-chart":
+      return import("./docs/isotype-chart.mdx");
+    case "chord-diagram":
+      return import("./docs/chord-diagram.mdx");
+    case "density-contour-plot":
+      return import("./docs/density-contour-plot.mdx");
+    case "hexbin-plot":
+      return import("./docs/hexbin-plot.mdx");
+    case "table-chart":
+      return import("./docs/table-chart.mdx");
+    case "arc-diagram":
+      return import("./docs/arc-diagram.mdx");
+    case "architecture-diagram":
+      return import("./docs/architecture-diagram.mdx");
+    case "class-diagram":
+      return import("./docs/class-diagram.mdx");
+    case "er-diagram":
+      return import("./docs/er-diagram.mdx");
+    case "flow-chart":
+      return import("./docs/flow-chart.mdx");
+    case "state-diagram":
+      return import("./docs/state-diagram.mdx");
+    case "usecase-diagram":
+      return import("./docs/usecase-diagram.mdx");
+    case "sequence-diagram":
+      return import("./docs/sequence-diagram.mdx");
+    case "mindmap-diagram":
+      return import("./docs/mindmap-diagram.mdx");
+    case "org-chart":
+      return import("./docs/org-chart.mdx");
+    case "kanban-board":
+      return import("./docs/kanban-board.mdx");
+    case "timeline-chart":
+      return import("./docs/timeline-chart.mdx");
+    case "tree-view":
+      return import("./docs/tree-view.mdx");
+    case "network-graph":
+      return import("./docs/network-graph.mdx");
+    case "network-topology":
+      return import("./docs/network-topology.mdx");
+    case "venn-diagram":
+      return import("./docs/venn-diagram.mdx");
+    case "wardley-map":
+      return import("./docs/wardley-map.mdx");
+    case "gantt-chart":
+      return import("./docs/gantt-chart.mdx");
+    case "circle-pack-chart":
+      return import("./docs/circle-pack-chart.mdx");
+    case "dendrogram-chart":
+      return import("./docs/dendrogram-chart.mdx");
+    case "icicle-chart":
+      return import("./docs/icicle-chart.mdx");
+    case "fishbone-diagram":
+      return import("./docs/fishbone-diagram.mdx");
+    case "chart-legend":
+      return import("./docs/chart-legend.mdx");
+    case "chart-empty":
+      return import("./docs/chart-empty.mdx");
+    case "tooltip-portal":
+      return import("./docs/tooltip-portal.mdx");
     default:
-      return import("./docs/bar-chart.mdx");
+      throw new Error(`doc desconocida (falta en registry): ${slug}`);
   }
 }
