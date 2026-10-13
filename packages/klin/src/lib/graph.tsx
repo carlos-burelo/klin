@@ -9,6 +9,8 @@
  * orden baricentro (2 pasadas) y rutas curvas. Las aristas se dibujan centro
  * a centro y los nodos se pintan encima, así no hay que recortar extremos.
  */
+
+import { truncateLabel } from "./palette";
 import {
   CHART_TOKEN,
   EDGE_LABEL_CHAR_WIDTH,
@@ -375,6 +377,23 @@ export function measureText(
     fontSize *
     (mono ? TEXT_MONO_RATIO : TEXT_SANS_RATIO)
   );
+}
+
+/**
+ * Recorta un texto al ancho disponible estimado (etiquetas dentro de formas).
+ * Vacío si ni dos caracteres caben: el llamador omite el <text>.
+ */
+export function fitText(
+  text: string,
+  availW: number,
+  fontSize = TICK_FONT_SIZE,
+): string {
+  if (availW <= 0) return "";
+  const full = measureText(text, fontSize);
+  if (full <= availW) return text;
+  const n = Math.floor((Array.from(text).length * availW) / full);
+  if (n < 2) return "";
+  return truncateLabel(text, n);
 }
 
 /**

@@ -33,6 +33,10 @@ import { ChartLegend } from "./legend";
 
 /** Desplazamiento de la etiqueta x bajo el eje. */
 const AXIS_LABEL_OFFSET = 10;
+/** Separación entre columnas (inset uniforme, no altera proporciones). */
+const COLUMN_GAP = 4;
+/** Separación entre segmentos apilados de una columna. */
+const SEGMENT_GAP = 2;
 /** % mínimo de columna para rotular el % dentro del segmento. */
 const MIN_PCT_LABEL = 8;
 /** Alto (y doble de ancho) mínimo en px para que el % quepa dentro. */
@@ -180,10 +184,10 @@ export function MarimekkoChart({
                   <g key={s.key}>
                     <title>{tip}</title>
                     <rect
-                      x={colX}
-                      y={MARGIN.top + Math.min(y0pix, y1pix)}
-                      width={Math.max(0, colW)}
-                      height={Math.max(MIN_SHAPE_PX, segH)}
+                      x={colX + COLUMN_GAP / 2}
+                      y={MARGIN.top + Math.min(y0pix, y1pix) + SEGMENT_GAP / 2}
+                      width={Math.max(0, colW - COLUMN_GAP)}
+                      height={Math.max(MIN_SHAPE_PX, segH - SEGMENT_GAP)}
                       rx={BAR_RADIUS}
                       fill={colors[si] ?? CHART_TOKEN.chart1}
                       data-chart-tip={tip}

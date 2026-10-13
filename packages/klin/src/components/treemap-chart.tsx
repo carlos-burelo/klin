@@ -12,10 +12,11 @@ import {
 import type { CSSProperties } from "react";
 import { isBlank } from "../lib/empty";
 import { resolveFormatter } from "../lib/format";
+import { fitText } from "../lib/graph";
 import { stableKey } from "../lib/keys";
 import { DEFAULT_MAX_LEAVES } from "../lib/limits";
 import { toNumber } from "../lib/number";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor } from "../lib/palette";
 import {
   BAR_RADIUS,
   CHART_TOKEN,
@@ -68,7 +69,6 @@ const LABEL_DY = 20;
 const VALUE_DY = 36;
 const MIN_LABEL_W = 64;
 const MIN_LABEL_H = 30;
-const CHAR_PER_PX = 8;
 const VALUE_OPACITY = 0.85;
 /** Partición por defecto (equivale al tile clásico de d3). */
 const DEFAULT_TREEMAP_TILING = "squarify" as const;
@@ -190,6 +190,14 @@ export function TreemapChart({
           minLabelArea === undefined
             ? w > MIN_LABEL_W && h > MIN_LABEL_H
             : w * h >= minLabelArea;
+        const availW = w - LABEL_X * 2;
+        const labelText = showLabel
+          ? fitText(leaf.data.label, availW, NODE_FONT_SIZE)
+          : "";
+        const valueText =
+          showLabel && showValues
+            ? fitText(fmt(value), availW, TICK_FONT_SIZE)
+            : "";
         return (
           <g key={stableKey([leaf.data.label, leaf.x0, leaf.y0], i)}>
             <title>{tip}</title>
@@ -202,7 +210,7 @@ export function TreemapChart({
               fill={color}
               data-chart-tip={tip}
             />
-            {showLabel ? (
+            {labelText ? (
               <>
                 <text
                   x={leaf.x0 + LABEL_X}
@@ -211,9 +219,9 @@ export function TreemapChart({
                   fontWeight={FONT_SEMIBOLD}
                   fill={CHART_TOKEN.onFill}
                 >
-                  {truncateLabel(leaf.data.label, Math.floor(w / CHAR_PER_PX))}
+                  {labelText}
                 </text>
-                {showValues ? (
+                {valueText ? (
                   <text
                     x={leaf.x0 + LABEL_X}
                     y={leaf.y0 + VALUE_DY}
@@ -221,7 +229,7 @@ export function TreemapChart({
                     fill={CHART_TOKEN.onFill}
                     opacity={VALUE_OPACITY}
                   >
-                    {fmt(value)}
+                    {valueText}
                   </text>
                 ) : null}
               </>
