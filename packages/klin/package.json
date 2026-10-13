@@ -4,33 +4,57 @@
   "description": "Gráficas SSR-friendly (d3 para cálculo, SVG puro, tooltip portal mínimo)",
   "license": "AGPL-3.0-or-later",
   "author": "Carlos Burelo",
+  "keywords": [
+    "charts",
+    "d3",
+    "svg",
+    "ssr",
+    "react",
+    "server-components",
+    "visualization",
+    "dashboard"
+  ],
+  "homepage": "https://github.com/carlos-burelo/klin#readme",
+  "bugs": {
+    "url": "https://github.com/carlos-burelo/klin/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "sideEffects": [
     "**/*.css"
   ],
   "files": [
-    "src",
+    "dist",
     "LICENSE",
     "EXCEPTION",
     "README.md"
   ],
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
-    "./styles.css": "./src/styles.css",
+    "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://npm.pkg.github.com/"
+    "provenance": true
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/carlos-burelo/klin.git"
+    "url": "git+https://github.com/carlos-burelo/klin.git",
+    "directory": "packages/klin"
   },
   "scripts": {
+    "build": "tsup && tsup --config tsup.client.ts && node scripts/postbuild.mjs",
+    "prepublishOnly": "pnpm build",
     "typecheck": "tsc --noEmit",
     "lint": "biome check",
     "lint:fix": "biome check --write",
@@ -39,8 +63,11 @@
   },
   "dependencies": {
     "d3-array": "^3.2.4",
+    "d3-chord": "^3.0.1",
+    "d3-contour": "^4.0.2",
     "d3-force": "^3.0.0",
     "d3-format": "^3.1.0",
+    "d3-hexbin": "^0.2.2",
     "d3-hierarchy": "^3.1.2",
     "d3-sankey": "^0.12.3",
     "d3-scale": "^4.0.2",
@@ -53,8 +80,11 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.2",
     "@types/d3-array": "^3.2.1",
+    "@types/d3-chord": "^3.0.6",
+    "@types/d3-contour": "^3.0.6",
     "@types/d3-force": "^3.0.10",
     "@types/d3-format": "^3.0.4",
+    "@types/d3-hexbin": "^0.2.5",
     "@types/d3-hierarchy": "^3.1.7",
     "@types/d3-sankey": "^0.12.5",
     "@types/d3-scale": "^4.0.9",
@@ -64,6 +94,7 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "tsup": "^8.5.1",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }

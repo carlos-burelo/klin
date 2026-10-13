@@ -44,6 +44,12 @@ export type WardleyMapProps = {
   nodes: WardleyNode[];
   edges: WardleyEdge[];
   ariaLabel: string;
+  /** Muestra etiquetas de etapas y ejes. */
+  showGridLabels?: boolean;
+  /** Nombres de las 4 etapas de evolución. */
+  stages?: [string, string, string, string];
+  /** Radio fijo o proporcional al grado (nº de enlaces). */
+  nodeSize?: "fixed" | "edges";
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -54,7 +60,19 @@ export type WardleyMapProps = {
 const W = 640;
 const H = 420;
 const MARGIN: ChartMargin = { top: 16, right: 16, bottom: 44, left: 16 };
-const STAGES = ["Génesis", "Custom", "Producto", "Commodity"];
+/** Etapas por defecto (las actuales Génesis → Commodity). */
+const DEFAULT_WARDLEY_STAGES: [string, string, string, string] = [
+  "Génesis",
+  "Custom",
+  "Producto",
+  "Commodity",
+];
+/** Muestra etiquetas de grid por defecto (comportamiento actual). */
+const DEFAULT_WARDLEY_SHOW_GRID_LABELS = true;
+/** Radio fijo por defecto (comportamiento actual). */
+const DEFAULT_WARDLEY_NODE_SIZE = "fixed" as const;
+/** Crecimiento de radio por enlace en modo `edges`. */
+const WARDLEY_EDGE_SIZE_STEP = 2;
 /** Fracciones de grid vertical, trazo punteado y geometría de etiquetas. */
 const GRID_FRACTIONS = [0.25, 0.5, 0.75];
 const GRID_DASHARRAY = "4 4";
@@ -95,6 +113,9 @@ export function WardleyMap({
   nodes,
   edges,
   ariaLabel,
+  showGridLabels = DEFAULT_WARDLEY_SHOW_GRID_LABELS,
+  stages = DEFAULT_WARDLEY_STAGES,
+  nodeSize = DEFAULT_WARDLEY_NODE_SIZE,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -107,11 +128,19 @@ export function WardleyMap({
 
   const { points, cleanEdges } = computeWardleyLayout(nodes, edges);
   const pointById = new Map(points.map((p) => [p.id, p]));
+  const stageLabels = stages;
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = H - MARGIN.top - MARGIN.bottom;
   const px = (v: number) => MARGIN.left + clamp01(v) * innerW;
   const py = (v: number) => MARGIN.top + (1 - clamp01(v)) * innerH;
+  const degreeById = new Map<string, number>();
+  if (nodeSize === "edges") {
+    for (const e of cleanEdges) {
+      degreeById.set(e.from, (degreeById.get(e.from) ?? 0) + 1);
+      degreeById.set(e.to, (degreeById.get(e.to) ?? 0) + 1);
+    }
+  }
 
   return (
     <svg
@@ -135,37 +164,43 @@ export function WardleyMap({
           strokeDasharray={GRID_DASHARRAY}
         />
       ))}
-      {STAGES.map((s, i) => (
+      {showGridLabels
+        ? stageLabels.map((s, i) => (
+            <text
+              key={stableKey([s], i)}
+              x={MARGIN.left + (i / (stageLabels.length - 1)) * innerW}
+              y={H - STAGE_LABEL_BOTTOM_PAD}
+              textAnchor="middle"
+              fontSize={TICK_FONT_SIZE}
+              fill={CHART_TOKEN.muted}
+            >
+              {s}
+            </text>
+          ))
+        : null}
+      {showGridLabels ? (
         <text
-          key={stableKey([s], i)}
-          x={MARGIN.left + (i / (STAGES.length - 1)) * innerW}
-          y={H - STAGE_LABEL_BOTTOM_PAD}
+          x={MARGIN.left + innerW / 2}
+          y={H - AXIS_LABEL_BOTTOM_PAD}
           textAnchor="middle"
           fontSize={TICK_FONT_SIZE}
           fill={CHART_TOKEN.muted}
         >
-          {s}
+          Evolución →
         </text>
-      ))}
-      <text
-        x={MARGIN.left + innerW / 2}
-        y={H - AXIS_LABEL_BOTTOM_PAD}
-        textAnchor="middle"
-        fontSize={TICK_FONT_SIZE}
-        fill={CHART_TOKEN.muted}
-      >
-        Evolución →
-      </text>
-      <text
-        x={Y_LABEL_X}
-        y={MARGIN.top + innerH / 2}
-        textAnchor="middle"
-        fontSize={TICK_FONT_SIZE}
-        fill={CHART_TOKEN.muted}
-        transform={`rotate(-90, ${Y_LABEL_X}, ${MARGIN.top + innerH / 2})`}
-      >
-        Cadena de valor →
-      </text>
+      ) : null}
+      {showGridLabels ? (
+        <text
+          x={Y_LABEL_X}
+          y={MARGIN.top + innerH / 2}
+          textAnchor="middle"
+          fontSize={TICK_FONT_SIZE}
+          fill={CHART_TOKEN.muted}
+          transform={`rotate(-90, ${Y_LABEL_X}, ${MARGIN.top + innerH / 2})`}
+        >
+          Cadena de valor →
+        </text>
+      ) : null}
       {cleanEdges.map((e, i) => {
         const a = pointById.get(e.from);
         const b = pointById.get(e.to);
@@ -184,15 +219,19 @@ export function WardleyMap({
       })}
       {points.map((n, i) => {
         const color = seriesColor(i, n.color);
-        const stageIdx = Math.round(n.nx * (STAGES.length - 1));
-        const tip = `${n.label} (${STAGES[stageIdx] ?? ""})`;
+        const stageIdx = Math.round(n.nx * (stageLabels.length - 1));
+        const tip = `${n.label} (${stageLabels[stageIdx] ?? ""})`;
+        const r =
+          nodeSize === "edges"
+            ? NODE_RADIUS + (degreeById.get(n.id) ?? 0) * WARDLEY_EDGE_SIZE_STEP
+            : NODE_RADIUS;
         return (
           <g key={stableKey([n.id], i)}>
             <title>{tip}</title>
             <circle
               cx={px(n.nx)}
               cy={py(n.ny)}
-              r={NODE_RADIUS}
+              r={r}
               fill={color}
               stroke={CHART_TOKEN.background}
               strokeWidth={NODE_BORDER_WIDTH}

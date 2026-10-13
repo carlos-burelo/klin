@@ -59,6 +59,58 @@ const ATTR_DY = 15;
 const METHOD_DY = 19;
 const DIVIDER_PAD = 4;
 const DASH_DEPENDENCY = "5 4";
+/** Máximo de miembros visibles por clase antes de colapsar en `+N más`. */
+const CLASS_MEMBER_LIMIT = 12;
+
+/** Vista filtrada de los miembros de una clase (atributos + métodos). */
+type ClassMemberView = {
+  attributes: string[];
+  methods: string[];
+  /** Miembros ocultos por el límite (0 = sin colapso). */
+  hidden: number;
+};
+
+/** Opciones de filtrado de miembros (las mismas props del componente). */
+type ClassMemberOptions = {
+  showMethods: boolean;
+  showAttributes: boolean;
+  visibility: "all" | "public";
+  memberLimit: number;
+};
+
+/** Indica si un miembro cuenta como público (`+` o sin prefijo de visibilidad). */
+function isPublicMember(member: string): boolean {
+  const first = Array.from(member.trimStart())[0];
+  return first !== "#" && first !== "-" && first !== "~";
+}
+
+/** Aplica visibilidad, secciones y límite a los miembros de una clase. */
+function classMemberView(
+  n: ClassNode,
+  opts: ClassMemberOptions,
+): ClassMemberView {
+  const attrs = opts.showAttributes ? (n.attributes ?? []) : [];
+  const methods = opts.showMethods ? (n.methods ?? []) : [];
+  const visibleAttrs =
+    opts.visibility === "public" ? attrs.filter(isPublicMember) : attrs;
+  const visibleMethods =
+    opts.visibility === "public" ? methods.filter(isPublicMember) : methods;
+  const total = visibleAttrs.length + visibleMethods.length;
+  const limit = Math.max(0, opts.memberLimit);
+  if (total <= limit) {
+    return { attributes: visibleAttrs, methods: visibleMethods, hidden: 0 };
+  }
+  const keptAttrs = visibleAttrs.slice(0, limit);
+  const keptMethods = visibleMethods.slice(
+    0,
+    Math.max(0, limit - keptAttrs.length),
+  );
+  return {
+    attributes: keptAttrs,
+    methods: keptMethods,
+    hidden: total - keptAttrs.length - keptMethods.length,
+  };
+}
 
 /** Props del diagrama de clases UML. */
 export type ClassDiagramProps = {
@@ -66,6 +118,14 @@ export type ClassDiagramProps = {
   edges: ClassEdge[];
   ariaLabel: string;
   direction?: "TB" | "LR";
+  /** Muestra la sección de métodos de cada clase. */
+  showMethods?: boolean;
+  /** Muestra la sección de atributos de cada clase. */
+  showAttributes?: boolean;
+  /** Filtra miembros por visibilidad (`public` conserva `+` y sin prefijo). */
+  visibility?: "all" | "public";
+  /** Máximo de miembros visibles por clase; el resto se colapsa en `+N más`. */
+  memberLimit?: number;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -80,6 +140,7 @@ export function computeClassLayout(
   nodes: ClassNode[],
   edges: ClassEdge[],
   direction: "TB" | "LR" = "TB",
+  options?: Partial<ClassMemberOptions>,
 ): {
   layout: DagLayout;
   byId: Map<string, ClassNode>;
@@ -87,14 +148,29 @@ export function computeClassLayout(
   width: number;
   height: number;
 } {
+  const opts: ClassMemberOptions = {
+    showMethods: options?.showMethods ?? true,
+    showAttributes: options?.showAttributes ?? true,
+    visibility: options?.visibility ?? "all",
+    memberLimit: options?.memberLimit ?? CLASS_MEMBER_LIMIT,
+  };
+  const views = new Map(nodes.map((n) => [n.id, classMemberView(n, opts)]));
   const heights = new Map(
-    nodes.map((n) => [
-      n.id,
-      TITLE_H +
-        (n.attributes?.length ?? 0) * ROW +
-        (n.methods?.length ?? 0) * ROW +
-        BODY_PAD,
-    ]),
+    nodes.map((n) => {
+      const view = views.get(n.id) ?? {
+        attributes: [],
+        methods: [],
+        hidden: 0,
+      };
+      return [
+        n.id,
+        TITLE_H +
+          view.attributes.length * ROW +
+          view.methods.length * ROW +
+          (view.hidden > 0 ? ROW : 0) +
+          BODY_PAD,
+      ];
+    }),
   );
   const H = Math.max(MIN_NODE_H, ...heights.values());
   const W = fitNodeWidth(
@@ -140,6 +216,10 @@ export function ClassDiagram({
   edges,
   ariaLabel,
   direction = "TB",
+  showMethods = true,
+  showAttributes = true,
+  visibility = "all",
+  memberLimit = CLASS_MEMBER_LIMIT,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -150,10 +230,17 @@ export function ClassDiagram({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const opts: ClassMemberOptions = {
+    showMethods,
+    showAttributes,
+    visibility,
+    memberLimit,
+  };
   const { layout, byId, heights, width, height } = computeClassLayout(
     nodes,
     edges,
     direction,
+    opts,
   );
   const H = Math.max(MIN_NODE_H, ...heights.values());
   const edgeByKey = new Map(
@@ -248,8 +335,9 @@ export function ClassDiagram({
           if (!n) return null;
           const h = heights.get(p.id) ?? H;
           const y0 = p.cy - h / 2;
-          const attrs = n.attributes ?? [];
-          const methods = n.methods ?? [];
+          const view = classMemberView(n, opts);
+          const attrs = view.attributes;
+          const methods = view.methods;
           return (
             <g key={stableKey([p.id], pi)}>
               <title>{n.name}</title>
@@ -316,6 +404,22 @@ export function ClassDiagram({
                   {truncateLabel(m, 24)}
                 </text>
               ))}
+              {view.hidden > 0 ? (
+                <text
+                  x={p.x + ATTR_X}
+                  y={
+                    y0 +
+                    TITLE_H +
+                    (attrs.length + methods.length) * ROW +
+                    METHOD_DY
+                  }
+                  fontSize={TICK_FONT_SIZE}
+                  fontFamily={FONT_MONO}
+                  fill={CHART_TOKEN.muted}
+                >
+                  {`+${view.hidden} más`}
+                </text>
+              ) : null}
             </g>
           );
         })}

@@ -11,6 +11,7 @@ import {
   BAR_RADIUS,
   CHART_TOKEN,
   EMPTY_CELL_OPACITY,
+  MISSING_VALUE,
   TICK_DY,
   TICK_FONT_SIZE,
   TICK_GAP_PX,
@@ -21,6 +22,8 @@ const W = 640;
 const LABEL_W = 132;
 const LABEL_H = 30;
 const MAX_CELL = 64;
+/** Celda mínima (px) para pintar valor en modo `auto`. */
+const MATRIX_VALUE_MIN_CELL = 28;
 /** Separación entre celdas, aire lateral y relleno inferior. */
 const CELL_GAP = 4;
 const GRID_SIDE_PAD = 16;
@@ -39,6 +42,10 @@ export type MatrixHeatmapProps = {
   /** values[fila][columna]. */
   values: number[][];
   ariaLabel: string;
+  /** Control del texto de valor en celda (`auto` según tamaño). */
+  showValues?: "auto" | "always" | "never";
+  /** Etiqueta de celdas sin dato (`NaN`/ausente). */
+  missingLabel?: string;
   format?: ValueFormatter;
   locale?: string;
   color?: string;
@@ -58,6 +65,8 @@ export function MatrixHeatmap({
   cols,
   values,
   ariaLabel,
+  showValues = "auto",
+  missingLabel = MISSING_VALUE,
   locale = "es-MX",
   format = (v: number) => formatDefault(v, locale),
   color,
@@ -122,8 +131,17 @@ export function MatrixHeatmap({
               {truncateLabel(row, LABEL_MAX_ROW)}
             </text>
             {cols.map((col, ci) => {
-              const v = toNumber(values[ri]?.[ci] ?? 0);
-              const tip = `${row} · ${col}: ${format(v)}`;
+              const raw = values[ri]?.[ci];
+              const num = typeof raw === "number" ? raw : Number(raw);
+              const isMissing =
+                raw === undefined || raw === null || !Number.isFinite(num);
+              const v = isMissing ? 0 : toNumber(num);
+              const tip = isMissing
+                ? `${row} · ${col}: ${missingLabel}`
+                : `${row} · ${col}: ${format(v)}`;
+              const showText =
+                showValues === "always" ||
+                (showValues === "auto" && cell >= MATRIX_VALUE_MIN_CELL);
               return (
                 <g key={stableKey([col], ci)}>
                   <title>{tip}</title>
@@ -135,12 +153,24 @@ export function MatrixHeatmap({
                     rx={BAR_RADIUS}
                     fill={fill}
                     fillOpacity={
-                      v <= 0
+                      isMissing || v <= 0
                         ? EMPTY_CELL_OPACITY
                         : CELL_BASE_OPACITY + CELL_RANGE_OPACITY * (v / top)
                     }
                     data-chart-tip={tip}
                   />
+                  {showText ? (
+                    <text
+                      x={gx + ci * step + cell / 2}
+                      y={LABEL_H + ri * step + cell / 2}
+                      dy={TICK_DY}
+                      textAnchor="middle"
+                      fontSize={TICK_FONT_SIZE}
+                      fill={CHART_TOKEN.foreground}
+                    >
+                      {isMissing ? missingLabel : format(v)}
+                    </text>
+                  ) : null}
                 </g>
               );
             })}

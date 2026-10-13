@@ -1,0 +1,112 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/flow-chart";
+import Examples from "../../demos/examples/flow-chart";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Procesos y decisiones. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, FlowChart } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<FlowChart
+  nodes={/* … */}
+  edges={/* … */}
+  ariaLabel="Flow Chart"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/flow-chart.tsx`)</summary>
+
+```tsx
+/**
+ * Demo Flujo del site (no se publica en el bundle de la lib).
+ */
+import { ChartTooltipPortal, FlowChart } from "@carlos-burelo/klin";
+
+export default function FlowChartDemo() {
+  return (
+    <ChartTooltipPortal>
+      <FlowChart
+        ariaLabel="Flujo de atención de pedido"
+        edges={[
+          { from: "recibido", label: "valida", to: "revision" },
+          { from: "revision", label: "sí", to: "pago" },
+          { from: "revision", label: "no", to: "rechazado" },
+          { from: "pago", to: "envio" },
+        ]}
+        nodes={[
+          { id: "recibido", kind: "start", label: "Pedido recibido" },
+          { id: "revision", kind: "decision", label: "¿Stock disponible?" },
+          { id: "pago", label: "Confirmar pago", sub: "Pasarela" },
+          { id: "envio", label: "Preparar envío" },
+          { id: "rechazado", kind: "end", label: "Rechazado" },
+        ]}
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "nodes", type: "FlowNode[]", required: true, description: "Nodos del diagrama (ids únicos, etiquetas)." },
+    { name: "edges", type: "FlowEdge[]", required: true, description: "Aristas entre nodos (origen, destino, etiqueta opcional)." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "direction", type: "'TB' | 'LR'", required: false, description: "—" },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+]} />
+
+*Tipo completo: `FlowChartProps` en `flow-chart.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`flow-chart.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/flow-chart.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

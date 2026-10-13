@@ -1,8 +1,8 @@
-# Publica el paquete en GitHub Packages (npm.pkg.github.com) al empujar un tag vX.Y.Z.
-#   npm version patch   # o minor / major  → crea el commit y el tag
+# Publica el paquete en npmjs al empujar un tag vX.Y.Z.
+#   npm version patch   # o minor / major (en packages/klin) → crea el commit y el tag
 #   git push --follow-tags
-# Verifica antes en el workspace (pnpm check). El workflow solo publica: el GITHUB_TOKEN no
-# puede instalar paquetes privados de otros repos, y publicar no necesita node_modules.
+# Requiere el secreto NPM_TOKEN (token de npm con permiso de publicación).
+# Verifica antes en el workspace (pnpm check). El build corre vía prepublishOnly.
 name: publish
 
 on:
@@ -11,7 +11,7 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  id-token: write
 
 jobs:
   publish:
@@ -24,8 +24,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://npm.pkg.github.com
-          scope: "@carlos-burelo"
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @carlos-burelo/klin publish --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

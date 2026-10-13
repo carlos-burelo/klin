@@ -25,6 +25,31 @@ export type BulletRow = {
 export type BulletChartProps = {
   rows: BulletRow[];
   ariaLabel: string;
+  /**
+   * Colores de las bandas cualitativas [baja, media, alta].
+   * @default tonos de track
+   */
+  bands?: [string, string, string];
+  /**
+   * Muestra el valor de la meta junto al valor alcanzado.
+   * @default true
+   */
+  showTargetLabel?: boolean;
+  /**
+   * Tope fijo de la escala para comparar varias balas ("auto" = máximo de los datos).
+   * @default "auto"
+   */
+  scaleMax?: "auto" | number;
+  /**
+   * Alto en px de cada pista (por defecto, el de la hoja de estilo).
+   * @default undefined
+   */
+  height?: number;
+  /**
+   * Prefijo de los `clipPath` (por defecto, `useId`; útil en multi-instancia).
+   * @default undefined
+   */
+  id?: string;
   format?: ValueFormatter;
   locale?: string;
   color?: string;
@@ -54,6 +79,11 @@ const TARGET_WIDTH = 3;
 export function BulletChart({
   rows,
   ariaLabel,
+  bands,
+  showTargetLabel = true,
+  scaleMax = "auto",
+  height,
+  id,
   locale = "es-MX",
   format = (v: number) => formatDefault(v, locale),
   color,
@@ -63,12 +93,16 @@ export function BulletChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: BulletChartProps) {
-  const uid = useId().replace(/:/g, "");
+  // useId arriba: hooks siempre en mismo orden (antes del early return).
+  const autoUid = useId().replace(/:/g, "");
+  const uid = id ?? autoUid;
   if (rows.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const fill = seriesColor(0, color);
+  const trackStyle =
+    height == null ? undefined : { height: toNumber(height, TRACK_H) };
   const clean = rows.map((r) => ({
     label: r.label,
     detail: r.detail,
@@ -80,11 +114,18 @@ export function BulletChart({
       toNumber(r.ranges[2]),
     ] as [number, number, number],
   }));
-  const maxTotal = Math.max(
-    1,
-    ...clean.map((r) => Math.max(r.value, r.target, r.ranges[2])),
-  );
-  const bandFills = [CHART_TOKEN.track, CHART_TOKEN.track, CHART_TOKEN.track];
+  const maxTotal =
+    scaleMax === "auto"
+      ? Math.max(
+          1,
+          ...clean.map((r) => Math.max(r.value, r.target, r.ranges[2])),
+        )
+      : Math.max(1, toNumber(scaleMax, 1));
+  const bandFills = [
+    bands?.[0] ?? CHART_TOKEN.track,
+    bands?.[1] ?? CHART_TOKEN.track,
+    bands?.[2] ?? CHART_TOKEN.track,
+  ];
   const bandOpacity = [BAND_OPACITY_LOW, BAND_OPACITY_MID, BAND_OPACITY_HIGH];
 
   return (
@@ -138,12 +179,15 @@ export function BulletChart({
                   {row.label}
                 </span>
                 <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums">
-                  {`${format(row.value)} / ${format(row.target)}`}
+                  {showTargetLabel
+                    ? `${format(row.value)} / ${format(row.target)}`
+                    : format(row.value)}
                 </span>
               </div>
               <svg
                 viewBox={`0 0 ${TRACK_W} ${TRACK_H}`}
                 className="h-6 min-w-0 flex-1"
+                style={trackStyle}
                 aria-hidden="true"
               >
                 <title>{tip}</title>

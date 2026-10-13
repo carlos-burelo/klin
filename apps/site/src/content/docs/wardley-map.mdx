@@ -1,0 +1,116 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/wardley-map";
+import Examples from "../../demos/examples/wardley-map";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Cadena de valor vs evolución. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, WardleyMap } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<WardleyMap
+  nodes={/* … */}
+  edges={/* … */}
+  ariaLabel="Wardley Map"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/wardley-map.tsx`)</summary>
+
+```tsx
+import type { WardleyEdge, WardleyNode } from "@carlos-burelo/klin";
+import { ChartTooltipPortal, WardleyMap } from "@carlos-burelo/klin";
+
+const nodes: WardleyNode[] = [
+  { id: "portal", label: "Portal ciudadano", x: 0.72, y: 0.92 },
+  { id: "citas", label: "Motor de citas", x: 0.55, y: 0.68 },
+  { id: "api", label: "API de trámites", x: 0.48, y: 0.5 },
+  { id: "compute", label: "Cómputo", x: 0.82, y: 0.28 },
+  { id: "datos", label: "Base de datos", x: 0.86, y: 0.14 },
+];
+
+const edges: WardleyEdge[] = [
+  { from: "portal", to: "citas" },
+  { from: "citas", to: "api" },
+  { from: "api", to: "compute" },
+  { from: "api", to: "datos" },
+];
+
+export default function WardleyMapDemo() {
+  return (
+    <ChartTooltipPortal>
+      <WardleyMap
+        nodes={nodes}
+        edges={edges}
+        ariaLabel="Mapa Wardley de la plataforma de trámites digitales"
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "nodes", type: "WardleyNode[]", required: true, description: "Nodos del diagrama (ids únicos, etiquetas)." },
+    { name: "edges", type: "WardleyEdge[]", required: true, description: "Aristas entre nodos (origen, destino, etiqueta opcional)." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "showGridLabels", type: "boolean", required: false, description: "Muestra etiquetas de etapas y ejes." },
+    { name: "stages", type: "[string, string, string, string]", required: false, description: "Nombres de las 4 etapas de evolución." },
+    { name: "nodeSize", type: "'fixed' | 'edges'", required: false, description: "Radio fijo o proporcional al grado (nº de enlaces)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+]} />
+
+*Tipo completo: `WardleyMapProps` en `wardley-map.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`wardley-map.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/wardley-map.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

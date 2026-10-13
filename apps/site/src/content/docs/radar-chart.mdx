@@ -1,0 +1,110 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/radar-chart";
+import Examples from "../../demos/examples/radar-chart";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Telaraña multivariada. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, RadarChart } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<RadarChart
+  axes={/* … */}
+  series={/* … */}
+  ariaLabel="Radar Chart"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/radar-chart.tsx`)</summary>
+
+```tsx
+import { ChartTooltipPortal, RadarChart } from "@carlos-burelo/klin";
+
+/** Comparativa de dos proveedores en cinco criterios (0-10). */
+export default function RadarChartDemo() {
+  return (
+    <ChartTooltipPortal>
+      <RadarChart
+        ariaLabel="Radar comparativo de proveedores por criterio"
+        axes={["Calidad", "Precio", "Plazo", "Soporte", "Experiencia"]}
+        series={[
+          { label: "Proveedor A", values: [8, 6, 9, 7, 8] },
+          { label: "Proveedor B", values: [7, 9, 6, 8, 6] },
+        ]}
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "axes", type: "string[]", required: true, description: "—" },
+    { name: "series", type: "RadarSeries[]", required: true, description: "Series a dibujar (clave + etiqueta + color opcional)." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "size", type: "number", required: false, description: "—" },
+    { name: "levels", type: "number", required: false, description: "—" },
+    { name: "maxValue", type: "number", required: false, description: "—" },
+    { name: "fillOpacity", type: "number | number[]", required: false, description: "Opacidad del relleno: un valor para todas o uno por serie. @default 0.18 /" },
+    { name: "showVertices", type: "boolean", required: false, description: "Muestra los vértices de cada serie. @default true /" },
+    { name: "scale", type: "'linear' | 'sqrt'", required: false, description: "Escala radial (sqrt comprime los valores altos). @default 'linear' /" },
+    { name: "format", type: "ValueFormatter", required: false, description: "—" },
+    { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
+    { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda HTML SSR (por defecto true donde aplica)." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+]} />
+
+*Tipo completo: `RadarChartProps` en `radar-chart.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`radar-chart.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/radar-chart.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

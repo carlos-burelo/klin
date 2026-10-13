@@ -1,0 +1,131 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/beeswarm-plot";
+import Examples from "../../demos/examples/beeswarm-plot";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Puntos sin solape sobre un eje. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { BeeswarmPlot, type BeeswarmPoint, ChartTooltipPortal } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<BeeswarmPlot
+  points={/* … */}
+  ariaLabel="Beeswarm Plot"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/beeswarm-plot.tsx`)</summary>
+
+```tsx
+/**
+ * Demo Enjambre del site (no se publica en el bundle de la lib).
+ */
+import {
+  BeeswarmPlot,
+  type BeeswarmPoint,
+  ChartTooltipPortal,
+} from "@carlos-burelo/klin";
+
+const points: BeeswarmPoint[] = [
+  { value: 12.5, label: "Los Cocuyos" },
+  { value: 13, label: "El Paisa" },
+  { value: 12, label: "Tacos Charly" },
+  { value: 14, label: "Los Tres Gallos" },
+  { value: 13.5, label: "El Vilsito" },
+  { value: 15, label: "Los Parados" },
+  { value: 12.8, label: "El Huequito" },
+  { value: 22, label: "El Faraón" },
+  { value: 24, label: "El Borrego Viudo" },
+  { value: 23, label: "El Pescadito" },
+  { value: 25, label: "La Casa del Pastor" },
+  { value: 26, label: "El Parnita" },
+  { value: 24.5, label: "Taquería Orinoco" },
+  { value: 32, label: "Contramar" },
+  { value: 35, label: "Pujol" },
+  { value: 33, label: "Quintonil" },
+  { value: 38, label: "Sud 777" },
+  { value: 34, label: "Rosetta" },
+];
+
+export default function BeeswarmPlotDemo() {
+  return (
+    <ChartTooltipPortal>
+      <BeeswarmPlot
+        ariaLabel="Precio del taco al pastor por taquería en CDMX: se agrupa en barato, medio y premium"
+        points={points}
+        formatX={(v: number) => `$${v}`}
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "points", type: "BeeswarmPoint[]", required: true, description: "—" },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "radius", type: "number", required: false, description: "—" },
+    { name: "height", type: "number", required: false, description: "Alto del SVG en px (ancho siempre fluido por viewBox)." },
+    { name: "formatX", type: "ValueFormatter", required: false, description: "Formateador del eje X (por defecto es-MX)." },
+    { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+    { name: "domain", type: "[number, number]", required: false, description: "Recorte fijo del dominio X [min, max] (indefinido = automático con cero)." },
+    { name: "gridTicks", type: "number", required: false, description: "Ticks del eje X (por defecto BEESWARM_X_TICKS)." },
+    { name: "showValues", type: "boolean", required: false, description: "Muestra el valor sobre cada punto." },
+    { name: "showSampleSize", type: "boolean", required: false, description: "Muestra el tamaño de muestra (n) junto al eje." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+]} />
+
+*Tipo completo: `BeeswarmPlotProps` en `beeswarm-plot.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`beeswarm-plot.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/beeswarm-plot.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

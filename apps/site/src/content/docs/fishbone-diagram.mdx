@@ -1,0 +1,142 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/fishbone-diagram";
+import Examples from "../../demos/examples/fishbone-diagram";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Espina causa-efecto. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, FishboneDiagram } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<FishboneDiagram
+  effect={/* … */}
+  causes={/* … */}
+  ariaLabel="Fishbone Diagram"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/fishbone-diagram.tsx`)</summary>
+
+```tsx
+import { ChartTooltipPortal, FishboneDiagram } from "@carlos-burelo/klin";
+
+export default function FishboneDiagramDemo() {
+  return (
+    <ChartTooltipPortal>
+      <FishboneDiagram
+        ariaLabel="Causas de la caída de ventas en la tienda del Centro, personal y procesos concentran las subcausas principales"
+        effect="Caída de ventas en tienda Centro"
+        causes={[
+          {
+            label: "Personal",
+            subcauses: [
+              "Rotación alta",
+              "Falta de capacitación",
+              "Turnos sin cubrir",
+            ],
+          },
+          {
+            label: "Procesos",
+            subcauses: [
+              "Cobro lento",
+              "Devoluciones tardadas",
+              "Inventario desactualizado",
+            ],
+          },
+          {
+            label: "Proveedores",
+            subcauses: ["Entregas incompletas", "Precios al alza"],
+          },
+          {
+            label: "Entorno",
+            subcauses: [
+              "Obra en la calle",
+              "Competencia nueva",
+              "Menos foot traffic",
+            ],
+          },
+          {
+            label: "Equipo",
+            subcauses: ["Terminales viejas", "Aire acondicionado fallando"],
+          },
+          {
+            label: "Marketing",
+            subcauses: ["Sin promo local", "Redes desactualizadas"],
+          },
+        ]}
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "effect", type: "string", required: true, description: "—" },
+    { name: "causes", type: "FishboneCause[]", required: true, description: "—" },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "height", type: "number", required: false, description: "Alto del SVG en px (ancho siempre fluido por viewBox)." },
+    { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
+    { name: "format", type: "ValueFormatter", required: false, description: "Formatea el conteo de subcausas del tip (por defecto entero con locale)." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+    { name: "showLabels", type: "boolean", required: false, description: "Muestra etiquetas de causas y subcausas." },
+    { name: "showCounts", type: "boolean", required: false, description: "Muestra el texto de subcausas ocultas (`+N más`)." },
+    { name: "sortGroups", type: "boolean", required: false, description: "Ordena causas alfabéticamente (estable, con locale)." },
+    { name: "maxItems", type: "number", required: false, description: "Tope de causas (SSR acotado)." },
+    { name: "id", type: "string", required: false, description: "Prefijo de ids internos del marcador (por defecto único vía useId)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+]} />
+
+*Tipo completo: `FishboneDiagramProps` en `fishbone-diagram.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`fishbone-diagram.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/fishbone-diagram.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

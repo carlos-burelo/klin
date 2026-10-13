@@ -48,6 +48,14 @@ export type PyramidChartProps = {
   ariaDescribedBy?: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Alto fijo del lienzo (por defecto, automático según filas). */
+  height?: number;
+  /** Etiqueta con el % de cada lado (el tooltip ya lo trae). */
+  showShare?: boolean;
+  /** Ancho de la banda central (por defecto, según `labels`). */
+  centerGap?: number;
+  /** Orden de grupos por total (suma de ambos lados). */
+  sortGroups?: "none" | "asc" | "desc";
 };
 
 const W = 640;
@@ -64,6 +72,15 @@ const LABEL_MAX_SIDE = 12;
 const AXIS_LABEL_BOTTOM_PAD = 12;
 /** Opacidad del borde de barra. */
 const BAR_STROKE_OPACITY = 0.25;
+/** Separación de la etiqueta de % al extremo de la barra. */
+const SHARE_GAP_PX = 4;
+
+/** Fila de pirámide con conteos ya saneados (negativos a 0). */
+type PyramidRow = {
+  group: string;
+  l: number;
+  r: number;
+};
 
 /**
  * Pirámide poblacional SSR (dos series espejadas): etiquetas a la izquierda,
@@ -84,17 +101,38 @@ export function PyramidChart({
   ariaDescribedBy,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
+  height: heightProp,
+  showShare = false,
+  centerGap,
+  sortGroups = "none",
 }: PyramidChartProps) {
   if (groups.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const rows: PyramidRow[] = groups.map((group, i) => ({
+    group,
+    // Conteos: negativos se fijan a 0.
+    l: Math.max(0, toNumber(left.values[i] ?? 0)),
+    r: Math.max(0, toNumber(right.values[i] ?? 0)),
+  }));
+  if (sortGroups !== "none") {
+    rows.sort((a, b) =>
+      sortGroups === "asc" ? a.l + a.r - (b.l + b.r) : b.l + b.r - (a.l + a.r),
+    );
+  }
+
   const rowH = ROW_H;
-  const height = Math.max(
+  const autoHeight = Math.max(
     PYRAMID_MIN_H,
-    MARGIN.top + MARGIN.bottom + groups.length * rowH,
+    MARGIN.top + MARGIN.bottom + rows.length * rowH,
   );
-  const band = labels === "center" ? LABEL_BAND : 0;
+  const height =
+    heightProp == null
+      ? autoHeight
+      : Math.max(PYRAMID_MIN_H, Math.round(toNumber(heightProp, autoHeight)));
+  const baseBand = labels === "center" ? LABEL_BAND : 0;
+  const band = centerGap == null ? baseBand : toNumber(centerGap, baseBand);
   const plotW = W - MARGIN.left - MARGIN.right - band;
   const halfW = plotW / 2;
   const top = topPositive([...left.values, ...right.values]);
@@ -136,18 +174,22 @@ export function PyramidChart({
           stroke={CHART_TOKEN.border}
           strokeWidth={GRID_WIDTH}
         />
-        {groups.map((group, i) => {
-          // Conteos: negativos se fijan a 0.
-          const lv = Math.max(0, toNumber(left.values[i] ?? 0));
-          const rv = Math.max(0, toNumber(right.values[i] ?? 0));
+        {rows.map((row, i) => {
+          const group = row.group;
+          const lv = row.l;
+          const rv = row.r;
           const by = MARGIN.top + i * rowH + BAR_Y_PAD;
           const bh = rowH - BAR_Y_PAD * 2;
           const lw = Math.max(lv === 0 ? 0 : ZERO_MARK_PX, scale(lv));
           const rw = Math.max(rv === 0 ? 0 : ZERO_MARK_PX, scale(rv));
           const leftFill = itemColor?.(group, "left", i) ?? leftColor;
           const rightFill = itemColor?.(group, "right", i) ?? rightColor;
-          const tipL = `${group} · ${left.label}: ${formatX(lv)} (${totalL > 0 ? Math.round((lv / totalL) * PERCENT_FACTOR) : 0}% de ${left.label})`;
-          const tipR = `${group} · ${right.label}: ${formatX(rv)} (${totalR > 0 ? Math.round((rv / totalR) * PERCENT_FACTOR) : 0}% de ${right.label})`;
+          const pctL =
+            totalL > 0 ? Math.round((lv / totalL) * PERCENT_FACTOR) : 0;
+          const pctR =
+            totalR > 0 ? Math.round((rv / totalR) * PERCENT_FACTOR) : 0;
+          const tipL = `${group} · ${left.label}: ${formatX(lv)} (${pctL}% de ${left.label})`;
+          const tipR = `${group} · ${right.label}: ${formatX(rv)} (${pctR}% de ${right.label})`;
           return (
             <g key={stableKey([group], i)}>
               <text
@@ -194,6 +236,30 @@ export function PyramidChart({
                   data-chart-tip={tipR}
                 />
               </g>
+              {showShare ? (
+                <>
+                  <text
+                    x={leftEdge - lw - SHARE_GAP_PX}
+                    y={by + bh / 2}
+                    dy={TICK_DY}
+                    textAnchor="end"
+                    fontSize={TICK_FONT_SIZE}
+                    fill={CHART_TOKEN.muted}
+                  >
+                    {pctL}%
+                  </text>
+                  <text
+                    x={rightEdge + rw + SHARE_GAP_PX}
+                    y={by + bh / 2}
+                    dy={TICK_DY}
+                    textAnchor="start"
+                    fontSize={TICK_FONT_SIZE}
+                    fill={CHART_TOKEN.muted}
+                  >
+                    {pctR}%
+                  </text>
+                </>
+              ) : null}
             </g>
           );
         })}

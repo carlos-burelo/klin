@@ -5,7 +5,7 @@
 import { max } from "d3-array";
 import type { CSSProperties } from "react";
 import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
+import { clamp01, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor } from "../lib/palette";
 import {
@@ -40,6 +40,21 @@ export type RadarChartProps = {
   size?: number;
   levels?: number;
   maxValue?: number;
+  /**
+   * Opacidad del relleno: un valor para todas o uno por serie.
+   * @default 0.18
+   */
+  fillOpacity?: number | number[];
+  /**
+   * Muestra los vértices de cada serie.
+   * @default true
+   */
+  showVertices?: boolean;
+  /**
+   * Escala radial (sqrt comprime los valores altos).
+   * @default "linear"
+   */
+  scale?: "linear" | "sqrt";
   format?: ValueFormatter;
   locale?: string;
   showLegend?: boolean;
@@ -60,6 +75,9 @@ export function RadarChart({
   size = 300,
   levels = 4,
   maxValue,
+  fillOpacity = RADAR_FILL_OPACITY,
+  showVertices = true,
+  scale = "linear",
   locale = "es-MX",
   format = (v: number) => formatDefault(v, locale),
   showLegend = true,
@@ -80,11 +98,20 @@ export function RadarChart({
     1,
     toNumber(maxValue ?? max(series.flatMap((s) => s.values)) ?? 1),
   );
+  const useSqrt = scale === "sqrt";
   const angle = (i: number) => (Math.PI * 2 * i) / axes.length - Math.PI / 2;
   const point = (i: number, v: number) => {
-    const r = (Math.max(0, toNumber(v)) / top) * radius;
+    const ratio = Math.max(0, toNumber(v)) / top;
+    const r = (useSqrt ? Math.sqrt(ratio) : ratio) * radius;
     return `${center + r * Math.cos(angle(i))},${center + r * Math.sin(angle(i))}`;
   };
+  const seriesOpacity = (si: number) =>
+    clamp01(
+      toNumber(
+        Array.isArray(fillOpacity) ? fillOpacity[si] : fillOpacity,
+        RADAR_FILL_OPACITY,
+      ),
+    );
   const colors = series.map((s, i) => seriesColor(i, s.color));
 
   return (
@@ -147,29 +174,31 @@ export function RadarChart({
             <polygon
               points={s.values.map((v, i) => point(i, v)).join(" ")}
               fill={colors[si] ?? CHART_TOKEN.chart1}
-              fillOpacity={RADAR_FILL_OPACITY}
+              fillOpacity={seriesOpacity(si)}
               stroke={colors[si] ?? CHART_TOKEN.chart1}
               strokeWidth={LINE_WIDTH}
               strokeLinejoin="round"
             />
-            {s.values.map((v, i) => {
-              const tip = `${s.label} · ${axes[i] ?? ""}: ${format(v)}`;
-              const [cx, cy] = point(i, v).split(",").map(Number);
-              return (
-                <g key={stableKey([s.label, i], i)}>
-                  <title>{tip}</title>
-                  <circle
-                    cx={cx ?? center}
-                    cy={cy ?? center}
-                    r={POINT_RADIUS_RADAR}
-                    fill={colors[si] ?? CHART_TOKEN.chart1}
-                    stroke={CHART_TOKEN.background}
-                    strokeWidth={POINT_BORDER}
-                    data-chart-tip={tip}
-                  />
-                </g>
-              );
-            })}
+            {showVertices
+              ? s.values.map((v, i) => {
+                  const tip = `${s.label} · ${axes[i] ?? ""}: ${format(v)}`;
+                  const [cx, cy] = point(i, v).split(",").map(Number);
+                  return (
+                    <g key={stableKey([s.label, i], i)}>
+                      <title>{tip}</title>
+                      <circle
+                        cx={cx ?? center}
+                        cy={cy ?? center}
+                        r={POINT_RADIUS_RADAR}
+                        fill={colors[si] ?? CHART_TOKEN.chart1}
+                        stroke={CHART_TOKEN.background}
+                        strokeWidth={POINT_BORDER}
+                        data-chart-tip={tip}
+                      />
+                    </g>
+                  );
+                })
+              : null}
           </g>
         ))}
       </svg>

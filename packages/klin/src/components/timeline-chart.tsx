@@ -26,6 +26,16 @@ export type TimelineEvent = {
 export type TimelineChartProps = {
   events: TimelineEvent[];
   ariaLabel: string;
+  /** Lado de las tarjetas (`left` todas arriba, `right` todas abajo). */
+  side?: "alternate" | "left" | "right";
+  /** Muestra la fecha sobre cada hito. */
+  showDates?: boolean;
+  /** Densidad vertical de carriles. */
+  density?: "comfortable" | "compact";
+  /** Locale para formatear fechas (con `formatDate` o locale no defecto). */
+  locale?: string;
+  /** Formatea la fecha del evento (por defecto cruda para preservar). */
+  formatDate?: (d: Date) => string;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -36,6 +46,10 @@ export type TimelineChartProps = {
 const TIMELINE_W = 680;
 const TIMELINE_MARGIN = 24;
 const TIMELINE_LANE = 76;
+/** Carril vertical en densidad compacta. */
+const TIMELINE_LANE_COMPACT = 52;
+/** Locale por defecto (crudo para preservar comportamiento). */
+const TIMELINE_DEFAULT_LOCALE = "es-MX";
 const TIMELINE_BASE_PAD = 56;
 const TIMELINE_MID_PAD = 28;
 const NODE_FONT_SIZE = 12;
@@ -50,13 +64,17 @@ const DATE_BOTTOM_PAD = 24;
 /**
  * Cómputo puro de posiciones X de la línea de tiempo + viewport.
  */
-export function computeTimelineLayout(events: TimelineEvent[]): {
+export function computeTimelineLayout(
+  events: TimelineEvent[],
+  density: "comfortable" | "compact" = "comfortable",
+): {
   height: number;
   midY: number;
   xs: number[];
 } {
-  const height = TIMELINE_LANE * 2 + TIMELINE_BASE_PAD;
-  const midY = TIMELINE_LANE + TIMELINE_MID_PAD;
+  const lane = density === "compact" ? TIMELINE_LANE_COMPACT : TIMELINE_LANE;
+  const height = lane * 2 + TIMELINE_BASE_PAD;
+  const midY = lane + TIMELINE_MID_PAD;
   const stepX =
     events.length <= 1
       ? 0
@@ -74,6 +92,11 @@ export function computeTimelineLayout(events: TimelineEvent[]): {
 export function TimelineChart({
   events,
   ariaLabel,
+  side = "alternate",
+  showDates = true,
+  density = "comfortable",
+  locale = TIMELINE_DEFAULT_LOCALE,
+  formatDate,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -84,7 +107,25 @@ export function TimelineChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { height, midY, xs } = computeTimelineLayout(events);
+  const { height, midY, xs } = computeTimelineLayout(events, density);
+  const lane = density === "compact" ? TIMELINE_LANE_COMPACT : TIMELINE_LANE;
+  /** Fecha visible: cruda por defecto; `formatDate` o locale no defecto la localizan. */
+  const displayDate = (raw: string): string => {
+    const parsed = new Date(`${raw}T12:00:00`);
+    if (Number.isNaN(parsed.getTime())) return raw;
+    if (formatDate) return formatDate(parsed);
+    if (locale !== TIMELINE_DEFAULT_LOCALE) {
+      try {
+        return parsed.toLocaleDateString(locale, {
+          day: "numeric",
+          month: "short",
+        });
+      } catch {
+        return raw;
+      }
+    }
+    return raw;
+  };
 
   return (
     <div
@@ -109,7 +150,7 @@ export function TimelineChart({
           strokeWidth={NODE_BORDER_WIDTH}
         />
         {events.map((e, i) => {
-          const up = i % 2 === 0;
+          const up = side === "alternate" ? i % 2 === 0 : side === "left";
           const x = xs[i] ?? TIMELINE_MARGIN;
           const tip = e.detail
             ? `${e.date} · ${e.label}: ${e.detail}`
@@ -123,9 +164,7 @@ export function TimelineChart({
                 x2={x}
                 y1={midY}
                 y2={
-                  up
-                    ? midY - TIMELINE_LANE + STEM_TOP_PAD
-                    : midY + TIMELINE_LANE - STEM_TOP_PAD
+                  up ? midY - lane + STEM_TOP_PAD : midY + lane - STEM_TOP_PAD
                 }
                 stroke={CHART_TOKEN.border}
                 strokeWidth={GRID_WIDTH}
@@ -147,27 +186,21 @@ export function TimelineChart({
                   fill={CHART_TOKEN.primaryForeground}
                 />
               ) : null}
+              {showDates ? (
+                <text
+                  x={x}
+                  y={up ? midY - lane + DATE_DY : midY + lane - DATE_BOTTOM_PAD}
+                  textAnchor="middle"
+                  fontSize={EDGE_LABEL_FONT_SIZE}
+                  fontFamily={FONT_MONO}
+                  fill={CHART_TOKEN.muted}
+                >
+                  {displayDate(e.date)}
+                </text>
+              ) : null}
               <text
                 x={x}
-                y={
-                  up
-                    ? midY - TIMELINE_LANE + DATE_DY
-                    : midY + TIMELINE_LANE - DATE_BOTTOM_PAD
-                }
-                textAnchor="middle"
-                fontSize={EDGE_LABEL_FONT_SIZE}
-                fontFamily={FONT_MONO}
-                fill={CHART_TOKEN.muted}
-              >
-                {e.date}
-              </text>
-              <text
-                x={x}
-                y={
-                  up
-                    ? midY - TIMELINE_LANE + LABEL_DY
-                    : midY + TIMELINE_LANE - LABEL_BOTTOM_PAD
-                }
+                y={up ? midY - lane + LABEL_DY : midY + lane - LABEL_BOTTOM_PAD}
                 textAnchor="middle"
                 fontSize={NODE_FONT_SIZE}
                 fontWeight={FONT_SEMIBOLD}

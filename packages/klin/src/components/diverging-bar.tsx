@@ -18,6 +18,7 @@ import {
   CHART_TOKEN,
   LABEL_GAP_PX,
   PERCENT_FACTOR,
+  TICK_DY,
   TICK_FONT_SIZE,
   ZERO_MARK_PX,
 } from "../lib/theme";
@@ -58,6 +59,14 @@ export type DivergingBarProps = {
   ariaDescribedBy?: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Alto fijo del lienzo (por defecto, automático según filas). */
+  height?: number;
+  /** Posición de la etiqueta de grupo: sobre la fila o al centro. */
+  midLabels?: "outside" | "center";
+  /** Etiqueta con el % de la fila en cada lado (el tooltip ya lo trae). */
+  showShare?: boolean;
+  /** Orden de filas: por total o por diferencia entre lados. */
+  sortBy?: "total" | "diff" | "none";
 };
 
 /**
@@ -79,22 +88,40 @@ export function DivergingBar({
   ariaDescribedBy,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
+  height: heightProp,
+  midLabels = "outside",
+  showShare = false,
+  sortBy = "none",
 }: DivergingBarProps) {
   if (data.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const rowH = ROW_H;
-  const height = Math.max(
+  const autoHeight = Math.max(
     MIN_HEIGHT,
     MARGIN.top + MARGIN.bottom + data.length * rowH,
   );
+  const height =
+    heightProp == null
+      ? autoHeight
+      : Math.max(MIN_HEIGHT, Math.round(toNumber(heightProp, autoHeight)));
   const halfW = (W - MARGIN.left - MARGIN.right) / 2;
   // Magnitudes opuestas: se grafica el valor absoluto de cada lado.
   const magOf = (d: Record<string, string | number>, key: string) =>
     Math.abs(toNumber(d[key]));
+  const rowTotal = (d: Record<string, string | number>) =>
+    magOf(d, left.key) + magOf(d, right.key);
+  const rowDiff = (d: Record<string, string | number>) =>
+    Math.abs(magOf(d, right.key) - magOf(d, left.key));
+  const ordered = [...data];
+  if (sortBy === "total") {
+    ordered.sort((a, b) => rowTotal(b) - rowTotal(a));
+  } else if (sortBy === "diff") {
+    ordered.sort((a, b) => rowDiff(b) - rowDiff(a));
+  }
   const top = topPositive(
-    data.flatMap((d) => [magOf(d, left.key), magOf(d, right.key)]),
+    ordered.flatMap((d) => [magOf(d, left.key), magOf(d, right.key)]),
   );
 
   const scale = scaleLinear().domain([0, top]).range([0, halfW]);
@@ -157,7 +184,7 @@ export function DivergingBar({
             </g>
           );
         })}
-        {data.map((d, i) => {
+        {ordered.map((d, i) => {
           const group = String(d[yKey] ?? "");
           const lv = magOf(d, left.key);
           const rv = magOf(d, right.key);
@@ -168,25 +195,39 @@ export function DivergingBar({
           const override = itemColor?.(d, i);
           const leftFill = override ?? leftColor;
           const rightFill = override ?? rightColor;
-          const rowTotal = lv + rv;
+          const total = lv + rv;
           const pctL =
-            rowTotal > 0 ? Math.round((lv / rowTotal) * PERCENT_FACTOR) : 0;
+            total > 0 ? Math.round((lv / total) * PERCENT_FACTOR) : 0;
           const pctR =
-            rowTotal > 0 ? Math.round((rv / rowTotal) * PERCENT_FACTOR) : 0;
+            total > 0 ? Math.round((rv / total) * PERCENT_FACTOR) : 0;
           const tipL = `${group} · ${left.label}: ${formatX(lv)} (${pctL}% de la fila)`;
           const tipR = `${group} · ${right.label}: ${formatX(rv)} (${pctR}% de la fila)`;
           return (
             <g key={stableKey([group], i)}>
-              <text
-                x={midX}
-                y={by - LABEL_GAP_PX}
-                textAnchor="middle"
-                fontSize={TICK_FONT_SIZE}
-                fill={CHART_TOKEN.muted}
-              >
-                <title>{group}</title>
-                {truncateLabel(group, LABEL_MAX_X)}
-              </text>
+              {midLabels === "center" ? (
+                <text
+                  x={midX}
+                  y={by + bh / 2}
+                  dy={TICK_DY}
+                  textAnchor="middle"
+                  fontSize={TICK_FONT_SIZE}
+                  fill={CHART_TOKEN.muted}
+                >
+                  <title>{group}</title>
+                  {truncateLabel(group, LABEL_MAX_X)}
+                </text>
+              ) : (
+                <text
+                  x={midX}
+                  y={by - LABEL_GAP_PX}
+                  textAnchor="middle"
+                  fontSize={TICK_FONT_SIZE}
+                  fill={CHART_TOKEN.muted}
+                >
+                  <title>{group}</title>
+                  {truncateLabel(group, LABEL_MAX_X)}
+                </text>
+              )}
               <g>
                 <title>{tipL}</title>
                 <rect
@@ -211,6 +252,30 @@ export function DivergingBar({
                   data-chart-tip={tipR}
                 />
               </g>
+              {showShare ? (
+                <>
+                  <text
+                    x={midX - lw - LABEL_GAP_PX}
+                    y={by + bh / 2}
+                    dy={TICK_DY}
+                    textAnchor="end"
+                    fontSize={TICK_FONT_SIZE}
+                    fill={CHART_TOKEN.muted}
+                  >
+                    {pctL}%
+                  </text>
+                  <text
+                    x={midX + rw + LABEL_GAP_PX}
+                    y={by + bh / 2}
+                    dy={TICK_DY}
+                    textAnchor="start"
+                    fontSize={TICK_FONT_SIZE}
+                    fill={CHART_TOKEN.muted}
+                  >
+                    {pctR}%
+                  </text>
+                </>
+              ) : null}
             </g>
           );
         })}

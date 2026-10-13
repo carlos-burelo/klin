@@ -24,6 +24,10 @@ const CENTER_VALUE_FONT_SIZE = 22;
 /** Desplazamiento vertical del total y de la etiqueta "Total". */
 const CENTER_VALUE_DY = 4;
 const CENTER_LABEL_DY = 14;
+/** Vuelta completa en radianes (rotación de rebanadas). */
+const TAU = Math.PI * 2;
+/** Longitud mínima de arco (px) para pintar el % dentro de la rebanada. */
+const INNER_LABEL_MIN_ARC = 30;
 
 /** Dato de dona/torta (etiqueta, valor y color opcional). */
 export type DonutDatum = {
@@ -47,6 +51,31 @@ export type DonutChartProps = {
   itemColor?: (datum: DonutDatum, index: number) => string | undefined;
   totalLabel?: string;
   showTotal?: boolean;
+  /**
+   * Ángulo inicial de la primera rebanada en radianes (0 = arriba).
+   * @default 0
+   */
+  startAngle?: number;
+  /**
+   * Separación entre rebanadas en radianes.
+   * @default 0
+   */
+  padAngle?: number;
+  /**
+   * Ordena las rebanadas de mayor a menor (por defecto respeta la entrada).
+   * @default false
+   */
+  sortSlices?: boolean;
+  /**
+   * Radio de esquina de los arcos (0 = bordes rectos).
+   * @default 0
+   */
+  cornerRadius?: number;
+  /**
+   * Etiqueta dentro de la rebanada: el % solo si el arco es grande.
+   * @default "none"
+   */
+  innerLabels?: "none" | "percent";
   showLegend?: boolean;
   className?: string;
   style?: CSSProperties;
@@ -69,6 +98,31 @@ export type PieChartProps = {
   itemColor?: (datum: DonutDatum, index: number) => string | undefined;
   totalLabel?: string;
   showTotal?: boolean;
+  /**
+   * Ángulo inicial de la primera rebanada en radianes (0 = arriba).
+   * @default 0
+   */
+  startAngle?: number;
+  /**
+   * Separación entre rebanadas en radianes.
+   * @default 0
+   */
+  padAngle?: number;
+  /**
+   * Ordena las rebanadas de mayor a menor (por defecto respeta la entrada).
+   * @default false
+   */
+  sortSlices?: boolean;
+  /**
+   * Radio de esquina de los arcos (0 = bordes rectos).
+   * @default 0
+   */
+  cornerRadius?: number;
+  /**
+   * Etiqueta dentro de la rebanada: el % solo si el arco es grande.
+   * @default "none"
+   */
+  innerLabels?: "none" | "percent";
   showLegend?: boolean;
   className?: string;
   style?: CSSProperties;
@@ -91,6 +145,11 @@ export function DonutChart({
   itemColor,
   totalLabel = "Total",
   showTotal = true,
+  startAngle = 0,
+  padAngle = 0,
+  sortSlices = false,
+  cornerRadius = 0,
+  innerLabels = "none",
   showLegend = true,
   className,
   style,
@@ -99,10 +158,11 @@ export function DonutChart({
   emptyDescription,
 }: DonutChartProps) {
   const clean = data
-    .map((d) => ({
+    .map((d, index) => ({
       label: d.label,
       color: d.color,
       value: toNumber(d.value),
+      index,
     }))
     .filter((d) => d.value > 0);
   const total = sum(clean, (d) => d.value);
@@ -110,15 +170,28 @@ export function DonutChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const start = toNumber(startAngle);
+  const pad = Math.max(0, toNumber(padAngle));
+  const corners = Math.max(0, toNumber(cornerRadius));
   const radius = size / 2;
-  const arcs = pie<(typeof clean)[number]>()
+  const ordered = sortSlices
+    ? [...clean].sort((a, b) => b.value - a.value)
+    : clean;
+  const pieGen = pie<(typeof ordered)[number]>()
     .value((d) => d.value)
-    .sort(null)(clean);
+    .padAngle(pad)
+    .startAngle(start)
+    .endAngle(start + TAU)
+    .sort(null);
+  const arcs = pieGen(ordered);
   const path = arc<(typeof arcs)[number]>()
     .innerRadius(radius - thickness)
-    .outerRadius(radius);
-  const sliceColor = (datum: DonutDatum, i: number) =>
-    datum.color ?? itemColor?.(datum, i) ?? seriesColor(i);
+    .outerRadius(radius)
+    .cornerRadius(corners);
+  const midRadius = radius - thickness / 2;
+  const withInner = innerLabels === "percent";
+  const sliceColor = (datum: (typeof clean)[number]) =>
+    datum.color ?? itemColor?.(datum, datum.index) ?? seriesColor(datum.index);
 
   return (
     <div
@@ -142,12 +215,17 @@ export function DonutChart({
         <g transform={`translate(${radius},${radius})`}>
           {arcs.map((a, i) => {
             const datum = a.data;
-            const color = sliceColor(datum, i);
+            const color = sliceColor(datum);
             const pct =
               total > 0
                 ? Math.round((datum.value / total) * PERCENT_FACTOR)
                 : 0;
             const tip = `${datum.label}: ${format(datum.value)} (${pct}% del total)`;
+            const fitsInner =
+              withInner &&
+              midRadius > 0 &&
+              (a.endAngle - a.startAngle) * midRadius >= INNER_LABEL_MIN_ARC;
+            const [innerX, innerY] = fitsInner ? path.centroid(a) : [0, 0];
             return (
               <g key={stableKey([datum.label], i)}>
                 <title>{tip}</title>
@@ -158,6 +236,18 @@ export function DonutChart({
                   strokeWidth={NODE_BORDER_WIDTH}
                   data-chart-tip={tip}
                 />
+                {fitsInner ? (
+                  <text
+                    x={innerX}
+                    y={innerY}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={TICK_FONT_SIZE}
+                    fill={CHART_TOKEN.background}
+                  >
+                    {pct}%
+                  </text>
+                ) : null}
               </g>
             );
           })}
@@ -188,9 +278,9 @@ export function DonutChart({
       </svg>
       {showLegend ? (
         <ChartLegend
-          items={clean.map((d, i) => ({
+          items={clean.map((d) => ({
             label: `${d.label} · ${format(d.value)}`,
-            color: sliceColor(d, i),
+            color: sliceColor(d),
           }))}
         />
       ) : null}
@@ -208,6 +298,11 @@ export function PieChart({
   itemColor,
   totalLabel = "Total",
   showTotal = true,
+  startAngle = 0,
+  padAngle = 0,
+  sortSlices = false,
+  cornerRadius = 0,
+  innerLabels = "none",
   showLegend = true,
   className,
   style,
@@ -226,6 +321,11 @@ export function PieChart({
       itemColor={itemColor}
       totalLabel={totalLabel}
       showTotal={showTotal}
+      startAngle={startAngle}
+      padAngle={padAngle}
+      sortSlices={sortSlices}
+      cornerRadius={cornerRadius}
+      innerLabels={innerLabels}
       showLegend={showLegend}
       className={className}
       style={style}

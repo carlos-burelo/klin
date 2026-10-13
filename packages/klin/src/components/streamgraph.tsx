@@ -6,8 +6,12 @@ import { max } from "d3-array";
 import { scaleLinear, scalePoint } from "d3-scale";
 import {
   area,
+  curveLinear,
   curveMonotoneX,
+  curveStep,
   stack,
+  stackOffsetNone,
+  stackOffsetSilhouette,
   stackOffsetWiggle,
   stackOrderInsideOut,
 } from "d3-shape";
@@ -20,6 +24,7 @@ import {
   CHART_TOKEN,
   CHART_WIDTH,
   GRID_WIDTH,
+  POINT_RADIUS,
   TICK_FONT_SIZE,
 } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
@@ -34,6 +39,12 @@ export type StreamgraphProps = {
   ariaLabel: string;
   formatY?: (value: number) => string;
   locale?: string;
+  /** monotone (suave), linear (recta) o step (escalón). */
+  curve?: "monotone" | "linear" | "step";
+  /** Desplazamiento del apilado: wiggle, silhouette o cero. */
+  offset?: "wiggle" | "silhouette" | "zero";
+  /** Muestra puntos sobre el borde superior de cada capa. */
+  showPoints?: boolean;
   showLegend?: boolean;
   className?: string;
   style?: CSSProperties;
@@ -49,6 +60,13 @@ const AXIS_DY = 10;
 const LAYER_OPACITY = 0.85;
 const FALLBACK_SERIES_COLOR = CHART_TOKEN.chart1;
 
+/** Desplazamientos d3 por nombre (canónico S). */
+const STREAM_OFFSETS = {
+  wiggle: stackOffsetWiggle,
+  silhouette: stackOffsetSilhouette,
+  zero: stackOffsetNone,
+} as const;
+
 /**
  * Cómputo puro de capas apiladas (wiggle + inside-out) y dominio Y.
  * Sanitiza valores externos con toNumber para evitar NaN en el stack.
@@ -57,6 +75,7 @@ export function computeStreamLayers(
   data: Array<Record<string, string | number>>,
   series: ChartSeries[],
   xKey: string,
+  offset: keyof typeof STREAM_OFFSETS = "wiggle",
 ): {
   layers: Array<Array<[number, number]>>;
   labels: string[];
@@ -72,7 +91,7 @@ export function computeStreamLayers(
   const raw = stack<Record<string, string | number>, string>()
     .keys(series.map((s) => s.key))
     .order(stackOrderInsideOut)
-    .offset(stackOffsetWiggle)(sanitized);
+    .offset(STREAM_OFFSETS[offset] ?? stackOffsetWiggle)(sanitized);
   const layers: Array<Array<[number, number]>> = raw.map((serie) =>
     serie.map((point): [number, number] => [point[0] ?? 0, point[1] ?? 0]),
   );
@@ -95,6 +114,9 @@ export function Streamgraph({
   ariaLabel,
   locale = "es-MX",
   formatY = (v: number) => formatDefault(v, locale),
+  curve = "monotone",
+  offset = "wiggle",
+  showPoints = false,
   showLegend = true,
   className,
   style,
@@ -110,6 +132,7 @@ export function Streamgraph({
     data,
     series,
     xKey,
+    offset,
   );
 
   const innerW = CHART_WIDTH - STREAM_MARGIN.left - STREAM_MARGIN.right;
@@ -121,6 +144,12 @@ export function Streamgraph({
     .padding(POINT_PADDING);
   const y = scaleLinear().domain([bottom, top]).range([innerH, 0]);
   const colors = series.map((s, i) => seriesColor(i, s.color));
+  const streamCurve =
+    curve === "step"
+      ? curveStep
+      : curve === "linear"
+        ? curveLinear
+        : curveMonotoneX;
 
   return (
     <div className={className} style={style}>
@@ -152,7 +181,7 @@ export function Streamgraph({
               .x((_, i) => x(labels[i] ?? "") ?? 0)
               .y0((p) => y(p[0]))
               .y1((p) => y(p[1]))
-              .curve(curveMonotoneX)(layer) ?? "";
+              .curve(streamCurve)(layer) ?? "";
           const total = layer.reduce(
             (a, _p, i) => a + toNumber(data[i]?.[serie.key]),
             0,
@@ -172,6 +201,19 @@ export function Streamgraph({
                 strokeWidth={GRID_WIDTH}
                 data-chart-tip={tip}
               />
+              {showPoints
+                ? layer.map((p, pi) => (
+                    <circle
+                      key={stableKey([serie.key, labels[pi] ?? ""], pi)}
+                      cx={x(labels[pi] ?? "") ?? 0}
+                      cy={y(p[1] ?? 0)}
+                      r={POINT_RADIUS}
+                      fill={colors[si] ?? FALLBACK_SERIES_COLOR}
+                      stroke={CHART_TOKEN.background}
+                      strokeWidth={GRID_WIDTH}
+                    />
+                  ))
+                : null}
             </g>
           );
         })}

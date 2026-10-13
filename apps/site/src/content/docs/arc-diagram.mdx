@@ -1,0 +1,115 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/arc-diagram";
+import Examples from "../../demos/examples/arc-diagram";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Relaciones sobre un eje. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ArcDiagram, ChartTooltipPortal } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<ArcDiagram
+  nodes={/* … */}
+  edges={/* … */}
+  ariaLabel="Arc Diagram"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/arc-diagram.tsx`)</summary>
+
+```tsx
+/**
+ * Demo Arcos del site (no se publica en el bundle de la lib).
+ */
+import { ArcDiagram, ChartTooltipPortal } from "@carlos-burelo/klin";
+
+export default function ArcDiagramDemo() {
+  return (
+    <ChartTooltipPortal>
+      <ArcDiagram
+        ariaLabel="Diagrama de arcos de colaboraciones entre áreas"
+        nodes={[
+          { id: "ventas", label: "Ventas" },
+          { id: "soporte", label: "Soporte" },
+          { id: "producto", label: "Producto" },
+          { id: "logistica", label: "Logística" },
+          { id: "finanzas", label: "Finanzas" },
+        ]}
+        edges={[
+          { from: "ventas", to: "soporte", label: "12 casos" },
+          { from: "ventas", to: "logistica", label: "8 pedidos" },
+          { from: "soporte", to: "producto", label: "5 mejoras" },
+          { from: "logistica", to: "finanzas", label: "6 facturas" },
+          { from: "producto", to: "finanzas", label: "3 presupuestos" },
+        ]}
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "nodes", type: "ArcNode[]", required: true, description: "Nodos del diagrama (ids únicos, etiquetas)." },
+    { name: "edges", type: "ArcEdge[]", required: true, description: "Aristas entre nodos (origen, destino, etiqueta opcional)." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "nodeSize", type: "'auto' | 'degree'", required: false, description: "Tamaño del nodo: fijo (`auto`) o por grado de conexión (`degree`)." },
+    { name: "sortBy", type: "'degree' | 'label' | 'order'", required: false, description: "Orden de los nodos sobre el eje: por grado, alfabético o de entrada." },
+    { name: "showLabels", type: "'all' | 'ends' | 'none'", required: false, description: "Qué etiquetas de nodo mostrar (`ends` solo pinta la primera y la última)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+]} />
+
+*Tipo completo: `ArcDiagramProps` en `arc-diagram.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`arc-diagram.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/arc-diagram.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

@@ -1,0 +1,121 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/network-topology";
+import Examples from "../../demos/examples/network-topology";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Roles con estado de enlace. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, NetworkTopology } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<NetworkTopology
+  nodes={/* … */}
+  edges={/* … */}
+  ariaLabel="Network Topology"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/network-topology.tsx`)</summary>
+
+```tsx
+import type { TopoEdge, TopoNode } from "@carlos-burelo/klin";
+import { ChartTooltipPortal, NetworkTopology } from "@carlos-burelo/klin";
+
+const nodes: TopoNode[] = [
+  { id: "inet", label: "Internet", role: "internet" },
+  { id: "fw", label: "Firewall perimetral", sub: "10.0.0.1", role: "firewall" },
+  { id: "r1", label: "Router núcleo", sub: "10.0.1.1", role: "router" },
+  { id: "sw", label: "Switch piso 2", sub: "10.0.2.1", role: "switch" },
+  { id: "api", label: "Servidor API", sub: "10.0.2.10", role: "server" },
+  { id: "db", label: "Servidor BD", sub: "10.0.2.11", role: "server" },
+  { id: "pc", label: "PC contabilidad", sub: "10.0.2.40", role: "host" },
+];
+
+const edges: TopoEdge[] = [
+  { from: "inet", to: "fw", label: "Fibra 1 Gb" },
+  { from: "fw", to: "r1" },
+  { from: "r1", to: "sw" },
+  { from: "sw", to: "api" },
+  { from: "sw", to: "db" },
+  { from: "sw", to: "pc", status: "degraded" },
+];
+
+export default function NetworkTopologyDemo() {
+  return (
+    <ChartTooltipPortal>
+      <NetworkTopology
+        nodes={nodes}
+        edges={edges}
+        ariaLabel="Topología de la red corporativa de la matriz"
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "nodes", type: "TopoNode[]", required: true, description: "Nodos del diagrama (ids únicos, etiquetas)." },
+    { name: "edges", type: "TopoEdge[]", required: true, description: "Aristas entre nodos (origen, destino, etiqueta opcional)." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "direction", type: "'TB' | 'LR'", required: false, description: "—" },
+    { name: "linkLegend", type: "boolean", required: false, description: "Muestra la leyenda de estado de enlace." },
+    { name: "glyphSize", type: "number", required: false, description: "Tamaño del glifo de rol (base `GLYPH_R`)." },
+    { name: "statusColors", type: "Partial<Record<NonNullable<TopoEdge['status']>, string>>", required: false, description: "Sobrescribe el color por estado de enlace." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+]} />
+
+*Tipo completo: `NetworkTopologyProps` en `network-topology.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`network-topology.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/network-topology.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

@@ -446,7 +446,7 @@ describe("API universal (passthrough + flags)", () => {
 });
 
 describe("bundle limpio (site fuera del tarball)", () => {
-  test("files no incluye site/demo/docs", async () => {
+  test("files no incluye site/demo/docs/src", async () => {
     const pkg = (await import("../package.json")).default as {
       files: string[];
     };
@@ -454,6 +454,7 @@ describe("bundle limpio (site fuera del tarball)", () => {
     expect(joined).not.toContain("site");
     expect(joined).not.toContain("demo");
     expect(joined).not.toContain("docs");
-    expect(pkg.files).toContain("src");
+    expect(joined).not.toContain("src");
+    expect(pkg.files).toContain("dist");
   });
 });

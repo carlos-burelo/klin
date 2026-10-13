@@ -47,6 +47,18 @@ export type NetworkGraphProps = {
   edges: NetworkEdge[];
   ariaLabel: string;
   seed?: number;
+  /** Ajustes de la simulación de fuerzas (por defecto, constantes `NETWORK_*`). */
+  forces?: {
+    distance?: number;
+    charge?: number;
+    collide?: number;
+  };
+  /** Tamaño del nodo: por grado de conexión (`degree`) o fijo (`fixed`). */
+  nodeSize?: "degree" | "fixed";
+  /** Muestra atenuados los nodos sin conexiones. */
+  showIsolated?: boolean;
+  /** Iteraciones de la simulación (calidad frente a costo SSR). */
+  ticks?: number;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -74,6 +86,8 @@ function seededRandom(seed: number): () => number {
 
 const NETWORK_W = 640;
 const NETWORK_H = 420;
+/** Opacidad de los nodos sin conexiones cuando `showIsolated` está activo. */
+const NETWORK_ISOLATED_OPACITY = 0.45;
 
 /**
  * Cómputo puro de posiciones (fuerzas con semilla fija, NETWORK_TICKS ticks).
@@ -83,6 +97,14 @@ export function computeNetworkPositions(
   nodes: NetworkNode[],
   edges: NetworkEdge[],
   seed = NETWORK_SEED,
+  options?: {
+    forces?: {
+      distance?: number;
+      charge?: number;
+      collide?: number;
+    };
+    ticks?: number;
+  },
 ): {
   positioned: PositionedNetworkNode[];
   renderedEdges: NetworkEdge[];
@@ -100,6 +122,10 @@ export function computeNetworkPositions(
     source: e.from,
     target: e.to,
   }));
+  const distance = options?.forces?.distance ?? NETWORK_LINK_DISTANCE;
+  const charge = options?.forces?.charge ?? NETWORK_CHARGE;
+  const collide = options?.forces?.collide ?? NETWORK_COLLIDE;
+  const ticks = options?.ticks ?? NETWORK_TICKS;
 
   const sim = forceSimulation(simNodes)
     .randomSource(seededRandom(seed))
@@ -107,13 +133,13 @@ export function computeNetworkPositions(
       "link",
       forceLink<SimNode, { source: string; target: string }>(simEdges)
         .id((d) => d.id)
-        .distance(NETWORK_LINK_DISTANCE),
+        .distance(distance),
     )
-    .force("charge", forceManyBody().strength(NETWORK_CHARGE))
+    .force("charge", forceManyBody().strength(charge))
     .force("center", forceCenter(NETWORK_W / 2, NETWORK_H / 2))
-    .force("collide", forceCollide(NETWORK_COLLIDE))
+    .force("collide", forceCollide(collide))
     .stop();
-  for (let i = 0; i < NETWORK_TICKS; i++) sim.tick();
+  for (let i = 0; i < ticks; i++) sim.tick();
 
   const degree = new Map<string, number>(capped.map((n) => [n.id, 0]));
   for (const e of renderedEdges) {
@@ -132,6 +158,10 @@ export function NetworkGraph({
   edges,
   ariaLabel,
   seed = 42,
+  forces,
+  nodeSize = "degree",
+  showIsolated = true,
+  ticks = NETWORK_TICKS,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -146,7 +176,11 @@ export function NetworkGraph({
     nodes,
     edges,
     seed,
+    { forces, ticks },
   );
+  const visible = showIsolated
+    ? positioned
+    : positioned.filter((n) => (degree.get(n.id) ?? 0) > 0);
   const pos = new Map(positioned.map((n) => [n.id, n]));
 
   return (
@@ -175,12 +209,14 @@ export function NetworkGraph({
           />
         );
       })}
-      {positioned.map((n, i) => {
+      {visible.map((n, i) => {
         const color = seriesColor(i, n.color);
         const deg = degree.get(n.id) ?? 0;
         const r =
-          NETWORK_NODE_MIN_R +
-          Math.min(NETWORK_NODE_MAX_GROWTH, deg * NETWORK_NODE_GROWTH);
+          nodeSize === "degree"
+            ? NETWORK_NODE_MIN_R +
+              Math.min(NETWORK_NODE_MAX_GROWTH, deg * NETWORK_NODE_GROWTH)
+            : NETWORK_NODE_MIN_R;
         const label = n.label ?? n.id;
         const tip = `${label} (${deg} conexiones)`;
         return (
@@ -193,6 +229,9 @@ export function NetworkGraph({
               fill={color}
               stroke={CHART_TOKEN.background}
               strokeWidth={NODE_BORDER_WIDTH}
+              opacity={
+                showIsolated && deg === 0 ? NETWORK_ISOLATED_OPACITY : undefined
+              }
               data-chart-tip={tip}
             />
             <text

@@ -18,6 +18,7 @@ import {
   BAR_RADIUS,
   CHART_TOKEN,
   GRID_TICKS,
+  GRID_WIDTH,
   LINE_WIDTH,
   MIN_SHAPE_PX,
   PERCENT_FACTOR,
@@ -38,6 +39,9 @@ const CUM_POINT_PADDING = 0.5;
 const AXIS_LABEL_OFFSET = 10;
 const ANNOTATION_LABEL_DX = 4;
 const ANNOTATION_LABEL_DY = -4;
+/** Etiqueta del resto agregado y umbral 80/20 por defecto. */
+const PARETO_OTHERS_LABEL = "Otros";
+const PARETO_DEFAULT_THRESHOLD = 80;
 
 /** Props de Pareto SSR (barras ordenadas + % acumulado). */
 export type ParetoChartProps = {
@@ -54,6 +58,21 @@ export type ParetoChartProps = {
   ariaDescribedBy?: string;
   showLegend?: boolean;
   annotations?: ValueAnnotation[];
+  /**
+   * Conserva las N primeras causas y agrega el resto en "Otros".
+   * @default undefined
+   */
+  topN?: number;
+  /**
+   * Línea de umbral sobre el % acumulado (80/20).
+   * @default 80
+   */
+  threshold?: number;
+  /**
+   * Muestra el % acumulado sobre cada punto.
+   * @default false
+   */
+  showCumLabels?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
 };
@@ -75,6 +94,9 @@ export function ParetoChart({
   ariaDescribedBy,
   showLegend = true,
   annotations,
+  topN,
+  threshold = PARETO_DEFAULT_THRESHOLD,
+  showCumLabels = false,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: ParetoChartProps) {
@@ -87,7 +109,18 @@ export function ParetoChart({
   // Conteos: negativos se fijan a 0.
   const countOf = (d: Record<string, string | number>) =>
     Math.max(0, toNumber(d[yKey]));
-  const ordered = [...data].sort((a, b) => countOf(b) - countOf(a));
+  const ranked = [...data].sort((a, b) => countOf(b) - countOf(a));
+  const rawTop = Math.floor(toNumber(topN, Number.NaN));
+  const ordered =
+    Number.isFinite(rawTop) && rawTop > 0 && ranked.length > rawTop
+      ? [
+          ...ranked.slice(0, rawTop),
+          {
+            [xKey]: PARETO_OTHERS_LABEL,
+            [yKey]: sumNumbers(ranked.slice(rawTop).map(countOf)),
+          },
+        ]
+      : ranked;
   const total = sumNumbers(ordered.map(countOf));
   const top = topPositive(ordered.map(countOf));
 
@@ -101,6 +134,10 @@ export function ParetoChart({
   const fill = seriesColor(0, color);
   const lineColor = seriesColor(1, undefined);
   const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const rawThreshold = toNumber(threshold, Number.NaN);
+  const thresholdPct = Number.isFinite(rawThreshold)
+    ? Math.min(PERCENT_FACTOR, Math.max(0, rawThreshold))
+    : null;
 
   let acc = 0;
   const cum = ordered.map((d) => {
@@ -219,8 +256,42 @@ export function ParetoChart({
               strokeWidth={POINT_BORDER}
               data-chart-tip={`${c.label}: ${Math.round(c.pct)}% acumulado`}
             />
+            {showCumLabels ? (
+              <text
+                x={MARGIN.left + (xp(c.label) ?? 0) + x.bandwidth() / 2}
+                y={MARGIN.top + yp(c.pct) - TICK_GAP_PX}
+                textAnchor="middle"
+                fontSize={TICK_FONT_SIZE}
+                fill={CHART_TOKEN.muted}
+              >
+                {`${Math.round(c.pct)}%`}
+              </text>
+            ) : null}
           </g>
         ))}
+        {thresholdPct !== null ? (
+          <g>
+            <title>{`Umbral ${Math.round(thresholdPct)}%`}</title>
+            <line
+              x1={MARGIN.left}
+              x2={W - MARGIN.right}
+              y1={MARGIN.top + yp(thresholdPct)}
+              y2={MARGIN.top + yp(thresholdPct)}
+              stroke={CHART_TOKEN.muted}
+              strokeWidth={GRID_WIDTH}
+              strokeDasharray={ANNOTATION_DASH}
+            />
+            <text
+              x={W - MARGIN.right}
+              y={MARGIN.top + yp(thresholdPct) - TICK_GAP_PX}
+              textAnchor="end"
+              fontSize={TICK_FONT_SIZE}
+              fill={CHART_TOKEN.muted}
+            >
+              {`${Math.round(thresholdPct)}%`}
+            </text>
+          </g>
+        ) : null}
       </ChartSvg>
       {showLegend ? (
         <ChartLegend

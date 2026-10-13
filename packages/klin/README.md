@@ -21,13 +21,8 @@ Sin `recharts`, sin `ResponsiveContainer`, sin `"use client"` en el núcleo.
 ## Uso
 
 ```css
-/* globals.css, después de ui */
+/* globals.css */
 @import "@carlos-burelo/klin/styles.css";
-```
-
-```ts
-// next.config.ts
-transpilePackages: ["@carlos-burelo/klin"],
 ```
 
 ```tsx
@@ -45,9 +40,9 @@ import { BarChart, ChartLegend, ChartTooltipPortal } from "@carlos-burelo/klin";
 
 ## Sitio (demos y página, mismo repo, fuera del bundle)
 
-`apps/site/` prerenderiza las 52 demos a HTML estático (`apps/site/out/`) sin framework:
+`apps/site/` prerenderiza las 74 demos a HTML estático (`apps/site/out/`):
 `pnpm site:build` (desde la raíz), previsualiza con `pnpm site:dev` (`:3100`). El tarball no lo
-incluye (`files` solo lleva `src` + raíz; verificado con `pnpm pack --dry-run`).
+incluye (`files` solo lleva `dist` + raíz; verificado con `pnpm pack --dry-run`).
 Detalle en `apps/site/README.md`.
 
 ## Componentes
@@ -102,6 +97,29 @@ Detalle en `apps/site/README.md`.
 | `LollipopChart` | Puntos sobre palos con valor |
 | `Streamgraph` | Capas con desplazamiento central |
 | `ArcDiagram` | Relaciones sobre un eje |
+| `CandlestickChart` | Velas OHLC (mecha + cuerpo alcista/bajista) |
+| `DumbbellChart` | Dos puntos conectados por categoría |
+| `RangeChart` | Intervalos low–high con valor |
+| `ViolinPlot` | Distribución con KDE por grupo |
+| `RidgelinePlot` | Densidades apiladas con solape |
+| `BeeswarmPlot` | Puntos sin solape (fuerza determinista) |
+| `BumpChart` | Rankings por periodo |
+| `SlopeChart` | Cambios entre dos instantes |
+| `DendrogramChart` | Árbol cluster (`d3.cluster`) |
+| `IcicleChart` | Partición rectangular (`d3.partition`) |
+| `CirclePackChart` | Jerarquía en burbujas (`d3.pack`) |
+| `NightingaleChart` | Rosa polar de proporciones |
+| `RadialBarChart` | Barras concéntricas 0–100 |
+| `MarimekkoChart` | Ancho y alto en porcentaje |
+| `TernaryPlot` | Dispersión triangular de composiciones |
+| `DotPlot` | Puntos ordenados estilo Cleveland |
+| `IsotypeChart` | Pictogramas repetidos por valor |
+| `FishboneDiagram` | Espina causa-efecto |
+| `TableChart` | Tabla HTML con barras inline |
+| `TreeView` | Árbol jerárquico colapsable (HTML) |
+| `ChordDiagram` | Ribbons entre grupos (`d3-chord`) |
+| `DensityContourPlot` | Isolíneas sobre dispersión (`d3-contour`) |
+| `HexbinPlot` | Agregación hexagonal (`d3-hexbin`) |
 | `ChartLegend` | Leyenda HTML |
 | `ChartEmpty` | Estado vacío homogéneo |
 | `ChartTooltipPortal` | Único cliente: tooltip por portal (mínimo JS) |
@@ -165,7 +183,8 @@ Toda gráfica nueva sigue esta spec para que el set se vea uno solo:
 2. Exportarla en `src/index.ts` (tipos con `export type`, ordenados).
 3. Caso en `test/charts.test.tsx` con `renderToStaticMarkup`: N formas,
    tooltip, vacío y `aria-label` (prueba de SSR).
-4. Fila en la tabla de arriba + demo y `.mdx` en showcase
-   (`apps/showcase`: `demos.tsx`, `demo-registry.ts`, `src/docs/graficas/`).
+4. Fila en la tabla de arriba + demo y `.mdx` en el site
+   (`apps/site`: `src/demos/<slug>.tsx`, `src/demos/registry.ts`,
+   `src/content/docs/<slug>.mdx` vía `pnpm docs:gen`).
 5. `pnpm --filter @carlos-burelo/klin lint && pnpm --filter @carlos-burelo/klin typecheck && pnpm --filter @carlos-burelo/klin test`.
 

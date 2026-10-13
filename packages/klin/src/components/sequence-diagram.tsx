@@ -27,6 +27,8 @@ export type SequenceDiagramProps = {
   participants: string[];
   messages: SequenceMessage[];
   ariaLabel: string;
+  /** Muestra el número de orden antes de cada mensaje. */
+  showNumbers?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -97,6 +99,7 @@ export function SequenceDiagram({
   participants,
   messages,
   ariaLabel,
+  showNumbers = true,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -183,7 +186,10 @@ export function SequenceDiagram({
           const x1 = colX(colIndex.get(m.from) ?? 0);
           const x2 = colX(colIndex.get(m.to) ?? 0);
           const dashed = m.kind === "return";
-          const tip = `${order + 1}. ${m.from} → ${m.to}: ${m.label}`;
+          const numbered = showNumbers ? `${order + 1}. ${m.label}` : m.label;
+          const tip = showNumbers
+            ? `${order + 1}. ${m.from} → ${m.to}: ${m.label}`
+            : `${m.from} → ${m.to}: ${m.label}`;
           if (m.from === m.to) {
             return (
               <g key={stableKey([m.from, m.label, y], order)}>
@@ -203,7 +209,7 @@ export function SequenceDiagram({
                   fontSize={TICK_FONT_SIZE}
                   fill={CHART_TOKEN.muted}
                 >
-                  {truncateLabel(`${order + 1}. ${m.label}`, 30)}
+                  {truncateLabel(numbered, 30)}
                 </text>
               </g>
             );
@@ -230,7 +236,7 @@ export function SequenceDiagram({
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
               >
-                {truncateLabel(`${order + 1}. ${m.label}`, 34)}
+                {truncateLabel(numbered, 34)}
               </text>
             </g>
           );

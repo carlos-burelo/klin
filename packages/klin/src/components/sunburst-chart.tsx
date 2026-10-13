@@ -16,6 +16,7 @@ import {
   CHART_TOKEN,
   EDGE_LABEL_DY,
   EDGE_LABEL_FONT_SIZE,
+  FONT_SEMIBOLD,
   NODE_BORDER_WIDTH,
   PERCENT_FACTOR,
 } from "../lib/theme";
@@ -36,6 +37,14 @@ export type SunburstChartProps = {
   size?: number;
   format?: (value: number) => string;
   locale?: string;
+  /** Profundidad máxima de anillos (se podan los más profundos); si se omite no poda. */
+  depth?: number;
+  /** Muestra la etiqueta central con el total. */
+  showRootLabel?: boolean;
+  /** Radio de esquina de los arcos. */
+  cornerRadius?: number;
+  /** Separación angular entre arcos (radianes). */
+  padAngle?: number;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -53,6 +62,12 @@ const MIN_RING_W = 22;
 const RING_OPACITY = 0.75;
 const FULL_CIRCLE = 2 * Math.PI;
 const HALF_CIRCLE_DEG = 180;
+/** Muestra la etiqueta central con el total (comportamiento por defecto). */
+const DEFAULT_SUNBURST_SHOW_ROOT_LABEL = true;
+/** Radio de esquina de arcos (0 = bordes rectos actuales). */
+const DEFAULT_SUNBURST_CORNER_RADIUS = 0;
+/** Separación angular entre arcos (0 = sin separación actual). */
+const DEFAULT_SUNBURST_PAD_ANGLE = 0;
 
 type SunburstDatum = {
   label: string;
@@ -67,7 +82,11 @@ export type SunburstRing = HierarchyRectangularNode<SunburstDatum>;
  * Cómputo puro del layout sunburst (partición radial).
  * Trunca a los N anillos de mayor valor para SSR.
  */
-export function computeSunburstLayout(data: SunburstNode[], size: number) {
+export function computeSunburstLayout(
+  data: SunburstNode[],
+  size: number,
+  depth?: number,
+) {
   const root = hierarchy<SunburstDatum>({ label: "root", children: data })
     .sum((d) => toNumber(d.value))
     .sort((a, b) => toNumber(b.value) - toNumber(a.value));
@@ -75,7 +94,12 @@ export function computeSunburstLayout(data: SunburstNode[], size: number) {
   const rings = (
     proot
       .descendants()
-      .filter((d) => d.depth > 0 && toNumber(d.value) > 0) as SunburstRing[]
+      .filter(
+        (d) =>
+          d.depth > 0 &&
+          toNumber(d.value) > 0 &&
+          (depth === undefined || d.depth <= depth),
+      ) as SunburstRing[]
   )
     .sort((a, b) => toNumber(b.value) - toNumber(a.value))
     .slice(0, MAX_SUNBURST_RINGS);
@@ -92,6 +116,10 @@ export function SunburstChart({
   size = DEFAULT_SIZE,
   format,
   locale = "es-MX",
+  depth,
+  showRootLabel = DEFAULT_SUNBURST_SHOW_ROOT_LABEL,
+  cornerRadius = DEFAULT_SUNBURST_CORNER_RADIUS,
+  padAngle = DEFAULT_SUNBURST_PAD_ANGLE,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -102,7 +130,7 @@ export function SunburstChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { rings, root, tops } = computeSunburstLayout(data, size);
+  const { rings, root, tops } = computeSunburstLayout(data, size, depth);
   if (rings.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
@@ -114,7 +142,9 @@ export function SunburstChart({
     .startAngle((d) => d.x0)
     .endAngle((d) => d.x1)
     .innerRadius((d) => d.y0)
-    .outerRadius((d) => d.y1);
+    .outerRadius((d) => d.y1)
+    .cornerRadius(cornerRadius)
+    .padAngle(padAngle);
 
   return (
     <div
@@ -136,6 +166,19 @@ export function SunburstChart({
       >
         <title>{ariaLabel}</title>
         <g transform={`translate(${radius},${radius})`}>
+          {showRootLabel ? (
+            <text
+              x={0}
+              y={0}
+              textAnchor="middle"
+              dy={EDGE_LABEL_DY}
+              fontSize={EDGE_LABEL_FONT_SIZE}
+              fontWeight={FONT_SEMIBOLD}
+              fill={CHART_TOKEN.foreground}
+            >
+              {fmt(total)}
+            </text>
+          ) : null}
           {rings.map((d, i) => {
             const chain = d
               .ancestors()

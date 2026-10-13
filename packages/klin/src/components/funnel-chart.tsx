@@ -22,6 +22,10 @@ export type FunnelChartProps = {
   stages: FunnelStage[];
   ariaLabel: string;
   height?: number;
+  /** Incluye la pérdida `% previo` en el tooltip de cada etapa. */
+  showDropOff?: boolean;
+  /** Base del % de la etiqueta (`first` del inicio, `previous` de la etapa previa). */
+  baseline?: "first" | "previous";
   format?: ValueFormatter;
   locale?: string;
   /**
@@ -54,6 +58,8 @@ export function FunnelChart({
   stages,
   ariaLabel,
   height = 280,
+  showDropOff = true,
+  baseline = "first",
   locale = "es-MX",
   format = (v: number) => formatDefault(v, locale),
   itemColor,
@@ -100,10 +106,13 @@ export function FunnelChart({
           i === 0 || prev <= 0
             ? 0
             : Math.round(((value / prev) * PERCENT_FACTOR || 0) * 10) / 10;
+        const shownPct = baseline === "previous" && i > 0 ? step : conv;
         const tip =
           i === 0
             ? `${stage.label}: ${format(value)} (${conv}% del inicio)`
-            : `${stage.label}: ${format(value)} (${conv}% del inicio · ${step}% previo)`;
+            : showDropOff
+              ? `${stage.label}: ${format(value)} (${conv}% del inicio · ${step}% previo)`
+              : `${stage.label}: ${format(value)} (${conv}% del inicio)`;
         return (
           <g key={stableKey([stage.label], i)}>
             <title>{tip}</title>
@@ -130,7 +139,7 @@ export function FunnelChart({
               fill="white"
               opacity={STAGE_VALUE_OPACITY}
             >
-              {`${format(value)} · ${conv}%`}
+              {`${format(value)} · ${shownPct}%`}
             </text>
           </g>
         );

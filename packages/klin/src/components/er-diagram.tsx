@@ -27,6 +27,8 @@ export type ErEntity = {
   id: string;
   name: string;
   attributes: ErAttribute[];
+  /** Entidad débil (doble borde cuando `showWeak` está activo). */
+  weak?: boolean;
 };
 
 export type ErRelation = {
@@ -52,6 +54,19 @@ const LAYOUT = {
 const TITLE_DY = 20;
 const ATTR_X = 10;
 const ATTR_DY = 16;
+/** Sangría del borde interior de entidad débil. */
+const ER_WEAK_INSET = 4;
+/** Pata de gallo: largo de púa, apertura y separación del borde. */
+const ER_CROWFOOT_LEN = 12;
+const ER_CROWFOOT_SPREAD = 6;
+const ER_CROWFOOT_GAP = 6;
+
+/** Indica si el lado destino de una cardinalidad (`1:N`) es múltiple. */
+function isManySide(label: string | undefined): boolean {
+  if (!label) return false;
+  const side = label.split(":")[1]?.trim().toUpperCase();
+  return side === "N" || side === "M" || side === "*";
+}
 
 /** Props del diagrama entidad-relación. */
 export type ErDiagramProps = {
@@ -59,6 +74,12 @@ export type ErDiagramProps = {
   relations: ErRelation[];
   ariaLabel: string;
   direction?: "TB" | "LR";
+  /** Muestra las insignias de clave (`PK`/`FK`) en los atributos. */
+  showKeys?: boolean;
+  /** Dibuja pata de gallo en el extremo múltiple (`N`/`M`) de cada relación. */
+  crowFoot?: boolean;
+  /** Resalta con doble borde las entidades débiles (`weak`). */
+  showWeak?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -126,6 +147,9 @@ export function ErDiagram({
   relations,
   ariaLabel,
   direction = "LR",
+  showKeys = true,
+  crowFoot = true,
+  showWeak = true,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -169,6 +193,67 @@ export function ErDiagram({
             strokeWidth={EDGE_WIDTH}
           />
         ))}
+        {crowFoot
+          ? layout.edges.map((e, i) => {
+              const rel = relByKey.get(`${e.from}→${e.to}`);
+              if (!rel || !isManySide(rel.label) || e.from === e.to) {
+                return null;
+              }
+              const a = layout.nodes.get(e.from);
+              const b = layout.nodes.get(e.to);
+              if (!a || !b) return null;
+              const dx = b.cx - a.cx;
+              const dy = b.cy - a.cy;
+              let px: number;
+              let py: number;
+              let ux: number;
+              let uy: number;
+              let qx: number;
+              let qy: number;
+              if (Math.abs(dx) >= Math.abs(dy)) {
+                const s = dx >= 0 ? 1 : -1;
+                px =
+                  s > 0 ? b.x - ER_CROWFOOT_GAP : b.x + b.w + ER_CROWFOOT_GAP;
+                py = b.cy;
+                ux = s;
+                uy = 0;
+                qx = 0;
+                qy = 1;
+              } else {
+                const s = dy >= 0 ? 1 : -1;
+                px = b.cx;
+                py =
+                  s > 0 ? b.y - ER_CROWFOOT_GAP : b.y + b.h + ER_CROWFOOT_GAP;
+                ux = 0;
+                uy = s;
+                qx = 1;
+                qy = 0;
+              }
+              const toes = [-ER_CROWFOOT_SPREAD, 0, ER_CROWFOOT_SPREAD].map(
+                (o) => ({
+                  x: px - ux * ER_CROWFOOT_LEN + qx * o,
+                  y: py - uy * ER_CROWFOOT_LEN + qy * o,
+                }),
+              );
+              return (
+                <g
+                  key={stableKey([e.from, e.to, "pata"], i)}
+                  stroke={CHART_TOKEN.muted}
+                  strokeWidth={EDGE_WIDTH}
+                >
+                  {toes.map((t, ti) => (
+                    <line
+                      key={stableKey([t.x, t.y], ti)}
+                      x1={px}
+                      y1={py}
+                      x2={t.x}
+                      y2={t.y}
+                    />
+                  ))}
+                </g>
+              );
+            })
+          : null}
         {[...layout.nodes.values()].map((p, pi) => {
           const entity = byId.get(p.id);
           if (!entity) return null;
@@ -189,6 +274,18 @@ export function ErDiagram({
                 strokeWidth={EDGE_WIDTH}
                 data-chart-tip={tip}
               />
+              {showWeak && entity.weak ? (
+                <rect
+                  x={p.x + ER_WEAK_INSET}
+                  y={y0 + ER_WEAK_INSET}
+                  width={p.w - ER_WEAK_INSET * 2}
+                  height={h - ER_WEAK_INSET * 2}
+                  rx={NODE_RX_PROCESS}
+                  fill="none"
+                  stroke={CHART_TOKEN.border}
+                  strokeWidth={EDGE_WIDTH}
+                />
+              ) : null}
               <line
                 x1={p.x}
                 y1={y0 + HEADER}
@@ -214,11 +311,15 @@ export function ErDiagram({
                   y={y0 + HEADER + ATTR_DY + i * ROW}
                   fontSize={TICK_FONT_SIZE}
                   fontFamily={FONT_MONO}
-                  fontWeight={a.key === "PK" ? FONT_SEMIBOLD : 400}
-                  textDecoration={a.key === "PK" ? "underline" : "none"}
+                  fontWeight={showKeys && a.key === "PK" ? FONT_SEMIBOLD : 400}
+                  textDecoration={
+                    showKeys && a.key === "PK" ? "underline" : "none"
+                  }
                   fill={CHART_TOKEN.muted}
                 >
-                  {`${a.key ? `${a.key} ` : ""}${truncateLabel(a.name, 24)}`}
+                  {showKeys && a.key
+                    ? `${a.key} ${truncateLabel(a.name, 24)}`
+                    : truncateLabel(a.name, 24)}
                 </text>
               ))}
             </g>

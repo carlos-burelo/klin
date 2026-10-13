@@ -2,6 +2,8 @@
 
 /* Registro de Tailwind de la lib (vía paquete, como cualquier consumidor). */
 @import "@carlos-burelo/klin/styles.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -40,13 +42,29 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Copiados de @dacyti-gsi/ui (el site es autocontenido: no importa fuera del repo). */
+/* Tema klin sobre estructura shadcn (canónico único): marca verde + charts propios. */
 :root {
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 
   --background: oklch(0.99 0 0);
   --foreground: oklch(0.205 0 0);
@@ -81,6 +99,14 @@
   --chart-3: oklch(0.8 0.16 85);
   --chart-4: oklch(0.62 0.2 300);
   --chart-5: oklch(0.63 0.21 25);
+  --sidebar: oklch(0.99 0 0);
+  --sidebar-foreground: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.5 0.12 160);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.02 160);
+  --sidebar-accent-foreground: oklch(0.35 0.09 160);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-ring: oklch(0.65 0.14 160);
 }
 
 .dark {
@@ -117,10 +143,68 @@
   --chart-3: oklch(0.8 0.16 85);
   --chart-4: oklch(0.67 0.19 300);
   --chart-5: oklch(0.68 0.2 25);
+  --sidebar: oklch(0.22 0 0);
+  --sidebar-foreground: oklch(0.94 0 0);
+  --sidebar-primary: oklch(0.77 0.15 160);
+  --sidebar-primary-foreground: oklch(0.2 0 0);
+  --sidebar-accent: oklch(0.3 0.04 160);
+  --sidebar-accent-foreground: oklch(0.9 0.08 160);
+  --sidebar-border: oklch(0.3 0 0);
+  --sidebar-ring: oklch(0.77 0.15 160);
 }
 
 ::selection {
   background: var(--accent);
+}
+
+/* Scrollbars delgadas con tokens (ambos temas): nada de barras blancas
+   nativas sobre fondos oscuros. Cubre página, sidebar y diagramas anchos
+   (la lib fija minWidth al SVG: el scroll horizontal en móvil es legítimo). */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Highlighter (rehype-pretty-code + shiki, todo en build, cero JS):
+   anula el estilo de código inline dentro de bloques y aplica el tema
+   dual claro/oscuro según la clase .dark del site. */
+[data-rehype-pretty-code-figure] pre > code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: inherit;
+}
+
+pre code[data-theme] span,
+.code-block pre code span {
+  color: var(--shiki-light);
+}
+
+.dark pre code[data-theme] span,
+.dark .code-block pre code span {
+  color: var(--shiki-dark);
 }
 
 pre {
@@ -129,4 +213,40 @@ pre {
 
 :target {
   scroll-margin-top: 5rem;
+}
+
+/* Docs MDX: details/summary minimalista. */
+details {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 0.75rem 1rem;
+}
+
+details > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+details > summary:hover {
+  color: var(--foreground);
+}
+
+details > div,
+details > pre {
+  margin-top: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

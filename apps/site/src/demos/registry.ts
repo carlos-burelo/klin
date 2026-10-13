@@ -1,8 +1,8 @@
 /**
  * Registro de demos del sitio (no se publica en el bundle de la lib).
- * Cada demo vive en `./<slug>.tsx` y exporta el componente por defecto.
+ * Cada demo vive en `./<slug>.tsx` y se documenta en
+ * `../content/docs/<slug>.mdx` (el MDX la importa como demo viva).
  */
-import type { ComponentType } from "react";
 
 export type DemoSection = "Gráficas" | "Diagramas" | "Utilidades";
 
@@ -31,175 +31,175 @@ function entry(
 export const DEMOS: DemoEntry[] = [
   entry(
     "area-chart",
-    "Áreas",
+    "Area Chart",
     "Gráficas",
     "Superpuestas o apiladas, con modo 100 %.",
     "area-chart.tsx",
   ),
   entry(
     "bar-chart",
-    "Barras verticales",
+    "Bar Chart",
     "Gráficas",
     "Una o varias series agrupadas, con negativos.",
     "bar-chart.tsx",
   ),
   entry(
     "box-plot",
-    "Cajas y bigotes",
+    "Box Plot",
     "Gráficas",
     "Cuartiles, mediana y atípicos.",
     "box-plot.tsx",
   ),
   entry(
     "bullet-chart",
-    "Bala",
+    "Bullet Chart",
     "Gráficas",
     "Valor vs meta sobre bandas.",
     "bullet-chart.tsx",
   ),
   entry(
     "calendar-heatmap",
-    "Calor de calendario",
+    "Calendar Heatmap",
     "Gráficas",
     "Actividad diaria estilo contribuciones.",
     "calendar-heatmap.tsx",
   ),
   entry(
     "diverging-bar",
-    "Barras divergentes",
+    "Diverging Bar",
     "Gráficas",
     "Encuestas a favor y en contra.",
     "diverging-bar.tsx",
   ),
   entry(
     "donut-chart",
-    "Dona",
+    "Donut Chart",
     "Gráficas",
     "Partes con total al centro y % del total.",
     "donut-chart.tsx",
   ),
   entry(
     "pie-chart",
-    "Torta",
+    "Pie Chart",
     "Gráficas",
     "Dona sin agujero.",
     "donut-chart.tsx",
   ),
   entry(
     "funnel-chart",
-    "Embudo",
+    "Funnel Chart",
     "Gráficas",
     "Conversión por etapas con caída.",
     "funnel-chart.tsx",
   ),
   entry(
     "gauge-chart",
-    "Velocímetro",
+    "Gauge Chart",
     "Gráficas",
     "Indicador con zonas.",
     "gauge-chart.tsx",
   ),
   entry(
     "horizontal-bar-chart",
-    "Barras horizontales",
+    "Horizontal Bar Chart",
     "Gráficas",
     "Comparativas con valor tabular.",
     "horizontal-bar-chart.tsx",
   ),
   entry(
     "matrix-heatmap",
-    "Mapa de calor",
+    "Matrix Heatmap",
     "Gráficas",
     "Intensidad filas × columnas.",
     "matrix-heatmap.tsx",
   ),
   entry(
     "histogram",
-    "Histograma",
+    "Histogram",
     "Gráficas",
     "Distribución con bins y %.",
     "histogram.tsx",
   ),
   entry(
     "line-chart",
-    "Líneas",
+    "Line Chart",
     "Gráficas",
     "Series con curvas y anotaciones.",
     "line-chart.tsx",
   ),
   entry(
     "lollipop-chart",
-    "Lollipop",
+    "Lollipop Chart",
     "Gráficas",
     "Puntos sobre palos.",
     "lollipop-chart.tsx",
   ),
   entry(
     "pareto-chart",
-    "Pareto",
+    "Pareto Chart",
     "Gráficas",
     "Causas ordenadas con % acumulado.",
     "pareto-chart.tsx",
   ),
   entry(
     "progress-list",
-    "Lista de progreso",
+    "Progress List",
     "Gráficas",
     "Medidores lineales con valor tabular.",
     "progress-list.tsx",
   ),
   entry(
     "pyramid-chart",
-    "Pirámide",
+    "Pyramid Chart",
     "Gráficas",
     "Dos series espejadas.",
     "pyramid-chart.tsx",
   ),
   entry(
     "quadrant-chart",
-    "Cuadrantes",
+    "Quadrant Chart",
     "Gráficas",
     "Matriz esfuerzo-impacto.",
     "quadrant-chart.tsx",
   ),
   entry(
     "radar-chart",
-    "Radar",
+    "Radar Chart",
     "Gráficas",
     "Telaraña multivariada.",
     "radar-chart.tsx",
   ),
   entry(
     "radial-progress",
-    "Progreso radial",
+    "Radial Progress",
     "Gráficas",
     "Anillo 0–100 para avances.",
     "radial-progress.tsx",
   ),
   entry(
     "sankey-diagram",
-    "Sankey",
+    "Sankey Diagram",
     "Gráficas",
     "Flujos ponderados entre etapas.",
     "sankey-diagram.tsx",
   ),
   entry(
     "scatter-plot",
-    "Dispersión",
+    "Scatter Plot",
     "Gráficas",
     "Puntos XY con negativos.",
     "scatter-plot.tsx",
   ),
   entry(
     "sparkline",
-    "Minigráfica",
+    "Sparkline",
     "Gráficas",
     "KPI de tabla sin ejes.",
     "sparkline.tsx",
   ),
   entry(
     "stacked-bar",
-    "Barras apiladas",
+    "Stacked Bar",
     "Gráficas",
     "Progreso por segmentos con %.",
     "stacked-bar.tsx",
@@ -213,182 +213,336 @@ export const DEMOS: DemoEntry[] = [
   ),
   entry(
     "sunburst-chart",
-    "Sunburst",
+    "Sunburst Chart",
     "Gráficas",
     "Jerarquía en anillos.",
     "sunburst-chart.tsx",
   ),
   entry(
     "treemap-chart",
-    "Treemap",
+    "Treemap Chart",
     "Gráficas",
     "Jerarquía por área.",
     "treemap-chart.tsx",
   ),
   entry(
     "vertical-stacked-bar",
-    "Apiladas verticales",
+    "Vertical Stacked Bar",
     "Gráficas",
     "Apilado clásico o 100 %.",
     "vertical-stacked-bar.tsx",
   ),
   entry(
     "waterfall-chart",
-    "Cascada",
+    "Waterfall Chart",
     "Gráficas",
     "Deltas acumulados con total.",
     "waterfall-chart.tsx",
   ),
   entry(
     "waffle-chart",
-    "Waffle",
+    "Waffle Chart",
     "Gráficas",
     "100 cuadros de composición.",
     "waffle-chart.tsx",
   ),
   entry(
+    "beeswarm-plot",
+    "Beeswarm Plot",
+    "Gráficas",
+    "Puntos sin solape sobre un eje.",
+    "beeswarm-plot.tsx",
+  ),
+  entry(
+    "bump-chart",
+    "Bump Chart",
+    "Gráficas",
+    "Rankings que suben y bajan.",
+    "bump-chart.tsx",
+  ),
+  entry(
+    "candlestick-chart",
+    "Candlestick Chart",
+    "Gráficas",
+    "OHLC con mechas y cuerpos.",
+    "candlestick-chart.tsx",
+  ),
+  entry(
+    "dumbbell-chart",
+    "Dumbbell Chart",
+    "Gráficas",
+    "Dos puntos conectados por categoría.",
+    "dumbbell-chart.tsx",
+  ),
+  entry(
+    "marimekko-chart",
+    "Marimekko Chart",
+    "Gráficas",
+    "Ancho y alto en porcentaje.",
+    "marimekko-chart.tsx",
+  ),
+  entry(
+    "nightingale-chart",
+    "Nightingale Chart",
+    "Gráficas",
+    "Rosa polar de proporciones.",
+    "nightingale-chart.tsx",
+  ),
+  entry(
+    "radial-bar-chart",
+    "Radial Bar Chart",
+    "Gráficas",
+    "Barras concéntricas 0–100.",
+    "radial-bar-chart.tsx",
+  ),
+  entry(
+    "range-chart",
+    "Range Chart",
+    "Gráficas",
+    "Intervalos con valor y bigotes.",
+    "range-chart.tsx",
+  ),
+  entry(
+    "ridgeline-plot",
+    "Ridgeline Plot",
+    "Gráficas",
+    "Densidades apiladas con solape.",
+    "ridgeline-plot.tsx",
+  ),
+  entry(
+    "slope-chart",
+    "Slope Chart",
+    "Gráficas",
+    "Cambios entre dos instantes.",
+    "slope-chart.tsx",
+  ),
+  entry(
+    "violin-plot",
+    "Violin Plot",
+    "Gráficas",
+    "Distribución con KDE por grupo.",
+    "violin-plot.tsx",
+  ),
+  entry(
+    "ternary-plot",
+    "Ternary Plot",
+    "Gráficas",
+    "Composiciones en triángulo.",
+    "ternary-plot.tsx",
+  ),
+  entry(
+    "dot-plot",
+    "Dot Plot",
+    "Gráficas",
+    "Puntos ordenados estilo Cleveland.",
+    "dot-plot.tsx",
+  ),
+  entry(
+    "isotype-chart",
+    "Isotype Chart",
+    "Gráficas",
+    "Pictogramas repetidos por valor.",
+    "isotype-chart.tsx",
+  ),
+  entry(
+    "chord-diagram",
+    "Chord Diagram",
+    "Gráficas",
+    "Ribbons entre grupos.",
+    "chord-diagram.tsx",
+  ),
+  entry(
+    "density-contour-plot",
+    "Density Contour Plot",
+    "Gráficas",
+    "Isolíneas sobre dispersión.",
+    "density-contour-plot.tsx",
+  ),
+  entry(
+    "hexbin-plot",
+    "Hexbin Plot",
+    "Gráficas",
+    "Agregación hexagonal.",
+    "hexbin-plot.tsx",
+  ),
+  entry(
+    "table-chart",
+    "Table Chart",
+    "Gráficas",
+    "Tabla con barras inline.",
+    "table-chart.tsx",
+  ),
+  entry(
     "arc-diagram",
-    "Arcos",
+    "Arc Diagram",
     "Diagramas",
     "Relaciones sobre un eje.",
     "arc-diagram.tsx",
   ),
   entry(
     "architecture-diagram",
-    "Arquitectura",
+    "Architecture Diagram",
     "Diagramas",
     "Servicios, datos, colas y actores.",
     "architecture-diagram.tsx",
   ),
   entry(
     "class-diagram",
-    "Clases UML",
+    "Class Diagram",
     "Diagramas",
     "Herencia y composición.",
     "class-diagram.tsx",
   ),
   entry(
     "er-diagram",
-    "Entidad-relación",
+    "ER Diagram",
     "Diagramas",
     "Entidades y cardinalidad.",
     "er-diagram.tsx",
   ),
   entry(
     "flow-chart",
-    "Flujo",
+    "Flow Chart",
     "Diagramas",
     "Procesos y decisiones.",
     "flow-chart.tsx",
   ),
   entry(
     "state-diagram",
-    "Estados",
+    "State Diagram",
     "Diagramas",
     "Máquina de estados.",
     "state-diagram.tsx",
   ),
   entry(
     "usecase-diagram",
-    "Casos de uso",
+    "Use Case Diagram",
     "Diagramas",
     "Actores e include/extend.",
     "usecase-diagram.tsx",
   ),
   entry(
     "sequence-diagram",
-    "Secuencia",
+    "Sequence Diagram",
     "Diagramas",
     "Participantes y mensajes.",
     "sequence-diagram.tsx",
   ),
   entry(
     "mindmap-diagram",
-    "Mapa mental",
+    "Mindmap Diagram",
     "Diagramas",
     "Árbol horizontal.",
     "mindmap-diagram.tsx",
   ),
   entry(
     "org-chart",
-    "Organigrama",
+    "Org Chart",
     "Diagramas",
     "Jerarquía vertical.",
     "org-chart.tsx",
   ),
   entry(
     "kanban-board",
-    "Kanban",
+    "Kanban Board",
     "Diagramas",
     "Columnas con límite WIP.",
     "kanban-board.tsx",
   ),
   entry(
     "timeline-chart",
-    "Línea de tiempo",
+    "Timeline Chart",
     "Diagramas",
     "Hitos alternados.",
     "timeline-chart.tsx",
   ),
   entry(
     "tree-view",
-    "Árbol",
+    "Tree View",
     "Diagramas",
     "Vista anidada con details.",
     "tree-view.tsx",
   ),
   entry(
     "network-graph",
-    "Red",
+    "Network Graph",
     "Diagramas",
     "Grafo con fuerzas deterministas.",
     "network-graph.tsx",
   ),
   entry(
     "network-topology",
-    "Topología",
+    "Network Topology",
     "Diagramas",
     "Roles con estado de enlace.",
     "network-topology.tsx",
   ),
   entry(
     "venn-diagram",
-    "Venn",
+    "Venn Diagram",
     "Diagramas",
     "Intersecciones de 2 o 3 conjuntos.",
     "venn-diagram.tsx",
   ),
   entry(
     "wardley-map",
-    "Mapa Wardley",
+    "Wardley Map",
     "Diagramas",
     "Cadena de valor vs evolución.",
     "wardley-map.tsx",
   ),
   entry(
     "gantt-chart",
-    "Gantt",
+    "Gantt Chart",
     "Diagramas",
     "Tareas en el tiempo con avance.",
     "gantt-chart.tsx",
   ),
   entry(
+    "circle-pack-chart",
+    "Circle Pack Chart",
+    "Diagramas",
+    "Jerarquía en burbujas.",
+    "circle-pack-chart.tsx",
+  ),
+  entry(
+    "dendrogram-chart",
+    "Dendrogram Chart",
+    "Diagramas",
+    "Árbol cluster vertical.",
+    "dendrogram-chart.tsx",
+  ),
+  entry(
+    "icicle-chart",
+    "Icicle Chart",
+    "Diagramas",
+    "Partición rectangular.",
+    "icicle-chart.tsx",
+  ),
+  entry(
+    "fishbone-diagram",
+    "Fishbone Diagram",
+    "Diagramas",
+    "Espina causa-efecto.",
+    "fishbone-diagram.tsx",
+  ),
+  entry(
     "chart-legend",
-    "Leyenda",
+    "Chart Legend",
     "Utilidades",
     "Leyenda HTML SSR.",
     "legend.tsx",
   ),
   entry(
     "chart-empty",
-    "Vacío",
+    "Chart Empty",
     "Utilidades",
     "Estado homogéneo sin datos.",
     "empty.tsx",
   ),
   entry(
     "tooltip-portal",
-    "Tooltip portal",
+    "Tooltip Portal",
     "Utilidades",
     "Tooltip rico, único cliente.",
     "tooltip-portal.tsx",
@@ -401,116 +555,4 @@ export const DEMO_SLUGS = DEMOS.map((d) => d.slug);
 
 export function getDemo(slug: string): DemoEntry | undefined {
   return DEMOS.find((d) => d.slug === slug);
-}
-
-/** Carga perezosa por ruta (cada página solo empaqueta su demo). */
-export function loadDemo(slug: string): Promise<{ default: ComponentType }> {
-  switch (slug) {
-    case "arc-diagram":
-      return import("./arc-diagram");
-    case "architecture-diagram":
-      return import("./architecture-diagram");
-    case "area-chart":
-      return import("./area-chart");
-    case "bar-chart":
-      return import("./bar-chart");
-    case "box-plot":
-      return import("./box-plot");
-    case "bullet-chart":
-      return import("./bullet-chart");
-    case "calendar-heatmap":
-      return import("./calendar-heatmap");
-    case "chart-empty":
-      return import("./chart-empty");
-    case "chart-legend":
-      return import("./chart-legend");
-    case "class-diagram":
-      return import("./class-diagram");
-    case "diverging-bar":
-      return import("./diverging-bar");
-    case "donut-chart":
-      return import("./donut-chart");
-    case "er-diagram":
-      return import("./er-diagram");
-    case "flow-chart":
-      return import("./flow-chart");
-    case "funnel-chart":
-      return import("./funnel-chart");
-    case "gantt-chart":
-      return import("./gantt-chart");
-    case "gauge-chart":
-      return import("./gauge-chart");
-    case "histogram":
-      return import("./histogram");
-    case "horizontal-bar-chart":
-      return import("./horizontal-bar-chart");
-    case "kanban-board":
-      return import("./kanban-board");
-    case "line-chart":
-      return import("./line-chart");
-    case "lollipop-chart":
-      return import("./lollipop-chart");
-    case "matrix-heatmap":
-      return import("./matrix-heatmap");
-    case "mindmap-diagram":
-      return import("./mindmap-diagram");
-    case "network-graph":
-      return import("./network-graph");
-    case "network-topology":
-      return import("./network-topology");
-    case "org-chart":
-      return import("./org-chart");
-    case "pareto-chart":
-      return import("./pareto-chart");
-    case "pie-chart":
-      return import("./pie-chart");
-    case "progress-list":
-      return import("./progress-list");
-    case "pyramid-chart":
-      return import("./pyramid-chart");
-    case "quadrant-chart":
-      return import("./quadrant-chart");
-    case "radar-chart":
-      return import("./radar-chart");
-    case "radial-progress":
-      return import("./radial-progress");
-    case "sankey-diagram":
-      return import("./sankey-diagram");
-    case "scatter-plot":
-      return import("./scatter-plot");
-    case "sequence-diagram":
-      return import("./sequence-diagram");
-    case "sparkline":
-      return import("./sparkline");
-    case "stacked-bar":
-      return import("./stacked-bar");
-    case "state-diagram":
-      return import("./state-diagram");
-    case "streamgraph":
-      return import("./streamgraph");
-    case "sunburst-chart":
-      return import("./sunburst-chart");
-    case "timeline-chart":
-      return import("./timeline-chart");
-    case "tooltip-portal":
-      return import("./tooltip-portal");
-    case "tree-view":
-      return import("./tree-view");
-    case "treemap-chart":
-      return import("./treemap-chart");
-    case "usecase-diagram":
-      return import("./usecase-diagram");
-    case "venn-diagram":
-      return import("./venn-diagram");
-    case "vertical-stacked-bar":
-      return import("./vertical-stacked-bar");
-    case "waffle-chart":
-      return import("./waffle-chart");
-    case "wardley-map":
-      return import("./wardley-map");
-    case "waterfall-chart":
-      return import("./waterfall-chart");
-    default:
-      return import("./bar-chart");
-  }
 }

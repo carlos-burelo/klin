@@ -4,7 +4,7 @@
 
 import { arc } from "d3-shape";
 import type { CSSProperties } from "react";
-import { toNumber } from "../lib/number";
+import { clamp01, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, truncateLabel } from "../lib/palette";
 import {
@@ -24,13 +24,31 @@ const CENTER_VALUE_DY_WITH_LABEL = -2;
 const CENTER_LABEL_DY = 16;
 /** Máximo de truncado de la etiqueta inferior. */
 const LABEL_MAX = 18;
+/** Segmentos de la pista punteada y fracción de hueco entre ellos. */
+const TRACK_TICK_COUNT = 48;
+const TRACK_TICK_GAP_RATIO = 0.35;
 
 /** Props del progreso radial SSR (anillo 0–100 %). */
 export type RadialProgressProps = {
-  /** 0–100. */
+  /** Valor en unidades de la escala. */
   value: number;
   ariaLabel: string;
   label?: string;
+  /**
+   * Mínimo de la escala.
+   * @default 0
+   */
+  min?: number;
+  /**
+   * Máximo de la escala (si no supera a `min`, se usa `min + 100`).
+   * @default 100
+   */
+  max?: number;
+  /**
+   * Estilo de la pista: anillo continuo o segmentos.
+   * @default "full"
+   */
+  trackStyle?: "full" | "ticks";
   size?: number;
   thickness?: number;
   color?: string;
@@ -41,6 +59,8 @@ export type RadialProgressProps = {
   style?: CSSProperties;
   ariaDescribedBy?: string;
   emptyTitle?: string;
+  /** Descripción del estado vacío. */
+  emptyDescription?: string;
 };
 
 /**
@@ -50,6 +70,9 @@ export function RadialProgress({
   value,
   ariaLabel,
   label,
+  min = 0,
+  max = 100,
+  trackStyle = "full",
   size = 160,
   thickness = 16,
   color = CHART_TOKEN.chart1,
@@ -60,12 +83,17 @@ export function RadialProgress({
   style,
   ariaDescribedBy,
   emptyTitle = EMPTY_TITLE,
+  emptyDescription,
 }: RadialProgressProps) {
   const numeric = toNumber(value, Number.NaN);
   if (!Number.isFinite(numeric)) {
-    return <ChartEmpty title={emptyTitle} />;
+    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const clamped = Math.min(PERCENT_FACTOR, Math.max(0, numeric));
+  const lo = toNumber(min);
+  const rawHi = toNumber(max);
+  const hi = rawHi > lo ? rawHi : lo + PERCENT_FACTOR;
+  const frac = clamp01((numeric - lo) / (hi - lo));
+  const clamped = lo + frac * (hi - lo);
   const radius = size / 2;
   const inner = radius - thickness;
   const bg = arc().innerRadius(inner).outerRadius(radius)({
@@ -74,6 +102,9 @@ export function RadialProgress({
     startAngle: START,
     endAngle: START + TAU,
   });
+  const tickStep = TAU / TRACK_TICK_COUNT;
+  const tickGap = tickStep * TRACK_TICK_GAP_RATIO;
+  const tickPath = arc().innerRadius(inner).outerRadius(radius);
   const fg = arc()
     .innerRadius(inner)
     .outerRadius(radius)
@@ -81,7 +112,7 @@ export function RadialProgress({
     innerRadius: inner,
     outerRadius: radius,
     startAngle: START,
-    endAngle: START + (clamped / PERCENT_FACTOR) * TAU,
+    endAngle: START + frac * TAU,
   });
   const fmt = format ?? ((v: number) => `${formatDefault(v, locale)}%`);
   const tip = `${label ? `${label}: ` : ""}${fmt(clamped)}`;
@@ -101,8 +132,24 @@ export function RadialProgress({
     >
       <title>{tip}</title>
       <g transform={`translate(${radius},${radius})`}>
-        <path d={bg ?? ""} fill={trackColor} />
-        {clamped > 0 ? (
+        {trackStyle === "ticks" ? (
+          Array.from({ length: TRACK_TICK_COUNT }, (_, i) => {
+            const d =
+              tickPath({
+                innerRadius: inner,
+                outerRadius: radius,
+                startAngle: START + i * tickStep,
+                endAngle: START + (i + 1) * tickStep - tickGap,
+              }) ?? "";
+            return (
+              // biome-ignore lint/suspicious/noArrayIndexKey: segmentos estáticos en orden inmutable
+              <path key={`tick__${i}`} d={d} fill={trackColor} />
+            );
+          })
+        ) : (
+          <path d={bg ?? ""} fill={trackColor} />
+        )}
+        {frac > 0 ? (
           <path d={fg ?? ""} fill={color} data-chart-tip={tip} />
         ) : null}
       </g>

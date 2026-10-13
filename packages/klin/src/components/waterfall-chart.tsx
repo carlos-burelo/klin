@@ -41,6 +41,16 @@ export type WaterfallChartProps = {
   style?: CSSProperties;
   ariaDescribedBy?: string;
   annotations?: ValueAnnotation[];
+  /** Muestra los conectores punteados entre barras. */
+  showConnectors?: boolean;
+  /** Color de deltas positivos (token). */
+  positiveColor?: string;
+  /** Color de deltas negativos (token). */
+  negativeColor?: string;
+  /** Color de la barra total (token). */
+  totalColor?: string;
+  /** Etiqueta acumulada sobre cada barra (si no, el delta). */
+  runningTotal?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
 };
@@ -74,6 +84,11 @@ export function WaterfallChart({
   style,
   ariaDescribedBy,
   annotations,
+  showConnectors = true,
+  positiveColor,
+  negativeColor,
+  totalColor,
+  runningTotal = true,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: WaterfallChartProps) {
@@ -104,6 +119,9 @@ export function WaterfallChart({
   const ticks = y.ticks(GRID_TICKS);
   const bw = x.bandwidth();
   const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
+  const upColor = positiveColor ?? UP;
+  const downColor = negativeColor ?? DOWN;
+  const grandColor = totalColor ?? TOTAL;
 
   const bar = (
     key: string,
@@ -137,9 +155,9 @@ export function WaterfallChart({
           fontWeight={FONT_SEMIBOLD}
           fill={CHART_TOKEN.foreground}
         >
-          {fmtY(to)}
+          {runningTotal ? fmtY(to) : fmtY(to - from)}
         </text>
-        {dashed && nextLabel ? (
+        {showConnectors && dashed && nextLabel ? (
           <line
             x1={MARGIN.left + (x(label) ?? 0) + bw}
             x2={MARGIN.left + (x(nextLabel) ?? 0)}
@@ -201,7 +219,7 @@ export function WaterfallChart({
               f.label,
               f.from,
               f.to,
-              f.value >= 0 ? UP : DOWN,
+              f.value >= 0 ? upColor : downColor,
               `${f.label}: ${f.value >= 0 ? "+" : ""}${fmtY(f.value)} (acumulado ${fmtY(f.to)})`,
               true,
               nextLabel,
@@ -224,7 +242,7 @@ export function WaterfallChart({
         totalLabel,
         0,
         total,
-        TOTAL,
+        grandColor,
         `${totalLabel}: ${fmtY(total)}`,
         false,
       )}

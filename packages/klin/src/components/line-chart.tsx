@@ -2,7 +2,7 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import { scaleLinear, scalePoint } from "d3-scale";
-import { curveLinear, curveMonotoneX, curveStep, line } from "d3-shape";
+import { area, curveLinear, curveMonotoneX, curveStep, line } from "d3-shape";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { domainWithZero } from "../lib/domain";
@@ -20,6 +20,7 @@ import type { ChartSeries } from "../lib/series";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
+  AREA_FILL_OPACITY,
   CHART_TOKEN,
   GRID_TICKS,
   LINE_WIDTH,
@@ -46,6 +47,16 @@ export type LineChartProps = {
   formatY?: ValueFormatter;
   /** monotone (suave), linear (recta) o step (escalón). */
   curve?: "monotone" | "linear" | "step";
+  /** Muestra los puntos sobre cada dato (series densas: ocultar). */
+  showPoints?: boolean;
+  /** Rellena el área bajo cada línea. */
+  showArea?: boolean;
+  /** Mínimo fijo del eje Y (por defecto se deriva de los datos). */
+  yMin?: number;
+  /** Máximo fijo del eje Y (por defecto se deriva de los datos). */
+  yMax?: number;
+  /** Ticks del grid Y (por defecto GRID_TICKS). */
+  gridTicks?: number;
   locale?: string;
   className?: string;
   style?: CSSProperties;
@@ -68,6 +79,11 @@ export function LineChart({
   ariaLabel,
   formatY,
   curve = "monotone",
+  showPoints = true,
+  showArea = false,
+  yMin,
+  yMax,
+  gridTicks = GRID_TICKS,
   locale = "es-MX",
   className,
   style,
@@ -88,7 +104,12 @@ export function LineChart({
   const labels = data.map((d) => String(d[xKey] ?? ""));
 
   const flat = data.flatMap((d) => series.map((s) => toNumber(d[s.key])));
-  const [lo, hi] = domainWithZero(flat);
+  const [autoLo, autoHi] = domainWithZero(flat);
+  const lo = yMin === undefined ? autoLo : toNumber(yMin, autoLo);
+  const hi = Math.max(
+    yMax === undefined ? autoHi : toNumber(yMax, autoHi),
+    lo + 1,
+  );
 
   const x = scalePoint()
     .domain(labels)
@@ -96,25 +117,38 @@ export function LineChart({
     .padding(POINT_PADDING);
   const y = scaleLinear()
     .domain([lo, Math.max(hi, lo + 1)])
-    .nice(GRID_TICKS)
+    .nice(gridTicks)
     .range([innerH, 0]);
-  const ticks = y.ticks(GRID_TICKS);
+  const ticks = y.ticks(gridTicks);
   const colors = seriesColors(series);
   const totals = data.map((d) =>
     series.reduce((acc, s) => acc + toNumber(d[s.key]), 0),
   );
 
+  const lineCurve =
+    curve === "step"
+      ? curveStep
+      : curve === "linear"
+        ? curveLinear
+        : curveMonotoneX;
+
   const pathFor = (key: string) =>
     line<{ label: string; value: number }>()
       .x((p) => x(p.label) ?? 0)
       .y((p) => y(p.value))
-      .curve(
-        curve === "step"
-          ? curveStep
-          : curve === "linear"
-            ? curveLinear
-            : curveMonotoneX,
-      )(
+      .curve(lineCurve)(
+      data.map((d) => ({
+        label: String(d[xKey] ?? ""),
+        value: toNumber(d[key]),
+      })),
+    );
+
+  const areaFor = (key: string) =>
+    area<{ label: string; value: number }>()
+      .x((p) => x(p.label) ?? 0)
+      .y0(() => y(lo))
+      .y1((p) => y(p.value))
+      .curve(lineCurve)(
       data.map((d) => ({
         label: String(d[xKey] ?? ""),
         value: toNumber(d[key]),
@@ -172,6 +206,14 @@ export function LineChart({
         ))}
         {series.map((s, si) => (
           <g key={s.key}>
+            {showArea ? (
+              <path
+                d={areaFor(s.key) ?? ""}
+                transform={`translate(${MARGIN.left},${MARGIN.top})`}
+                fill={colors[si] ?? CHART_TOKEN.chart1}
+                opacity={AREA_FILL_OPACITY}
+              />
+            ) : null}
             <path
               d={pathFor(s.key) ?? ""}
               transform={`translate(${MARGIN.left},${MARGIN.top})`}
@@ -180,30 +222,32 @@ export function LineChart({
               strokeWidth={LINE_WIDTH}
               strokeLinecap="round"
             />
-            {data.map((d, di2) => {
-              const label = String(d[xKey] ?? "");
-              const value = toNumber(d[s.key]);
-              const total = totals[di2] ?? 0;
-              const baseTip = `${label} · ${s.label}: ${fmtY(value)}`;
-              const tip =
-                series.length >= 2 && total > 0
-                  ? `${baseTip} (${Math.round((value / total) * PERCENT_FACTOR)}% del grupo)`
-                  : baseTip;
-              return (
-                <g key={stableKey([s.key, label], di2)}>
-                  <title>{tip}</title>
-                  <circle
-                    cx={MARGIN.left + (x(label) ?? 0)}
-                    cy={MARGIN.top + y(value)}
-                    r={POINT_RADIUS}
-                    fill={colors[si] ?? CHART_TOKEN.chart1}
-                    stroke={CHART_TOKEN.background}
-                    strokeWidth={POINT_BORDER}
-                    data-chart-tip={tip}
-                  />
-                </g>
-              );
-            })}
+            {showPoints
+              ? data.map((d, di2) => {
+                  const label = String(d[xKey] ?? "");
+                  const value = toNumber(d[s.key]);
+                  const total = totals[di2] ?? 0;
+                  const baseTip = `${label} · ${s.label}: ${fmtY(value)}`;
+                  const tip =
+                    series.length >= 2 && total > 0
+                      ? `${baseTip} (${Math.round((value / total) * PERCENT_FACTOR)}% del grupo)`
+                      : baseTip;
+                  return (
+                    <g key={stableKey([s.key, label], di2)}>
+                      <title>{tip}</title>
+                      <circle
+                        cx={MARGIN.left + (x(label) ?? 0)}
+                        cy={MARGIN.top + y(value)}
+                        r={POINT_RADIUS}
+                        fill={colors[si] ?? CHART_TOKEN.chart1}
+                        stroke={CHART_TOKEN.background}
+                        strokeWidth={POINT_BORDER}
+                        data-chart-tip={tip}
+                      />
+                    </g>
+                  );
+                })
+              : null}
           </g>
         ))}
       </ChartSvg>

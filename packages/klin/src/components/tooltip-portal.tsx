@@ -6,6 +6,7 @@
 import type { FocusEvent, MouseEvent, ReactNode, TouchEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { toNumber } from "../lib/number";
 import {
   TOOLTIP_HEIGHT,
   TOOLTIP_MARGIN_PX,
@@ -19,11 +20,18 @@ type Tip = {
   text: string;
 };
 
+/** Retardo por defecto de aparición (ms). */
+const TOOLTIP_DEFAULT_DELAY = 0;
+
 export type ChartTooltipPortalProps = {
   children: ReactNode;
   className?: string;
   /** Desplazamiento del tooltip respecto al cursor. */
   offset?: number;
+  /** Retardo de aparición en ms. */
+  delay?: number;
+  /** Ancho máximo del tooltip en px. */
+  maxWidth?: number;
 };
 
 /**
@@ -38,16 +46,23 @@ export function ChartTooltipPortal({
   children,
   className,
   offset = TOOLTIP_OFFSET,
+  delay = TOOLTIP_DEFAULT_DELAY,
+  maxWidth = TOOLTIP_WIDTH,
 }: ChartTooltipPortalProps) {
   const [tip, setTip] = useState<Tip | null>(null);
   const [mounted, setMounted] = useState(false);
   const raf = useRef(0);
   const pending = useRef<Tip | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | 0>(0);
+  const effectiveDelay = Math.max(0, Math.floor(toNumber(delay)));
+  const effectiveMaxWidth = Math.max(1, Math.floor(toNumber(maxWidth)));
+  const customMaxWidth = effectiveMaxWidth !== TOOLTIP_WIDTH;
 
   useEffect(() => {
     setMounted(true);
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current);
+      if (timer.current) clearTimeout(timer.current);
     };
   }, []);
 
@@ -64,12 +79,27 @@ export function ChartTooltipPortal({
     if (!next) {
       if (raf.current) cancelAnimationFrame(raf.current);
       raf.current = 0;
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = 0;
       pending.current = null;
       setTip(null);
       return;
     }
     pending.current = next;
-    if (raf.current) return;
+    if (raf.current || timer.current) return;
+    if (effectiveDelay > 0) {
+      timer.current = setTimeout(() => {
+        timer.current = 0;
+        if (raf.current) return;
+        raf.current = requestAnimationFrame(() => {
+          raf.current = 0;
+          const p = pending.current;
+          pending.current = null;
+          if (p) setTip(p);
+        });
+      }, effectiveDelay);
+      return;
+    }
     raf.current = requestAnimationFrame(() => {
       raf.current = 0;
       const p = pending.current;
@@ -121,7 +151,7 @@ export function ChartTooltipPortal({
     tip && canWindow
       ? Math.max(
           TOOLTIP_MARGIN_PX,
-          Math.min(tip.x + offset, window.innerWidth - TOOLTIP_WIDTH),
+          Math.min(tip.x + offset, window.innerWidth - effectiveMaxWidth),
         )
       : 0;
   // Voltea arriba si no cabe abajo.
@@ -136,6 +166,8 @@ export function ChartTooltipPortal({
     // biome-ignore lint/a11y/noStaticElementInteractions: delegación de hover/focus para tooltip; a11y cubierta por <title> en cada forma
     <div
       className={className ? `relative ${className}` : "relative"}
+      data-tooltip-delay={effectiveDelay > 0 ? effectiveDelay : undefined}
+      data-tooltip-max-width={customMaxWidth ? effectiveMaxWidth : undefined}
       onMouseMove={onMove}
       onMouseLeave={() => schedule(null)}
       onFocusCapture={onFocusCapture}
@@ -148,7 +180,11 @@ export function ChartTooltipPortal({
             <div
               role="tooltip"
               className="pointer-events-none fixed z-50 max-w-60 rounded-lg bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-xs ring-1 ring-border"
-              style={{ left, top }}
+              style={
+                customMaxWidth
+                  ? { left, top, maxWidth: effectiveMaxWidth }
+                  : { left, top }
+              }
             >
               {tip.text}
             </div>,

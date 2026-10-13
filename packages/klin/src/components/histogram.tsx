@@ -1,7 +1,7 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { bin, extent } from "d3-array";
+import { bin, extent, quantileSorted } from "d3-array";
 import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
@@ -12,7 +12,7 @@ import {
   CHART_W as W,
   YGrid,
 } from "../lib/frame";
-import { toNumber } from "../lib/number";
+import { sumNumbers, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor } from "../lib/palette";
 import {
@@ -36,6 +36,10 @@ export type HistogramProps = {
   format?: ValueFormatter;
   color?: string;
   locale?: string;
+  /** Dibuja las líneas de media y mediana con su valor. */
+  showMean?: boolean;
+  /** Recorta los valores a [mínimo, máximo] (outliers fuera). */
+  domain?: [number, number];
   className?: string;
   style?: CSSProperties;
   ariaDescribedBy?: string;
@@ -48,6 +52,8 @@ const BUCKET_INSET_PX = 1;
 const AXIS_LABEL_OFFSET = 10;
 const ANNOTATION_LABEL_DX = 4;
 const ANNOTATION_LABEL_DY = -4;
+const MEAN_LABEL_DX = 4;
+const MEAN_LABEL_DY = 12;
 
 /**
  * Histograma SSR (distribuciones). Cubetas con `d3.bin`.
@@ -61,6 +67,8 @@ export function Histogram({
   format,
   color,
   locale = "es-MX",
+  showMean = false,
+  domain,
   className,
   style,
   ariaDescribedBy,
@@ -71,27 +79,49 @@ export function Histogram({
   const clean = values
     .map((v) => toNumber(v, Number.NaN))
     .filter((v) => Number.isFinite(v));
-  if (clean.length === 0) {
+  const clipLo =
+    domain === undefined ? Number.NaN : toNumber(domain[0], Number.NaN);
+  const clipHi =
+    domain === undefined ? Number.NaN : toNumber(domain[1], Number.NaN);
+  const hasClip =
+    Number.isFinite(clipLo) && Number.isFinite(clipHi) && clipLo < clipHi;
+  const scoped =
+    hasClip && domain !== undefined
+      ? clean.filter((v) => v >= clipLo && v <= clipHi)
+      : clean;
+  if (scoped.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const [lo, hi] = extent(clean);
-  const domain: [number, number] =
-    lo === undefined || hi === undefined || lo === hi
-      ? [Math.min(0, lo ?? 0), Math.max(1, hi ?? 1)]
-      : [lo, hi];
+  const [lo, hi] = extent(scoped);
+  const binDomain: [number, number] =
+    hasClip && domain !== undefined
+      ? [clipLo, clipHi]
+      : lo === undefined || hi === undefined || lo === hi
+        ? [Math.min(0, lo ?? 0), Math.max(1, hi ?? 1)]
+        : [lo, hi];
 
-  const buckets = bin().domain(domain).thresholds(bins)(clean);
+  const buckets = bin().domain(binDomain).thresholds(bins)(scoped);
   const top = topPositive(buckets.map((b) => b.length));
 
-  const x = scaleLinear().domain(domain).range([0, innerW]);
+  const x = scaleLinear().domain(binDomain).range([0, innerW]);
   const y = scaleLinear().domain([0, top]).nice(GRID_TICKS).range([innerH, 0]);
   const ticks = y.ticks(GRID_TICKS);
   const fill = seriesColor(2, color);
-  const total = clean.length;
+  const total = scoped.length;
   const fmtTick = format ?? ((v: number) => formatDefault(v, locale));
+  const mean = sumNumbers(scoped) / scoped.length;
+  const median =
+    quantileSorted(
+      [...scoped].sort((a, b) => a - b),
+      0.5,
+    ) ??
+    scoped[0] ??
+    0;
+  const meanInRange = mean >= binDomain[0] && mean <= binDomain[1];
+  const medianInRange = median >= binDomain[0] && median <= binDomain[1];
 
   return (
     <ChartSvg
@@ -153,6 +183,50 @@ export function Histogram({
           </g>
         );
       })}
+      {showMean && meanInRange ? (
+        <g>
+          <title>{`media ${fmtTick(mean)}`}</title>
+          <line
+            x1={MARGIN.left + x(mean)}
+            x2={MARGIN.left + x(mean)}
+            y1={MARGIN.top}
+            y2={MARGIN.top + innerH}
+            stroke={CHART_TOKEN.accent}
+            strokeWidth={ANNOTATION_WIDTH}
+            strokeDasharray={ANNOTATION_DASH}
+          />
+          <text
+            x={MARGIN.left + x(mean) + MEAN_LABEL_DX}
+            y={MARGIN.top + MEAN_LABEL_DY}
+            fontSize={TICK_FONT_SIZE}
+            fill={CHART_TOKEN.accent}
+          >
+            {`media ${fmtTick(mean)}`}
+          </text>
+        </g>
+      ) : null}
+      {showMean && medianInRange ? (
+        <g>
+          <title>{`mediana ${fmtTick(median)}`}</title>
+          <line
+            x1={MARGIN.left + x(median)}
+            x2={MARGIN.left + x(median)}
+            y1={MARGIN.top}
+            y2={MARGIN.top + innerH}
+            stroke={CHART_TOKEN.foreground}
+            strokeWidth={ANNOTATION_WIDTH}
+            strokeDasharray={ANNOTATION_DASH}
+          />
+          <text
+            x={MARGIN.left + x(median) + MEAN_LABEL_DX}
+            y={MARGIN.top + MEAN_LABEL_DY * 2}
+            fontSize={TICK_FONT_SIZE}
+            fill={CHART_TOKEN.foreground}
+          >
+            {`mediana ${fmtTick(median)}`}
+          </text>
+        </g>
+      ) : null}
       <text
         x={MARGIN.left + innerW / 2}
         y={height - AXIS_LABEL_OFFSET}
@@ -160,7 +234,7 @@ export function Histogram({
         fontSize={TICK_FONT_SIZE}
         fill={CHART_TOKEN.muted}
       >
-        {`${clean.length} valores en ${buckets.length} intervalos`}
+        {`${total} valores en ${buckets.length} intervalos`}
       </text>
     </ChartSvg>
   );

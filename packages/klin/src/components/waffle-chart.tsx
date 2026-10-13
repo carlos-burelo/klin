@@ -22,6 +22,21 @@ export type WaffleChartProps = {
   parts: WafflePart[];
   ariaLabel: string;
   size?: number;
+  /**
+   * Columnas de la retícula (las 100 celdas se reparten en filas).
+   * @default 10
+   */
+  columns?: number;
+  /**
+   * Separación entre celdas en px.
+   * @default 3
+   */
+  gap?: number;
+  /**
+   * Radio de esquina de la celda (por defecto BAR_RADIUS).
+   * @default BAR_RADIUS
+   */
+  cellRadius?: number;
   format?: ValueFormatter;
   locale?: string;
   /**
@@ -30,6 +45,11 @@ export type WaffleChartProps = {
    */
   itemColor?: (part: WafflePart, index: number) => string | undefined;
   showLegend?: boolean;
+  /**
+   * Muestra el valor de cada parte en la leyenda.
+   * @default true
+   */
+  showLegendValues?: boolean;
   className?: string;
   style?: CSSProperties;
   ariaDescribedBy?: string;
@@ -39,6 +59,8 @@ export type WaffleChartProps = {
 
 /** Columnas de la retícula 10×10 (100 celdas = 100 %). */
 const WAFFLE_COLS = 10;
+/** Separación entre celdas en px. */
+const WAFFLE_GAP = 3;
 
 /**
  * Waffle SSR (100 cuadros 10×10 para porcentajes y partes).
@@ -47,10 +69,14 @@ export function WaffleChart({
   parts,
   ariaLabel,
   size = 220,
+  columns = WAFFLE_COLS,
+  gap = WAFFLE_GAP,
+  cellRadius,
   locale = "es-MX",
   format = (v: number) => formatDefault(v, locale),
   itemColor,
   showLegend = true,
+  showLegendValues = true,
   className,
   style,
   ariaDescribedBy,
@@ -66,8 +92,14 @@ export function WaffleChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const gap = 3;
-  const cell = (size - gap * (WAFFLE_COLS - 1)) / WAFFLE_COLS;
+  const cols = Math.max(1, Math.floor(toNumber(columns, WAFFLE_COLS)));
+  const rows = Math.max(1, Math.ceil(PERCENT_FACTOR / cols));
+  const sep = Math.max(0, toNumber(gap, WAFFLE_GAP));
+  const radius = Math.max(0, toNumber(cellRadius ?? BAR_RADIUS, BAR_RADIUS));
+  const cell = Math.min(
+    (size - sep * (cols - 1)) / cols,
+    (size - sep * (rows - 1)) / rows,
+  );
   // Celdas por parte (redondeo con resto mayor).
   const raw = clean.map((p) => (p.value / total) * PERCENT_FACTOR);
   const base = raw.map(Math.floor);
@@ -109,8 +141,8 @@ export function WaffleChart({
       >
         <title>{`${ariaLabel}: ${clean.map((p) => `${p.label} ${format((p.value / total) * PERCENT_FACTOR)}%`).join(" · ")}`}</title>
         {cells.map((c, i) => {
-          const col = i % WAFFLE_COLS;
-          const row = WAFFLE_COLS - 1 - Math.floor(i / WAFFLE_COLS);
+          const col = i % cols;
+          const row = rows - 1 - Math.floor(i / cols);
           const part = clean[c.part];
           if (!part) return null;
           const tip = `${part.label}: ${format((part.value / total) * PERCENT_FACTOR)}%`;
@@ -118,11 +150,11 @@ export function WaffleChart({
             <g key={`${col}-${row}`}>
               <title>{tip}</title>
               <rect
-                x={col * (cell + gap)}
-                y={row * (cell + gap)}
+                x={col * (cell + sep)}
+                y={row * (cell + sep)}
                 width={cell}
                 height={cell}
-                rx={BAR_RADIUS}
+                rx={radius}
                 fill={colors[c.part] ?? CHART_TOKEN.chart1}
                 data-chart-tip={tip}
               />
@@ -133,7 +165,9 @@ export function WaffleChart({
       {showLegend ? (
         <ChartLegend
           items={clean.map((p, i) => ({
-            label: `${p.label} · ${format((p.value / total) * PERCENT_FACTOR)}%`,
+            label: showLegendValues
+              ? `${p.label} · ${format((p.value / total) * PERCENT_FACTOR)}%`
+              : p.label,
             color: colors[i] ?? CHART_TOKEN.chart1,
           }))}
         />

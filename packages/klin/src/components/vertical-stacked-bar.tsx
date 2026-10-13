@@ -26,6 +26,7 @@ import {
   GRID_TICKS,
   MIN_SHAPE_PX,
   PERCENT_FACTOR,
+  TICK_DY,
   TICK_FONT_SIZE,
 } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
@@ -35,6 +36,8 @@ const GROUP_BAND_PADDING = 0.3;
 const AXIS_LABEL_OFFSET = 10;
 const ANNOTATION_LABEL_DX = 4;
 const ANNOTATION_LABEL_DY = -4;
+/** Alto mínimo de segmento (px) para rotular su valor dentro. */
+const MIN_SEGMENT_LABEL_PX = 16;
 
 /** Props de VerticalStackedBar. */
 export type VerticalStackedBarProps = {
@@ -53,6 +56,16 @@ export type VerticalStackedBarProps = {
   annotations?: ValueAnnotation[];
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Radio de esquina de la columna apilada (hoy clip fijo). */
+  barRadius?: number;
+  /** Etiqueta de valor dentro de cada segmento (si cabe). */
+  showValues?: boolean;
+  /** Ticks del grid horizontal. */
+  gridTicks?: number;
+  /** Orden de grupos por total (suma de series). */
+  sortGroups?: "none" | "asc" | "desc";
+  /** Prefijo de `defs`/`clipPath` (multi-instancia); por defecto useId. */
+  id?: string;
 };
 
 /**
@@ -76,15 +89,35 @@ export function VerticalStackedBar({
   annotations,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
+  barRadius = BAR_RADIUS,
+  showValues = false,
+  gridTicks = GRID_TICKS,
+  sortGroups = "none",
+  id,
 }: VerticalStackedBarProps) {
   const uid = useId();
   if (data.length === 0 || series.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const radius = toNumber(barRadius, BAR_RADIUS);
+  const ticksCount = Math.max(1, Math.round(toNumber(gridTicks, GRID_TICKS)));
+  const prefix =
+    id == null || id === ""
+      ? uid.replace(/:/g, "")
+      : id.replace(/[^a-zA-Z0-9_-]/g, "");
+
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const raws = data.map((d) => series.map((s) => toNumber(d[s.key])));
+  const totalOf = (d: Record<string, string | number>) =>
+    series.reduce((acc, s) => acc + toNumber(d[s.key]), 0);
+  const ordered = [...data];
+  if (sortGroups !== "none") {
+    ordered.sort((a, b) =>
+      sortGroups === "asc" ? totalOf(a) - totalOf(b) : totalOf(b) - totalOf(a),
+    );
+  }
+  const raws = ordered.map((d) => series.map((s) => toNumber(d[s.key])));
   // En normalize los negativos se clamp a 0.
   const posSums = raws.map((arr) =>
     arr.reduce((acc, v) => acc + Math.max(0, v), 0),
@@ -99,20 +132,19 @@ export function VerticalStackedBar({
       ? scaleLinear().domain([0, 1])
       : scaleLinear().domain([lo, Math.max(hi, lo + 1)])
   )
-    .nice(GRID_TICKS)
+    .nice(ticksCount)
     .range([innerH, 0]);
   const x = scaleBand()
-    .domain(data.map((d) => String(d[xKey] ?? "")))
+    .domain(ordered.map((d) => String(d[xKey] ?? "")))
     .range([0, innerW])
     .padding(GROUP_BAND_PADDING);
 
-  const ticks = y.ticks(GRID_TICKS);
+  const ticks = y.ticks(ticksCount);
   const colors = seriesColors(series);
   const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
   const fmt = normalize
     ? (v: number) => `${Math.round(v * PERCENT_FACTOR)}%`
     : fmtY;
-  const prefix = uid.replace(/:/g, "");
 
   return (
     <div className={className} style={style}>
@@ -153,7 +185,7 @@ export function VerticalStackedBar({
             </g>
           );
         })}
-        {data.map((d, di) => {
+        {ordered.map((d, di) => {
           const group = String(d[xKey] ?? "");
           const vals = raws[di] ?? [];
           const posTotal = posSums[di] ?? 0;
@@ -188,7 +220,7 @@ export function VerticalStackedBar({
                       MIN_SHAPE_PX,
                       Math.abs(yBottomPix - yTopPix),
                     )}
-                    rx={BAR_RADIUS}
+                    rx={radius}
                   />
                 </clipPath>
               </defs>
@@ -207,6 +239,7 @@ export function VerticalStackedBar({
                   else posBase = v1;
                   const y0pix = y(v0);
                   const y1pix = y(v1);
+                  const pixH = Math.abs(y1pix - y0pix);
                   const baseTip = `${group} · ${s.label}: ${fmtY(raw)}`;
                   const total = posTotal + negTotal;
                   const tip = normalize
@@ -222,10 +255,24 @@ export function VerticalStackedBar({
                         x={colX}
                         y={MARGIN.top + Math.min(y0pix, y1pix)}
                         width={x.bandwidth()}
-                        height={Math.max(MIN_SHAPE_PX, Math.abs(y1pix - y0pix))}
+                        height={Math.max(MIN_SHAPE_PX, pixH)}
                         fill={colors[si] ?? CHART_TOKEN.chart1}
                         data-chart-tip={tip}
                       />
+                      {showValues && pixH >= MIN_SEGMENT_LABEL_PX ? (
+                        <text
+                          x={colX + x.bandwidth() / 2}
+                          y={MARGIN.top + (y0pix + y1pix) / 2}
+                          dy={TICK_DY}
+                          textAnchor="middle"
+                          fontSize={TICK_FONT_SIZE}
+                          fill={CHART_TOKEN.background}
+                        >
+                          {normalize
+                            ? `${Math.round(frac * PERCENT_FACTOR)}%`
+                            : fmtY(raw)}
+                        </text>
+                      ) : null}
                     </g>
                   );
                 })}

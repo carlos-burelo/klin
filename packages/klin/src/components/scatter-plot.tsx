@@ -6,12 +6,14 @@ import { max, min } from "d3-array";
 import { scaleLinear } from "d3-scale";
 import type { CSSProperties } from "react";
 import { ChartSvg, YGrid } from "../lib/frame";
-import { toNumber } from "../lib/number";
+import { sumNumbers, toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor } from "../lib/palette";
 import {
+  ANNOTATION_DASH,
   CHART_TOKEN,
   GRID_TICKS,
+  GRID_WIDTH,
   POINT_BORDER,
   POINT_RADIUS_SCATTER,
   TICK_FONT_SIZE,
@@ -44,6 +46,8 @@ export type ScatterPlotProps = {
    * Color por punto. Si retorna `undefined` se usa el color base (`color`).
    */
   itemColor?: (point: ScatterPoint, index: number) => string | undefined;
+  /** Dibuja una cruz en las medias de X e Y (cuadrantes). */
+  quadrants?: boolean;
   className?: string;
   style?: CSSProperties;
   ariaDescribedBy?: string;
@@ -65,6 +69,7 @@ export function ScatterPlot({
   format = (v: number) => formatDefault(v, locale),
   color,
   itemColor,
+  quadrants = false,
   className,
   style,
   ariaDescribedBy,
@@ -100,6 +105,8 @@ export function ScatterPlot({
   const ticks = y.ticks(GRID_TICKS);
 
   const fill = seriesColor(0, color);
+  const meanX = sumNumbers(xs) / xs.length;
+  const meanY = sumNumbers(ys) / ys.length;
 
   return (
     <ChartSvg
@@ -111,6 +118,29 @@ export function ScatterPlot({
       ariaDescribedBy={ariaDescribedBy}
     >
       <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={format} />
+      {quadrants ? (
+        <g>
+          <title>{`medias (${format(meanX)}, ${format(meanY)})`}</title>
+          <line
+            x1={MARGIN.left + x(meanX)}
+            x2={MARGIN.left + x(meanX)}
+            y1={MARGIN.top}
+            y2={MARGIN.top + innerH}
+            stroke={CHART_TOKEN.muted}
+            strokeWidth={GRID_WIDTH}
+            strokeDasharray={ANNOTATION_DASH}
+          />
+          <line
+            x1={MARGIN.left}
+            x2={MARGIN.left + innerW}
+            y1={MARGIN.top + y(meanY)}
+            y2={MARGIN.top + y(meanY)}
+            stroke={CHART_TOKEN.muted}
+            strokeWidth={GRID_WIDTH}
+            strokeDasharray={ANNOTATION_DASH}
+          />
+        </g>
+      ) : null}
       {x.ticks(X_TICKS).map((t) => (
         <text
           key={`x${t}`}

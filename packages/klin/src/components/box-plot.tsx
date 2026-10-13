@@ -43,6 +43,10 @@ const BOX_FILL_OPACITY = 0.35;
 const OUTLIER_RADIUS = 3;
 const ANNOTATION_LABEL_DX = 4;
 const ANNOTATION_LABEL_DY = -4;
+const IQR_FACTOR = 1.5;
+const SAMPLE_LABEL_SHIFT = 12;
+const NOTCH_HALF_HEIGHT = 6;
+const NOTCH_DEPTH = 10;
 
 /** Props de BoxPlot. */
 export type BoxPlotProps = {
@@ -55,6 +59,14 @@ export type BoxPlotProps = {
   style?: CSSProperties;
   ariaDescribedBy?: string;
   showLegend?: boolean;
+  /** Muestra los puntos atípicos fuera de los bigotes. */
+  showOutliers?: boolean;
+  /** Bigotes por rango intercuartílico (1.5) o por mínimo/máximo reales. */
+  whisker?: 1.5 | "minmax";
+  /** Muestra el tamaño de muestra (`n`) bajo cada etiqueta. */
+  showSampleSize?: boolean;
+  /** Dibuja una muesca en la mediana. */
+  notch?: boolean;
   annotations?: ValueAnnotation[];
   emptyTitle?: string;
   emptyDescription?: string;
@@ -69,7 +81,7 @@ type Stats = {
   outliers: number[];
 };
 
-function statsOf(values: number[]): Stats | null {
+function statsOf(values: number[], whisker: 1.5 | "minmax"): Stats | null {
   const clean = values
     .map((v) => toNumber(v, Number.NaN))
     .filter((v) => Number.isFinite(v));
@@ -78,9 +90,19 @@ function statsOf(values: number[]): Stats | null {
   const q1 = quantileSorted(sorted, 0.25) ?? sorted[0] ?? 0;
   const median = quantileSorted(sorted, 0.5) ?? sorted[0] ?? 0;
   const q3 = quantileSorted(sorted, 0.75) ?? sorted[0] ?? 0;
+  if (whisker === "minmax") {
+    return {
+      min: sorted[0] ?? 0,
+      q1,
+      median,
+      q3,
+      max: sorted[sorted.length - 1] ?? 0,
+      outliers: [],
+    };
+  }
   const iqr = q3 - q1;
-  const lo = q1 - 1.5 * iqr;
-  const hi = q3 + 1.5 * iqr;
+  const lo = q1 - IQR_FACTOR * iqr;
+  const hi = q3 + IQR_FACTOR * iqr;
   const inside = sorted.filter((v) => v >= lo && v <= hi);
   return {
     min: inside[0] ?? sorted[0] ?? 0,
@@ -106,12 +128,16 @@ export function BoxPlot({
   style,
   ariaDescribedBy,
   showLegend = true,
+  showOutliers = true,
+  whisker = 1.5,
+  showSampleSize = false,
+  notch = false,
   annotations,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: BoxPlotProps) {
   const computed = groups
-    .map((g) => ({ group: g, stats: statsOf(g.values) }))
+    .map((g) => ({ group: g, stats: statsOf(g.values, whisker) }))
     .filter((c) => c.stats !== null);
   if (computed.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
@@ -122,7 +148,7 @@ export function BoxPlot({
   const all = computed.flatMap((c) => [
     c.stats?.min ?? 0,
     c.stats?.max ?? 0,
-    ...(c.stats?.outliers ?? []),
+    ...(showOutliers ? (c.stats?.outliers ?? []) : []),
   ]);
   const blo = Math.min(0, min(all) ?? 0);
   const bhi = max(all) ?? 1;
@@ -180,12 +206,27 @@ export function BoxPlot({
           if (!s) return null;
           const cx = MARGIN.left + (x(group.label) ?? 0) + x.bandwidth() / 2;
           const color = seriesColor(gi, group.color);
+          const n = group.values.filter((v) =>
+            Number.isFinite(toNumber(v, Number.NaN)),
+          ).length;
+          const shownOutliers = showOutliers ? s.outliers : [];
           const tip =
             `${group.label}: min ${fmtY(s.min)} · Q1 ${fmtY(s.q1)} · ` +
             `mediana ${fmtY(s.median)} · Q3 ${fmtY(s.q3)} · max ${fmtY(s.max)}` +
-            (s.outliers.length > 0
-              ? ` · atípicos ${s.outliers.map(fmtY).join(", ")}`
-              : "");
+            (shownOutliers.length > 0
+              ? ` · atípicos ${shownOutliers.map(fmtY).join(", ")}`
+              : "") +
+            (showSampleSize ? ` · n ${n}` : "");
+          const yq3 = MARGIN.top + y(s.q3);
+          const yq1 = MARGIN.top + y(s.q1);
+          const ymed = MARGIN.top + y(s.median);
+          const notchPath =
+            `M ${cx - boxW / 2} ${yq3} H ${cx + boxW / 2} ` +
+            `V ${ymed + NOTCH_HALF_HEIGHT} L ${cx + boxW / 2 - NOTCH_DEPTH} ${ymed} ` +
+            `L ${cx + boxW / 2} ${ymed - NOTCH_HALF_HEIGHT} V ${yq1} ` +
+            `H ${cx - boxW / 2} V ${ymed - NOTCH_HALF_HEIGHT} ` +
+            `L ${cx - boxW / 2 + NOTCH_DEPTH} ${ymed} ` +
+            `L ${cx - boxW / 2} ${ymed + NOTCH_HALF_HEIGHT} Z`;
           return (
             <g key={stableKey([group.label], gi)}>
               <title>{tip}</title>
@@ -199,6 +240,17 @@ export function BoxPlot({
                 <title>{group.label}</title>
                 {truncateLabel(group.label)}
               </text>
+              {showSampleSize ? (
+                <text
+                  x={cx}
+                  y={height - AXIS_LABEL_OFFSET + SAMPLE_LABEL_SHIFT}
+                  textAnchor="middle"
+                  fontSize={TICK_FONT_SIZE}
+                  fill={CHART_TOKEN.muted}
+                >
+                  n {n}
+                </text>
+              ) : null}
               <line
                 x1={cx}
                 x2={cx}
@@ -223,18 +275,29 @@ export function BoxPlot({
                 stroke={color}
                 strokeWidth={BOX_LINE_WIDTH}
               />
-              <rect
-                x={cx - boxW / 2}
-                y={MARGIN.top + y(s.q3)}
-                width={boxW}
-                height={Math.max(ZERO_MARK_PX, y(s.q1) - y(s.q3))}
-                rx={BAR_RADIUS}
-                fill={color}
-                fillOpacity={BOX_FILL_OPACITY}
-                stroke={color}
-                strokeWidth={BOX_LINE_WIDTH}
-                data-chart-tip={tip}
-              />
+              {notch ? (
+                <path
+                  d={notchPath}
+                  fill={color}
+                  fillOpacity={BOX_FILL_OPACITY}
+                  stroke={color}
+                  strokeWidth={BOX_LINE_WIDTH}
+                  data-chart-tip={tip}
+                />
+              ) : (
+                <rect
+                  x={cx - boxW / 2}
+                  y={MARGIN.top + y(s.q3)}
+                  width={boxW}
+                  height={Math.max(ZERO_MARK_PX, y(s.q1) - y(s.q3))}
+                  rx={BAR_RADIUS}
+                  fill={color}
+                  fillOpacity={BOX_FILL_OPACITY}
+                  stroke={color}
+                  strokeWidth={BOX_LINE_WIDTH}
+                  data-chart-tip={tip}
+                />
+              )}
               <line
                 x1={cx - boxW / 2}
                 x2={cx + boxW / 2}
@@ -243,18 +306,20 @@ export function BoxPlot({
                 stroke={color}
                 strokeWidth={LINE_WIDTH}
               />
-              {s.outliers.map((o, oi) => (
-                <circle
-                  // biome-ignore lint/suspicious/noArrayIndexKey: atípicos pueden duplicar valor
-                  key={`${o}__${oi}`}
-                  cx={cx}
-                  cy={MARGIN.top + y(o)}
-                  r={OUTLIER_RADIUS}
-                  fill={CHART_TOKEN.background}
-                  stroke={color}
-                  strokeWidth={POINT_BORDER}
-                />
-              ))}
+              {showOutliers
+                ? s.outliers.map((o, oi) => (
+                    <circle
+                      // biome-ignore lint/suspicious/noArrayIndexKey: atípicos pueden duplicar valor
+                      key={`${o}__${oi}`}
+                      cx={cx}
+                      cy={MARGIN.top + y(o)}
+                      r={OUTLIER_RADIUS}
+                      fill={CHART_TOKEN.background}
+                      stroke={color}
+                      strokeWidth={POINT_BORDER}
+                    />
+                  ))
+                : null}
             </g>
           );
         })}

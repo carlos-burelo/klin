@@ -17,18 +17,45 @@ export type { AreaChartProps } from "./components/area-chart";
 export { AreaChart } from "./components/area-chart";
 export type { BarChartProps } from "./components/bar-chart";
 export { BarChart } from "./components/bar-chart";
+export type {
+  BeeswarmPlotProps,
+  BeeswarmPoint,
+} from "./components/beeswarm-plot";
+export { BeeswarmPlot } from "./components/beeswarm-plot";
 export type { BoxGroup, BoxPlotProps } from "./components/box-plot";
 export { BoxPlot } from "./components/box-plot";
 export type { BulletChartProps, BulletRow } from "./components/bullet-chart";
 export { BulletChart } from "./components/bullet-chart";
+export type { BumpChartProps, BumpSeries } from "./components/bump-chart";
+export { BumpChart } from "./components/bump-chart";
 export type { CalendarHeatmapProps } from "./components/calendar-heatmap";
 export { CalendarHeatmap } from "./components/calendar-heatmap";
+export type { CandlestickChartProps } from "./components/candlestick-chart";
+export { CandlestickChart } from "./components/candlestick-chart";
+export type { ChordDiagramProps } from "./components/chord-diagram";
+export { ChordDiagram } from "./components/chord-diagram";
+export type {
+  CirclePackChartProps,
+  CirclePackNode,
+} from "./components/circle-pack-chart";
+export { CirclePackChart } from "./components/circle-pack-chart";
 export type {
   ClassDiagramProps,
   ClassEdge,
   ClassNode,
 } from "./components/class-diagram";
 export { ClassDiagram } from "./components/class-diagram";
+export type {
+  DendrogramChartProps,
+  DendrogramNode,
+  DendrogramOrientation,
+} from "./components/dendrogram-chart";
+export { DendrogramChart } from "./components/dendrogram-chart";
+export type {
+  DensityContourPlotProps,
+  DensityPoint,
+} from "./components/density-contour-plot";
+export { DensityContourPlot } from "./components/density-contour-plot";
 export type { DivergingBarProps } from "./components/diverging-bar";
 export { DivergingBar } from "./components/diverging-bar";
 export type {
@@ -37,6 +64,10 @@ export type {
   PieChartProps,
 } from "./components/donut-chart";
 export { DonutChart, PieChart } from "./components/donut-chart";
+export type { DotPlotProps } from "./components/dot-plot";
+export { DotPlot } from "./components/dot-plot";
+export type { DumbbellChartProps } from "./components/dumbbell-chart";
+export { DumbbellChart } from "./components/dumbbell-chart";
 export type { ChartEmptyProps } from "./components/empty";
 export { ChartEmpty, EMPTY_TITLE } from "./components/empty";
 export type {
@@ -46,6 +77,11 @@ export type {
   ErRelation,
 } from "./components/er-diagram";
 export { ErDiagram } from "./components/er-diagram";
+export type {
+  FishboneCause,
+  FishboneDiagramProps,
+} from "./components/fishbone-diagram";
+export { FishboneDiagram } from "./components/fishbone-diagram";
 export type {
   FlowChartProps,
   FlowEdge,
@@ -58,10 +94,19 @@ export type { GanttChartProps, GanttTask } from "./components/gantt-chart";
 export { GanttChart } from "./components/gantt-chart";
 export type { GaugeChartProps } from "./components/gauge-chart";
 export { GaugeChart } from "./components/gauge-chart";
+export type { HexbinPlotProps, HexPoint } from "./components/hexbin-plot";
+export { HexbinPlot } from "./components/hexbin-plot";
 export type { HistogramProps } from "./components/histogram";
 export { Histogram } from "./components/histogram";
 export type { HorizontalBarChartProps } from "./components/horizontal-bar-chart";
 export { HorizontalBarChart } from "./components/horizontal-bar-chart";
+export type { IcicleChartProps, IcicleNode } from "./components/icicle-chart";
+export { IcicleChart } from "./components/icicle-chart";
+export type {
+  IsotypeChartProps,
+  IsotypeDatum,
+} from "./components/isotype-chart";
+export { IsotypeChart } from "./components/isotype-chart";
 export type {
   KanbanBoardProps,
   KanbanCard,
@@ -74,6 +119,8 @@ export type { LineChartProps } from "./components/line-chart";
 export { LineChart } from "./components/line-chart";
 export type { LollipopChartProps } from "./components/lollipop-chart";
 export { LollipopChart } from "./components/lollipop-chart";
+export type { MarimekkoChartProps } from "./components/marimekko-chart";
+export { MarimekkoChart } from "./components/marimekko-chart";
 export type { MatrixHeatmapProps } from "./components/matrix-heatmap";
 export { MatrixHeatmap } from "./components/matrix-heatmap";
 export type {
@@ -94,6 +141,11 @@ export type {
   TopoRole,
 } from "./components/network-topology";
 export { NetworkTopology } from "./components/network-topology";
+export type {
+  NightingaleChartProps,
+  NightingaleDatum,
+} from "./components/nightingale-chart";
+export { NightingaleChart } from "./components/nightingale-chart";
 export type { OrgChartProps, OrgNode } from "./components/org-chart";
 export { OrgChart } from "./components/org-chart";
 export type { ParetoChartProps } from "./components/pareto-chart";
@@ -112,8 +164,20 @@ export type {
 export { QuadrantChart } from "./components/quadrant-chart";
 export type { RadarChartProps, RadarSeries } from "./components/radar-chart";
 export { RadarChart } from "./components/radar-chart";
+export type {
+  RadialBarChartProps,
+  RadialBarDatum,
+} from "./components/radial-bar-chart";
+export { RadialBarChart } from "./components/radial-bar-chart";
 export type { RadialProgressProps } from "./components/radial-progress";
 export { RadialProgress } from "./components/radial-progress";
+export type { RangeChartProps, RangeGroup } from "./components/range-chart";
+export { RangeChart } from "./components/range-chart";
+export type {
+  RidgelinePlotProps,
+  RidgelineSeries,
+} from "./components/ridgeline-plot";
+export { RidgelinePlot } from "./components/ridgeline-plot";
 export type {
   SankeyDiagramProps,
   SankeyFlow,
@@ -127,6 +191,8 @@ export type {
   SequenceMessage,
 } from "./components/sequence-diagram";
 export { SequenceDiagram } from "./components/sequence-diagram";
+export type { SlopeChartProps, SlopeDatum } from "./components/slope-chart";
+export { SlopeChart } from "./components/slope-chart";
 export type { SparklineProps } from "./components/sparkline";
 export { Sparkline } from "./components/sparkline";
 export type {
@@ -148,6 +214,15 @@ export type {
   SunburstNode,
 } from "./components/sunburst-chart";
 export { SunburstChart } from "./components/sunburst-chart";
+export type {
+  TableBar,
+  TableChartProps,
+  TableColumn,
+  TableRow,
+} from "./components/table-chart";
+export { TableChart } from "./components/table-chart";
+export type { TernaryPlotProps, TernaryPoint } from "./components/ternary-plot";
+export { TernaryPlot } from "./components/ternary-plot";
 export type {
   TimelineChartProps,
   TimelineEvent,
@@ -173,6 +248,8 @@ export type { VennDiagramProps, VennSet } from "./components/venn-diagram";
 export { VennDiagram } from "./components/venn-diagram";
 export type { VerticalStackedBarProps } from "./components/vertical-stacked-bar";
 export { VerticalStackedBar } from "./components/vertical-stacked-bar";
+export type { ViolinGroup, ViolinPlotProps } from "./components/violin-plot";
+export { ViolinPlot } from "./components/violin-plot";
 export type { WaffleChartProps, WafflePart } from "./components/waffle-chart";
 export { WaffleChart } from "./components/waffle-chart";
 export type {

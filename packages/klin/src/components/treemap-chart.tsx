@@ -5,6 +5,9 @@ import {
   type HierarchyRectangularNode,
   hierarchy,
   treemap,
+  treemapDice,
+  treemapSlice,
+  treemapSquarify,
 } from "d3-hierarchy";
 import type { CSSProperties } from "react";
 import { stableKey } from "../lib/keys";
@@ -33,6 +36,14 @@ export type TreemapChartProps = {
   ariaLabel: string;
   format?: (value: number) => string;
   locale?: string;
+  /** Algoritmo de partición del rectángulo. */
+  tiling?: "squarify" | "slice" | "dice";
+  /** Muestra el valor bajo la etiqueta cuando hay espacio. */
+  showValues?: boolean;
+  /** Área mínima (px²) para pintar etiqueta; si se omite usa el umbral clásico ancho/alto. */
+  minLabelArea?: number;
+  /** Colores por profundidad (índice `depth % longitud`); si se omite colorea por grupo superior. */
+  depthColors?: string[];
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -53,6 +64,16 @@ const MIN_LABEL_W = 64;
 const MIN_LABEL_H = 30;
 const CHAR_PER_PX = 8;
 const VALUE_OPACITY = 0.85;
+/** Partición por defecto (equivale al tile clásico de d3). */
+const DEFAULT_TREEMAP_TILING = "squarify" as const;
+/** Muestra valores bajo la etiqueta (comportamiento actual). */
+const DEFAULT_TREEMAP_SHOW_VALUES = true;
+/** Funciones de partición por modo. */
+const TREEMAP_TILING_FNS = {
+  squarify: treemapSquarify,
+  slice: treemapSlice,
+  dice: treemapDice,
+} as const;
 
 type TreemapDatum = {
   label: string;
@@ -67,7 +88,10 @@ export type TreemapLeaf = HierarchyRectangularNode<TreemapDatum>;
  * Cómputo puro del layout treemap. Ordena hojas por valor desc y
  * trunca a las primeras N para SSR.
  */
-export function computeTreemapLayout(data: TreemapNode[]): {
+export function computeTreemapLayout(
+  data: TreemapNode[],
+  tiling: "squarify" | "slice" | "dice" = DEFAULT_TREEMAP_TILING,
+): {
   leaves: TreemapLeaf[];
   topLabels: string[];
 } {
@@ -75,6 +99,7 @@ export function computeTreemapLayout(data: TreemapNode[]): {
     .size([CHART_WIDTH, TREEMAP_H])
     .paddingOuter(TREEMAP_GAP)
     .paddingInner(TREEMAP_GAP)
+    .tile(TREEMAP_TILING_FNS[tiling] ?? treemapSquarify)
     .round(true)(
     hierarchy<TreemapDatum>({
       label: "root",
@@ -101,6 +126,10 @@ export function TreemapChart({
   ariaLabel,
   format,
   locale = "es-MX",
+  tiling = DEFAULT_TREEMAP_TILING,
+  showValues = DEFAULT_TREEMAP_SHOW_VALUES,
+  minLabelArea,
+  depthColors,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -111,7 +140,7 @@ export function TreemapChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { leaves, topLabels } = computeTreemapLayout(data);
+  const { leaves, topLabels } = computeTreemapLayout(data, tiling);
   if (leaves.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
@@ -134,7 +163,14 @@ export function TreemapChart({
         const topIndex = Math.max(0, topLabels.indexOf(top?.data.label ?? ""));
         const w = leaf.x1 - leaf.x0;
         const h = leaf.y1 - leaf.y0;
-        const color = seriesColor(topIndex, top?.data.color ?? leaf.data.color);
+        const baseColor = seriesColor(
+          topIndex,
+          top?.data.color ?? leaf.data.color,
+        );
+        const color =
+          depthColors !== undefined && depthColors.length > 0
+            ? (depthColors[leaf.depth % depthColors.length] ?? baseColor)
+            : baseColor;
         const value = toNumber(leaf.value);
         const chain = ancestors
           .slice(0, -1)
@@ -142,7 +178,10 @@ export function TreemapChart({
           .map((a) => a.data.label)
           .join(" › ");
         const tip = `${chain}: ${fmt(value)} (${total > 0 ? Math.round((value / total) * PERCENT_FACTOR) : 0}%)`;
-        const showLabel = w > MIN_LABEL_W && h > MIN_LABEL_H;
+        const showLabel =
+          minLabelArea === undefined
+            ? w > MIN_LABEL_W && h > MIN_LABEL_H
+            : w * h >= minLabelArea;
         return (
           <g key={stableKey([leaf.data.label, leaf.x0, leaf.y0], i)}>
             <title>{tip}</title>
@@ -166,15 +205,17 @@ export function TreemapChart({
                 >
                   {truncateLabel(leaf.data.label, Math.floor(w / CHAR_PER_PX))}
                 </text>
-                <text
-                  x={leaf.x0 + LABEL_X}
-                  y={leaf.y0 + VALUE_DY}
-                  fontSize={TICK_FONT_SIZE}
-                  fill="white"
-                  opacity={VALUE_OPACITY}
-                >
-                  {fmt(value)}
-                </text>
+                {showValues ? (
+                  <text
+                    x={leaf.x0 + LABEL_X}
+                    y={leaf.y0 + VALUE_DY}
+                    fontSize={TICK_FONT_SIZE}
+                    fill="white"
+                    opacity={VALUE_OPACITY}
+                  >
+                    {fmt(value)}
+                  </text>
+                ) : null}
               </>
             ) : null}
           </g>

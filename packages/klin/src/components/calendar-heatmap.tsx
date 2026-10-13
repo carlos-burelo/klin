@@ -23,6 +23,8 @@ const WEEK_DAYS = 7;
 const CELL_RADIUS = 3;
 const CELL_BASE_OPACITY = 0.2;
 const CELL_RANGE_OPACITY = 0.8;
+/** Ms por día para ventanas explícitas. */
+const CAL_DAY_MS = 86_400_000;
 /** Etiquetas de mes/día y pasos de la leyenda. */
 const MONTH_LABEL_Y = 12;
 const DOW_LABEL_DY = 3;
@@ -35,7 +37,15 @@ export type CalendarHeatmapProps = {
   ariaLabel: string;
   /** Fecha de fin `YYYY-MM-DD` (por defecto hoy; pasar fija para determinismo). */
   end?: string;
+  /** Fecha de inicio `YYYY-MM-DD` para ventana explícita (si es válida ignora `weeks`). */
+  start?: string;
   weeks?: number;
+  /** Muestra etiquetas de mes sobre la parrilla. */
+  showMonthLabels?: boolean;
+  /** Muestra etiquetas de días (L/M/X…) a la izquierda. */
+  showWeekdayLabels?: boolean;
+  /** Muestra la leyenda Menos/Más. */
+  showLegend?: boolean;
   format?: ValueFormatter;
   locale?: string;
   color?: string;
@@ -54,7 +64,11 @@ export function CalendarHeatmap({
   values,
   ariaLabel,
   end,
+  start,
   weeks = 26,
+  showMonthLabels = true,
+  showWeekdayLabels = true,
+  showLegend = true,
   locale = "es-MX",
   format = (v: number) => formatDefault(v, locale),
   color,
@@ -77,16 +91,30 @@ export function CalendarHeatmap({
     lastSunday.getDate() + ((WEEK_DAYS - lastSunday.getDay()) % WEEK_DAYS),
   );
   // Lunes que abre la primera semana (las filas son Lun..Dom).
-  const start = new Date(lastSunday);
-  start.setDate(
-    start.getDate() - (weekCount - 1) * WEEK_DAYS - (WEEK_DAYS - 1),
+  const computedStart = new Date(lastSunday);
+  computedStart.setDate(
+    computedStart.getDate() - (weekCount - 1) * WEEK_DAYS - (WEEK_DAYS - 1),
   );
+  // Ventana explícita: ancla al lunes de `start` y deriva semanas hasta el cierre.
+  let effectiveStart = computedStart;
+  let effectiveWeeks = weekCount;
+  if (start) {
+    const parsed = new Date(`${start}T12:00:00`);
+    if (!Number.isNaN(parsed.getTime())) {
+      const monday = new Date(parsed);
+      monday.setDate(monday.getDate() - ((monday.getDay() + 6) % WEEK_DAYS));
+      effectiveStart = monday;
+      const spanDays =
+        Math.round((lastSunday.getTime() - monday.getTime()) / CAL_DAY_MS) + 1;
+      effectiveWeeks = Math.max(1, Math.ceil(spanDays / WEEK_DAYS));
+    }
+  }
 
   const top = Math.max(1, ...entries.map(([, v]) => toNumber(v)));
   const fill = seriesColor(0, color);
   /** Formato corto del día de semana para tooltips (locale configurable). */
   const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
-  const W = LEFT_W + weekCount * (CELL + GAPC);
+  const W = LEFT_W + effectiveWeeks * (CELL + GAPC);
   const H = TOP_H + WEEK_DAYS * (CELL + GAPC);
   // Lun..Dom en orden de fila (getDay 1..6,0).
   const DOW = ["L", "M", "X", "J", "V", "S", "D"];
@@ -96,8 +124,8 @@ export function CalendarHeatmap({
 
   const monthMarks: { x: number; label: string }[] = [];
   let prevMonth = -1;
-  for (let w = 0; w < weekCount; w++) {
-    const d = new Date(start);
+  for (let w = 0; w < effectiveWeeks; w++) {
+    const d = new Date(effectiveStart);
     d.setDate(d.getDate() + w * WEEK_DAYS);
     if (d.getMonth() !== prevMonth) {
       prevMonth = d.getMonth();
@@ -123,34 +151,38 @@ export function CalendarHeatmap({
         style={{ minWidth: Math.min(W, DIAGRAM_MIN_SCROLL) }}
         aria-hidden="true"
       >
-        {monthMarks.map((m) => (
-          <text
-            key={`${m.x}-${m.label}`}
-            x={m.x}
-            y={MONTH_LABEL_Y}
-            fontSize={EDGE_LABEL_FONT_SIZE}
-            fill={CHART_TOKEN.muted}
-          >
-            {m.label}
-          </text>
-        ))}
-        {DOW.map((d, i) =>
-          i % 2 === 1 ? (
-            <text
-              key={stableKey([d], i)}
-              x={0}
-              y={TOP_H + i * (CELL + GAPC) + CELL - DOW_LABEL_DY}
-              fontSize={DOW_FONT_SIZE}
-              fill={CHART_TOKEN.muted}
-            >
-              {d}
-            </text>
-          ) : null,
-        )}
-        {Array.from({ length: weekCount }, (_, w) =>
+        {showMonthLabels
+          ? monthMarks.map((m) => (
+              <text
+                key={`${m.x}-${m.label}`}
+                x={m.x}
+                y={MONTH_LABEL_Y}
+                fontSize={EDGE_LABEL_FONT_SIZE}
+                fill={CHART_TOKEN.muted}
+              >
+                {m.label}
+              </text>
+            ))
+          : null}
+        {showWeekdayLabels
+          ? DOW.map((d, i) =>
+              i % 2 === 1 ? (
+                <text
+                  key={stableKey([d], i)}
+                  x={0}
+                  y={TOP_H + i * (CELL + GAPC) + CELL - DOW_LABEL_DY}
+                  fontSize={DOW_FONT_SIZE}
+                  fill={CHART_TOKEN.muted}
+                >
+                  {d}
+                </text>
+              ) : null,
+            )
+          : null}
+        {Array.from({ length: effectiveWeeks }, (_, w) =>
           Array.from({ length: WEEK_DAYS }, (_, dow) => {
             // dow 0 = lunes … 6 = domingo.
-            const d = new Date(start);
+            const d = new Date(effectiveStart);
             d.setDate(d.getDate() + w * WEEK_DAYS + dow);
             if (d > lastSunday) return null;
             const key = iso(d);
@@ -184,17 +216,19 @@ export function CalendarHeatmap({
           }),
         )}
       </svg>
-      <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <span>Menos</span>
-        {LEGEND_OPACITIES.map((o, oi) => (
-          <span
-            key={stableKey([o], oi)}
-            className="inline-block size-[10px] rounded-[3px]"
-            style={{ backgroundColor: fill, opacity: o }}
-          />
-        ))}
-        <span>Más</span>
-      </p>
+      {showLegend ? (
+        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span>Menos</span>
+          {LEGEND_OPACITIES.map((o, oi) => (
+            <span
+              key={stableKey([o], oi)}
+              className="inline-block size-[10px] rounded-[3px]"
+              style={{ backgroundColor: fill, opacity: o }}
+            />
+          ))}
+          <span>Más</span>
+        </p>
+      ) : null}
     </div>
   );
 }

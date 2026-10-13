@@ -45,10 +45,29 @@ export type HorizontalBarChartProps = {
   ariaDescribedBy?: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Alto fijo del lienzo (por defecto, automático según filas). */
+  height?: number;
+  /** Radio de esquina de barra (`0` para estilo denso). */
+  barRadius?: number;
+  /** Etiqueta de valor al final de cada barra. */
+  showValues?: boolean;
+  /** Orden de grupos por total (suma de series). */
+  sortGroups?: "none" | "asc" | "desc";
+  /** Ticks del grid vertical. */
+  gridTicks?: number;
+  /** Ancho reservado a etiquetas de fila (hoy margen izquierdo fijo). */
+  labelWidth?: number;
 };
 
 const W = 640;
-const MARGIN: ChartMargin = { top: 8, right: 48, bottom: 28, left: 132 };
+/** Ancho por defecto reservado a etiquetas de fila. */
+const DEFAULT_LABEL_WIDTH = 132;
+const MARGIN: ChartMargin = {
+  top: 8,
+  right: 48,
+  bottom: 28,
+  left: DEFAULT_LABEL_WIDTH,
+};
 
 const GROUP_BAND_PADDING = 0.25;
 const SERIES_BAND_PADDING = 0.15;
@@ -77,28 +96,54 @@ export function HorizontalBarChart({
   ariaDescribedBy,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
+  height: heightProp,
+  barRadius = BAR_RADIUS,
+  showValues = true,
+  sortGroups = "none",
+  gridTicks = GRID_TICKS,
+  labelWidth = DEFAULT_LABEL_WIDTH,
 }: HorizontalBarChartProps) {
   if (data.length === 0 || series.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const rowH = ROW_BASE_H + series.length * ROW_PER_SERIES_H;
-  const height = Math.max(
-    MIN_HEIGHT,
-    MARGIN.top + MARGIN.bottom + data.length * rowH,
-  );
-  const innerW = W - MARGIN.left - MARGIN.right;
-  const innerH = height - MARGIN.top - MARGIN.bottom;
+  const radius = toNumber(barRadius, BAR_RADIUS);
+  const ticksCount = Math.max(1, Math.round(toNumber(gridTicks, GRID_TICKS)));
+  const margin: ChartMargin = {
+    ...MARGIN,
+    left: toNumber(labelWidth, DEFAULT_LABEL_WIDTH),
+  };
 
-  const flat = data.flatMap((d) => series.map((s) => toNumber(d[s.key])));
+  const totalOf = (d: Record<string, string | number>) =>
+    series.reduce((acc, s) => acc + toNumber(d[s.key]), 0);
+  const ordered = [...data];
+  if (sortGroups !== "none") {
+    ordered.sort((a, b) =>
+      sortGroups === "asc" ? totalOf(a) - totalOf(b) : totalOf(b) - totalOf(a),
+    );
+  }
+
+  const rowH = ROW_BASE_H + series.length * ROW_PER_SERIES_H;
+  const autoHeight = Math.max(
+    MIN_HEIGHT,
+    margin.top + margin.bottom + ordered.length * rowH,
+  );
+  const height =
+    heightProp == null
+      ? autoHeight
+      : Math.max(MIN_HEIGHT, Math.round(toNumber(heightProp, autoHeight)));
+  const innerW = W - margin.left - margin.right;
+  const innerH = height - margin.top - margin.bottom;
+
+  const flat = ordered.flatMap((d) => series.map((s) => toNumber(d[s.key])));
   const [lo, hi] = domainWithZero(flat);
   const x = scaleLinear()
     .domain([lo, Math.max(hi, lo + 1)])
-    .nice(GRID_TICKS)
+    .nice(ticksCount)
     .range([0, innerW]);
   const x0 = x(0);
   const y0 = scaleBand()
-    .domain(data.map((d) => String(d[yKey] ?? "")))
+    .domain(ordered.map((d) => String(d[yKey] ?? "")))
     .range([0, innerH])
     .padding(GROUP_BAND_PADDING);
   const y1 = scaleBand()
@@ -106,7 +151,7 @@ export function HorizontalBarChart({
     .range([0, y0.bandwidth()])
     .padding(SERIES_BAND_PADDING);
 
-  const ticks = x.ticks(GRID_TICKS);
+  const ticks = x.ticks(ticksCount);
   const colors = seriesColors(series);
 
   return (
@@ -120,15 +165,15 @@ export function HorizontalBarChart({
         {ticks.map((t) => (
           <g key={t}>
             <line
-              x1={MARGIN.left + x(t)}
-              x2={MARGIN.left + x(t)}
-              y1={MARGIN.top}
-              y2={height - MARGIN.bottom}
+              x1={margin.left + x(t)}
+              x2={margin.left + x(t)}
+              y1={margin.top}
+              y2={height - margin.bottom}
               stroke={CHART_TOKEN.border}
               strokeWidth={GRID_WIDTH}
             />
             <text
-              x={MARGIN.left + x(t)}
+              x={margin.left + x(t)}
               y={height - AXIS_LABEL_OFFSET}
               textAnchor="middle"
               fontSize={TICK_FONT_SIZE}
@@ -140,7 +185,7 @@ export function HorizontalBarChart({
         ))}
         {(annotations ?? []).map((a, ai) => {
           const clamped = Math.min(hi, Math.max(lo, toNumber(a.value)));
-          const ax = MARGIN.left + x(clamped);
+          const ax = margin.left + x(clamped);
           const stroke = a.color ?? CHART_TOKEN.accent;
           return (
             <g key={stableKey([a.label ?? `${a.value}`], ai)}>
@@ -148,8 +193,8 @@ export function HorizontalBarChart({
               <line
                 x1={ax}
                 x2={ax}
-                y1={MARGIN.top}
-                y2={height - MARGIN.bottom}
+                y1={margin.top}
+                y2={height - margin.bottom}
                 stroke={stroke}
                 strokeWidth={ANNOTATION_WIDTH}
                 strokeDasharray={ANNOTATION_DASH}
@@ -157,7 +202,7 @@ export function HorizontalBarChart({
               {a.label ? (
                 <text
                   x={ax + TICK_GAP_PX}
-                  y={MARGIN.top + TICK_GAP_PX}
+                  y={margin.top + TICK_GAP_PX}
                   fontSize={TICK_FONT_SIZE}
                   fill={stroke}
                 >
@@ -167,14 +212,14 @@ export function HorizontalBarChart({
             </g>
           );
         })}
-        {data.map((d, di) => {
+        {ordered.map((d, di) => {
           const group = String(d[yKey] ?? "");
-          const total = series.reduce((acc, s) => acc + toNumber(d[s.key]), 0);
+          const total = totalOf(d);
           return (
             <g key={stableKey([group], di)}>
               <text
-                x={MARGIN.left - TICK_GAP_PX}
-                y={MARGIN.top + (y0(group) ?? 0) + y0.bandwidth() / 2}
+                x={margin.left - TICK_GAP_PX}
+                y={margin.top + (y0(group) ?? 0) + y0.bandwidth() / 2}
                 dy={TICK_DY}
                 textAnchor="end"
                 fontSize={TICK_FONT_SIZE}
@@ -187,10 +232,10 @@ export function HorizontalBarChart({
                 const value = toNumber(d[s.key]);
                 const xv = x(value);
                 const bw = Math.abs(xv - x0);
-                const bx = MARGIN.left + Math.min(x0, xv);
+                const bx = margin.left + Math.min(x0, xv);
                 const w =
                   value === 0 ? ZERO_MARK_PX : Math.max(MIN_SHAPE_PX, bw);
-                const by = MARGIN.top + (y0(group) ?? 0) + (y1(s.key) ?? 0);
+                const by = margin.top + (y0(group) ?? 0) + (y1(s.key) ?? 0);
                 const baseTip = `${group} · ${s.label}: ${formatX(value)}`;
                 const tip =
                   series.length >= 2 && total > 0
@@ -204,19 +249,21 @@ export function HorizontalBarChart({
                       y={by}
                       width={w}
                       height={Math.max(ZERO_MARK_PX, y1.bandwidth())}
-                      rx={BAR_RADIUS}
+                      rx={radius}
                       fill={colors[si] ?? CHART_TOKEN.chart1}
                       data-chart-tip={tip}
                     />
-                    <text
-                      x={bx + w + VALUE_LABEL_DX}
-                      y={by + y1.bandwidth() / 2}
-                      dy={TICK_DY}
-                      fontSize={TICK_FONT_SIZE}
-                      fill={CHART_TOKEN.muted}
-                    >
-                      {formatX(value)}
-                    </text>
+                    {showValues ? (
+                      <text
+                        x={bx + w + VALUE_LABEL_DX}
+                        y={by + y1.bandwidth() / 2}
+                        dy={TICK_DY}
+                        fontSize={TICK_FONT_SIZE}
+                        fill={CHART_TOKEN.muted}
+                      >
+                        {formatX(value)}
+                      </text>
+                    ) : null}
                   </g>
                 );
               })}

@@ -1,0 +1,122 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/horizontal-bar-chart";
+import Examples from "../../demos/examples/horizontal-bar-chart";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Comparativas con valor tabular. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, HorizontalBarChart } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<HorizontalBarChart
+  data={/* … */}
+  yKey={/* … */}
+  series={/* … */}
+  ariaLabel="Horizontal Bar Chart"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/horizontal-bar-chart.tsx`)</summary>
+
+```tsx
+/**
+ * Demo Barras horizontales del site (no se publica en el bundle de la lib).
+ */
+import { ChartTooltipPortal, HorizontalBarChart } from "@carlos-burelo/klin";
+
+export default function HorizontalBarChartDemo() {
+  return (
+    <ChartTooltipPortal>
+      <HorizontalBarChart
+        ariaLabel="Barras horizontales de matrícula por turno"
+        data={[
+          { matutino: 320, turno: "Primaria", vespertino: 210 },
+          { matutino: 280, turno: "Secundaria", vespertino: 260 },
+          { matutino: 190, turno: "Preparatoria", vespertino: 230 },
+          { matutino: 150, turno: "Universidad", vespertino: 170 },
+        ]}
+        formatX={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+        series={[
+          { key: "matutino", label: "Matutino" },
+          { key: "vespertino", label: "Vespertino" },
+        ]}
+        yKey="turno"
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "data", type: "Array<Record<string, string | number>>", required: true, description: "Filas de datos (records). Valores no-finitos se tratan como 0, nunca NaN en SVG." },
+    { name: "yKey", type: "string", required: true, description: "Clave del valor en el eje Y." },
+    { name: "series", type: "ChartSeries[]", required: true, description: "Series a dibujar (clave + etiqueta + color opcional)." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "formatX", type: "ValueFormatter", required: false, description: "Formateador del eje X (por defecto es-MX)." },
+    { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
+    { name: "annotations", type: "ValueAnnotation[]", required: false, description: "Líneas de referencia SSR (valor + etiqueta + color opcional)." },
+    { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda HTML SSR (por defecto true donde aplica)." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+    { name: "height", type: "number", required: false, description: "Alto fijo del lienzo (por defecto, automático según filas)." },
+    { name: "barRadius", type: "number", required: false, description: "Radio de esquina de barra (`0` para estilo denso)." },
+    { name: "showValues", type: "boolean", required: false, description: "Etiqueta de valor al final de cada barra." },
+    { name: "sortGroups", type: "'none' | 'asc' | 'desc'", required: false, description: "Orden de grupos por total (suma de series)." },
+    { name: "gridTicks", type: "number", required: false, description: "Ticks del grid vertical." },
+    { name: "labelWidth", type: "number", required: false, description: "Ancho reservado a etiquetas de fila (hoy margen izquierdo fijo)." },
+]} />
+
+*Tipo completo: `HorizontalBarChartProps` en `horizontal-bar-chart.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`horizontal-bar-chart.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/horizontal-bar-chart.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

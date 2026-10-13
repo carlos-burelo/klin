@@ -6,6 +6,7 @@
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
+    "postinstall": "pnpm --filter @carlos-burelo/klin build",
     "lint": "pnpm --recursive --if-present lint",
     "typecheck": "pnpm --recursive --if-present typecheck",
     "test": "pnpm --recursive --if-present test",

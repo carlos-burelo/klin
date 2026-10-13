@@ -1,5 +1,18 @@
 {
   "extends": "../../tools/config/tsconfig.react-library.json",
-  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.mdx",
+    "mdx-components.tsx",
+    "next-env.d.ts",
+    "next.config.ts"
+  ],
   "exclude": ["node_modules", "out"]
 }

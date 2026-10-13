@@ -48,6 +48,8 @@ const ARROW_MARKER = {
 const DOT = 28;
 const FINAL_RING_PAD = 4;
 const LABEL_DY = 4;
+/** Id del pseudoinicio que se inyecta cuando ningún nodo lo declara. */
+const STATE_PSEUDO_INITIAL_ID = "__klin-inicio__";
 
 /** Props del diagrama de estados. */
 export type StateDiagramProps = {
@@ -55,6 +57,8 @@ export type StateDiagramProps = {
   edges: StateEdge[];
   ariaLabel: string;
   direction?: "TB" | "LR";
+  /** Dibuja el pseudoinicio aunque ningún nodo lo declare. */
+  showInitial?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -114,6 +118,7 @@ export function StateDiagram({
   edges,
   ariaLabel,
   direction = "LR",
+  showInitial = true,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -124,8 +129,24 @@ export function StateDiagram({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const effective =
+    showInitial &&
+    !nodes.some(
+      (n) =>
+        (n.kind ?? "state") === "initial" || n.id === STATE_PSEUDO_INITIAL_ID,
+    )
+      ? [
+          {
+            id: STATE_PSEUDO_INITIAL_ID,
+            label: "",
+            kind: "initial",
+          } as StateNode,
+          ...nodes,
+        ]
+      : nodes;
+
   const { layout, byId, width, height } = computeStateLayout(
-    nodes,
+    effective,
     edges,
     direction,
   );

@@ -34,6 +34,10 @@ export type QuadrantChartProps = {
   yLabel?: string;
   /** [arriba-izq, arriba-der, abajo-izq, abajo-der]. */
   quads?: [string, string, string, string];
+  /** Muestra el nº de puntos junto a cada etiqueta de cuadrante. */
+  showCounts?: boolean;
+  /** Posición de la cruz en escala 0–100 (por defecto centrada, como hasta ahora). */
+  thresholds?: { x: number; y: number };
   locale?: string;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -64,6 +68,12 @@ const AXIS_LABEL_BOTTOM_PAD = 6;
 const Y_LABEL_X = 10;
 /** Máximo de truncado de etiqueta de punto. */
 const LABEL_MAX_POINT = 16;
+/** Sin conteos por defecto (etiquetas limpias, como hasta ahora). */
+const DEFAULT_QUADRANT_SHOW_COUNTS = false;
+/** Cruz centrada por defecto (50/50, como hasta ahora). */
+const DEFAULT_QUADRANT_THRESHOLD_X = 50;
+/** Cruz centrada por defecto (50/50, como hasta ahora). */
+const DEFAULT_QUADRANT_THRESHOLD_Y = 50;
 
 /**
  * Cómputo puro de posiciones del cuadrante ( clamp 0–100 → px ).
@@ -90,6 +100,11 @@ export function QuadrantChart({
   xLabel = "→ Esfuerzo",
   yLabel = "↑ Impacto",
   quads = ["Apuestas", "Ganancias rápidas", "Relleno", "Evitar"],
+  showCounts = DEFAULT_QUADRANT_SHOW_COUNTS,
+  thresholds = {
+    x: DEFAULT_QUADRANT_THRESHOLD_X,
+    y: DEFAULT_QUADRANT_THRESHOLD_Y,
+  },
   locale = "es-MX",
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -104,8 +119,27 @@ export function QuadrantChart({
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = H - MARGIN.top - MARGIN.bottom;
   const pos = computeQuadrantPositions(points);
-  const midX = MARGIN.left + innerW / 2;
-  const midY = MARGIN.top + innerH / 2;
+  const midX =
+    MARGIN.left + clamp01(toNumber(thresholds.x) / PERCENT_FACTOR) * innerW;
+  const midY =
+    MARGIN.top +
+    (1 - clamp01(toNumber(thresholds.y) / PERCENT_FACTOR)) * innerH;
+  const counts = showCounts
+    ? [
+        points.filter(
+          (p) => toNumber(p.x) < thresholds.x && toNumber(p.y) >= thresholds.y,
+        ).length,
+        points.filter(
+          (p) => toNumber(p.x) >= thresholds.x && toNumber(p.y) >= thresholds.y,
+        ).length,
+        points.filter(
+          (p) => toNumber(p.x) < thresholds.x && toNumber(p.y) < thresholds.y,
+        ).length,
+        points.filter(
+          (p) => toNumber(p.x) >= thresholds.x && toNumber(p.y) < thresholds.y,
+        ).length,
+      ]
+    : [0, 0, 0, 0];
 
   const quadPos = [
     {
@@ -143,8 +177,8 @@ export function QuadrantChart({
       <rect
         x={midX}
         y={MARGIN.top}
-        width={innerW / 2}
-        height={innerH / 2}
+        width={MARGIN.left + innerW - midX}
+        height={midY - MARGIN.top}
         rx={QUAD_RADIUS}
         fill={CHART_TOKEN.chart1}
         fillOpacity={QUAD_FILL_HIGH}
@@ -152,8 +186,8 @@ export function QuadrantChart({
       <rect
         x={MARGIN.left}
         y={midY}
-        width={innerW / 2}
-        height={innerH / 2}
+        width={midX - MARGIN.left}
+        height={MARGIN.top + innerH - midY}
         rx={QUAD_RADIUS}
         fill={CHART_TOKEN.chart1}
         fillOpacity={QUAD_FILL_LOW}
@@ -176,7 +210,7 @@ export function QuadrantChart({
       />
       {quads.map((q, i) => (
         <text
-          key={stableKey([q], i)}
+          key={stableKey([q, showCounts ? String(counts[i] ?? 0) : ""], i)}
           x={quadPos[i]?.x ?? 0}
           y={quadPos[i]?.y ?? 0}
           textAnchor={quadPos[i]?.anchor ?? "start"}
@@ -184,7 +218,7 @@ export function QuadrantChart({
           fontWeight={FONT_SEMIBOLD}
           fill={CHART_TOKEN.muted}
         >
-          {q}
+          {showCounts ? `${q} (${counts[i] ?? 0})` : q}
         </text>
       ))}
       {points.map((p, i) => {

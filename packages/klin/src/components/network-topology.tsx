@@ -112,6 +112,12 @@ export type NetworkTopologyProps = {
   edges: TopoEdge[];
   ariaLabel: string;
   direction?: "TB" | "LR";
+  /** Muestra la leyenda de estado de enlace. */
+  linkLegend?: boolean;
+  /** Tamaño del glifo de rol (base `GLYPH_R`). */
+  glyphSize?: number;
+  /** Sobrescribe el color por estado de enlace. */
+  statusColors?: Partial<Record<NonNullable<TopoEdge["status"]>, string>>;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -148,7 +154,12 @@ function roleColor(role: TopoRole): string {
   }
 }
 
-function statusColor(status: TopoEdge["status"]): string {
+function statusColor(
+  status: NonNullable<TopoEdge["status"]>,
+  overrides?: Partial<Record<NonNullable<TopoEdge["status"]>, string>>,
+): string {
+  const override = overrides?.[status];
+  if (override) return override;
   switch (status) {
     case "down":
       return CHART_TOKEN.destructive;
@@ -367,6 +378,9 @@ export function NetworkTopology({
   edges,
   ariaLabel,
   direction = "TB",
+  linkLegend = true,
+  glyphSize = GLYPH_R,
+  statusColors,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -413,7 +427,7 @@ export function NetworkTopology({
                 key={stableKey([e.from, e.to], i)}
                 d={e.d}
                 fill="none"
-                stroke={statusColor(status)}
+                stroke={statusColor(status, statusColors)}
                 strokeWidth={status === "down" ? NODE_BORDER_WIDTH : EDGE_WIDTH}
                 strokeDasharray={status === "down" ? DASH_DOWN : undefined}
                 markerEnd="url(#charts-topo-arrow)"
@@ -442,7 +456,15 @@ export function NetworkTopology({
                   strokeWidth={EDGE_WIDTH}
                   data-chart-tip={tip}
                 />
-                <RoleGlyph role={role} x={p.x + GLYPH_X} y={p.cy} />
+                {glyphSize === GLYPH_R ? (
+                  <RoleGlyph role={role} x={p.x + GLYPH_X} y={p.cy} />
+                ) : (
+                  <g
+                    transform={`translate(${p.x + GLYPH_X} ${p.cy}) scale(${glyphSize / GLYPH_R}) translate(${-(p.x + GLYPH_X)} ${-p.cy})`}
+                  >
+                    <RoleGlyph role={role} x={p.x + GLYPH_X} y={p.cy} />
+                  </g>
+                )}
                 <text
                   x={p.x + LABEL_X}
                   y={p.cy + (n.sub ? LABEL_DY_WITH_SUB : LABEL_DY)}
@@ -478,13 +500,19 @@ export function NetworkTopology({
           })}
         </svg>
       </div>
-      <ChartLegend
-        items={usedStatuses.map((s) => ({
-          label:
-            s === "up" ? "Enlace activo" : s === "down" ? "Caído" : "Degradado",
-          color: statusColor(s),
-        }))}
-      />
+      {linkLegend ? (
+        <ChartLegend
+          items={usedStatuses.map((s) => ({
+            label:
+              s === "up"
+                ? "Enlace activo"
+                : s === "down"
+                  ? "Caído"
+                  : "Degradado",
+            color: statusColor(s, statusColors),
+          }))}
+        />
+      ) : null}
     </div>
   );
 }

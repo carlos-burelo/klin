@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import { formatDefault, seriesColor } from "../lib/palette";
-import { CHART_TOKEN } from "../lib/theme";
+import { CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 import { ChartLegend } from "./legend";
 
@@ -23,12 +23,19 @@ export type VennDiagramProps = {
   size?: number;
   format?: (value: number) => string;
   locale?: string;
+  /** Añade el % del universo junto a cada valor. */
+  showPercent?: boolean;
+  /** Total de referencia para `showPercent` (obligatorio si se activa). */
+  universe?: number;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
   style?: CSSProperties;
   ariaDescribedBy?: string;
 };
+
+/** Sin % por defecto (solo valores absolutos, como hasta ahora). */
+const DEFAULT_VENN_SHOW_PERCENT = false;
 
 /**
  * Cómputo puro de la geometría fija del Venn (centros + regiones).
@@ -86,6 +93,8 @@ export function VennDiagram({
   size = 340,
   format,
   locale = "es-MX",
+  showPercent = DEFAULT_VENN_SHOW_PERCENT,
+  universe,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -125,10 +134,16 @@ export function VennDiagram({
     ),
   );
   const fmt = format ?? ((v: number) => formatDefault(v, locale));
+  const withPercent =
+    showPercent && Number.isFinite(universe) && (universe as number) > 0;
+  const fmtShare = (v: number) =>
+    withPercent
+      ? `${fmt(v)} (${Math.round((v / (universe as number)) * PERCENT_FACTOR)}%)`
+      : fmt(v);
   const tipFor = (idx: number[]) => {
     const names = idx.map((i) => sets[i]?.label ?? "").join(" ∩ ");
     const v = inter.get(idx.join(","));
-    return v === undefined ? names : `${names}: ${fmt(v)}`;
+    return v === undefined ? names : `${names}: ${fmtShare(v)}`;
   };
 
   return (
@@ -152,7 +167,7 @@ export function VennDiagram({
         <title>{ariaLabel}</title>
         {centers.map((c, i) => {
           const color = seriesColor(i, sets[i]?.color);
-          const tip = `${sets[i]?.label}: ${fmt(toNumber(sets[i]?.value))}`;
+          const tip = `${sets[i]?.label}: ${fmtShare(toNumber(sets[i]?.value))}`;
           return (
             <g key={stableKey([sets[i]?.label ?? ""], i)}>
               <title>{tip}</title>
@@ -185,7 +200,7 @@ export function VennDiagram({
                 data-chart-tip={tip}
               >
                 {inter.get(rg.sets.join(",")) !== undefined
-                  ? fmt(inter.get(rg.sets.join(",")) ?? 0)
+                  ? fmtShare(inter.get(rg.sets.join(",")) ?? 0)
                   : ""}
               </text>
             </g>

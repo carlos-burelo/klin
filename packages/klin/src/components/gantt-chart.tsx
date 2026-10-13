@@ -10,6 +10,7 @@ import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import { formatDefault, truncateLabel } from "../lib/palette";
 import {
+  ANNOTATION_DASH,
   CHART_TOKEN,
   GRID_WIDTH,
   PERCENT_FACTOR,
@@ -34,6 +35,16 @@ export type GanttTask = {
 export type GanttChartProps = {
   tasks: GanttTask[];
   ariaLabel: string;
+  /** Muestra la barra de avance sobre la pista programada. */
+  showProgress?: boolean;
+  /** Fecha `YYYY-MM-DD` o `Date` para dibujar la línea de hoy. */
+  today?: string | Date;
+  /** Alto de fila en px. */
+  rowHeight?: number;
+  /** Ancho de la columna de etiquetas en px. */
+  labelWidth?: number;
+  /** Alto total del SVG (por defecto según nº de tareas). */
+  height?: number;
   formatDate?: (d: Date) => string;
   locale?: string;
   showLegend?: boolean;
@@ -47,6 +58,8 @@ export type GanttChartProps = {
 const W = 640;
 const MARGIN: ChartMargin = { top: 8, right: 12, bottom: 28, left: 148 };
 const ROW_H = 30;
+/** Ancho por defecto de la columna de etiquetas (paridad con `MARGIN.left`). */
+const DEFAULT_LABEL_WIDTH = 148;
 /** Alto mínimo, día en ms, nº de marcas y geometría de barra/etiqueta. */
 const GANTT_MIN_H = 120;
 const DAY_MS = 86_400_000;
@@ -64,6 +77,11 @@ const LABEL_MAX_TASK = 20;
 export function GanttChart({
   tasks,
   ariaLabel,
+  showProgress = true,
+  today,
+  rowHeight = ROW_H,
+  labelWidth = DEFAULT_LABEL_WIDTH,
+  height: heightProp,
   formatDate,
   locale = "es-MX",
   showLegend = true,
@@ -77,11 +95,18 @@ export function GanttChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const height = Math.max(
+  const effectiveRowH = Math.max(1, Math.floor(toNumber(rowHeight)));
+  const effectiveLabelW = Math.max(0, Math.floor(toNumber(labelWidth)));
+  const margin: ChartMargin = { ...MARGIN, left: effectiveLabelW };
+  const computedH = Math.max(
     GANTT_MIN_H,
-    MARGIN.top + MARGIN.bottom + tasks.length * ROW_H,
+    margin.top + margin.bottom + tasks.length * effectiveRowH,
   );
-  const innerW = W - MARGIN.left - MARGIN.right;
+  const height =
+    heightProp === undefined
+      ? computedH
+      : Math.max(GANTT_MIN_H, Math.floor(toNumber(heightProp)));
+  const innerW = W - margin.left - margin.right;
 
   const toDate = (v: string | Date) =>
     v instanceof Date ? v : new Date(`${v}T12:00:00`);
@@ -102,6 +127,13 @@ export function GanttChart({
     ((d: Date) =>
       d.toLocaleDateString(locale, { day: "numeric", month: "short" }));
   const ticks = x.ticks(GANTT_TICKS);
+  const todayDate = today === undefined ? null : toDate(today);
+  const todayX =
+    todayDate && Number.isFinite(todayDate.getTime())
+      ? margin.left + x(todayDate)
+      : null;
+  const showToday =
+    todayX !== null && todayX >= margin.left && todayX <= margin.left + innerW;
 
   return (
     <div className={className} style={style}>
@@ -116,15 +148,15 @@ export function GanttChart({
         {ticks.map((t) => (
           <g key={t.getTime()}>
             <line
-              x1={MARGIN.left + x(t)}
-              x2={MARGIN.left + x(t)}
-              y1={MARGIN.top}
-              y2={height - MARGIN.bottom}
+              x1={margin.left + x(t)}
+              x2={margin.left + x(t)}
+              y1={margin.top}
+              y2={height - margin.bottom}
               stroke={CHART_TOKEN.border}
               strokeWidth={GRID_WIDTH}
             />
             <text
-              x={MARGIN.left + x(t)}
+              x={margin.left + x(t)}
               y={height - AXIS_LABEL_BOTTOM_PAD}
               textAnchor="middle"
               fontSize={TICK_FONT_SIZE}
@@ -134,13 +166,28 @@ export function GanttChart({
             </text>
           </g>
         ))}
+        {showToday && todayDate ? (
+          <g>
+            <title>{`Hoy: ${fmt(todayDate)}`}</title>
+            <line
+              x1={todayX ?? margin.left}
+              x2={todayX ?? margin.left}
+              y1={margin.top}
+              y2={height - margin.bottom}
+              stroke={CHART_TOKEN.destructive}
+              strokeWidth={GRID_WIDTH}
+              strokeDasharray={ANNOTATION_DASH}
+              data-chart-tip={`Hoy: ${fmt(todayDate)}`}
+            />
+          </g>
+        ) : null}
         {tasks.map((task, i) => {
           const s = toDate(task.start);
           const e = toDate(task.end);
-          const bx = MARGIN.left + x(s);
+          const bx = margin.left + x(s);
           const bw = Math.max(MIN_BAR_W, x(e) - x(s));
-          const by = MARGIN.top + i * ROW_H + BAR_Y_OFFSET;
-          const bh = ROW_H - BAR_Y_OFFSET * 2;
+          const by = margin.top + i * effectiveRowH + BAR_Y_OFFSET;
+          const bh = effectiveRowH - BAR_Y_OFFSET * 2;
           const color = task.color ?? CHART_TOKEN.chart1;
           const pct =
             task.progress === undefined
@@ -157,7 +204,7 @@ export function GanttChart({
           return (
             <g key={stableKey([task.label], i)}>
               <text
-                x={MARGIN.left - TICK_GAP_PX}
+                x={margin.left - TICK_GAP_PX}
                 y={by + bh / 2}
                 dy={TICK_DY}
                 textAnchor="end"
@@ -169,26 +216,40 @@ export function GanttChart({
               </text>
               <g>
                 <title>{tip}</title>
-                <rect
-                  x={bx}
-                  y={by}
-                  width={bw}
-                  height={bh}
-                  rx={bh / 2}
-                  fill={CHART_TOKEN.track}
-                />
-                <rect
-                  x={bx}
-                  y={by}
-                  width={Math.max(
-                    bh,
-                    (bw * (pct ?? PERCENT_FACTOR)) / PERCENT_FACTOR,
-                  )}
-                  height={bh}
-                  rx={bh / 2}
-                  fill={color}
-                  data-chart-tip={tip}
-                />
+                {showProgress ? (
+                  <>
+                    <rect
+                      x={bx}
+                      y={by}
+                      width={bw}
+                      height={bh}
+                      rx={bh / 2}
+                      fill={CHART_TOKEN.track}
+                    />
+                    <rect
+                      x={bx}
+                      y={by}
+                      width={Math.max(
+                        bh,
+                        (bw * (pct ?? PERCENT_FACTOR)) / PERCENT_FACTOR,
+                      )}
+                      height={bh}
+                      rx={bh / 2}
+                      fill={color}
+                      data-chart-tip={tip}
+                    />
+                  </>
+                ) : (
+                  <rect
+                    x={bx}
+                    y={by}
+                    width={bw}
+                    height={bh}
+                    rx={bh / 2}
+                    fill={color}
+                    data-chart-tip={tip}
+                  />
+                )}
               </g>
             </g>
           );

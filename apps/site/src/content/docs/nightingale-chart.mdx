@@ -1,0 +1,123 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/nightingale-chart";
+import Examples from "../../demos/examples/nightingale-chart";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Rosa polar de proporciones. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, NightingaleChart } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<NightingaleChart
+  data={/* … */}
+  ariaLabel="Nightingale Chart"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/nightingale-chart.tsx`)</summary>
+
+```tsx
+import type { NightingaleDatum } from "@carlos-burelo/klin";
+import { ChartTooltipPortal, NightingaleChart } from "@carlos-burelo/klin";
+
+const data: NightingaleDatum[] = [
+  { label: "Ene", value: 8 },
+  { label: "Feb", value: 10 },
+  { label: "Mar", value: 18 },
+  { label: "Abr", value: 45 },
+  { label: "May", value: 110 },
+  { label: "Jun", value: 210 },
+  { label: "Jul", value: 230 },
+  { label: "Ago", value: 220 },
+  { label: "Sep", value: 190 },
+  { label: "Oct", value: 80 },
+  { label: "Nov", value: 20 },
+  { label: "Dic", value: 8 },
+];
+
+export default function NightingaleChartDemo() {
+  return (
+    <ChartTooltipPortal>
+      <NightingaleChart
+        data={data}
+        format={(v: number) => `${v} mm`}
+        ariaLabel="Lluvia mensual en CDMX en milímetros: se concentra de junio a septiembre con pico en julio y estiaje en invierno"
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "data", type: "NightingaleDatum[]", required: true, description: "Filas de datos (records). Valores no-finitos se tratan como 0, nunca NaN en SVG." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "height", type: "number", required: false, description: "Alto del SVG en px (ancho siempre fluido por viewBox)." },
+    { name: "format", type: "ValueFormatter", required: false, description: "—" },
+    { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
+    { name: "showLabels", type: "boolean", required: false, description: "Muestra las etiquetas externas de cada pétalo." },
+    { name: "showValues", type: "boolean", required: false, description: "Agrega el valor a la etiqueta externa (por defecto solo etiqueta)." },
+    { name: "sortSlices", type: "boolean", required: false, description: "Ordena los pétalos por valor descendente (por defecto respeta la entrada)." },
+    { name: "padAngle", type: "number", required: false, description: "Separación angular entre pétalos." },
+    { name: "cornerRadius", type: "number", required: false, description: "Radio de esquina de cada pétalo." },
+    { name: "startAngle", type: "number", required: false, description: "Ángulo inicial del coxcomb (radianes)." },
+    { name: "showTotal", type: "boolean", required: false, description: "Muestra el total al centro del coxcomb." },
+    { name: "totalLabel", type: "string", required: false, description: "Etiqueta bajo el total central." },
+    { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda HTML SSR (por defecto true donde aplica)." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+]} />
+
+*Tipo completo: `NightingaleChartProps` en `nightingale-chart.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`nightingale-chart.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/nightingale-chart.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

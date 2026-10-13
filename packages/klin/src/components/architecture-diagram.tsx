@@ -56,6 +56,19 @@ const LABEL_DY = 4;
 const LABEL_DY_WITH_SUB = -3;
 const SUB_DY = 12;
 const DASH_EXTERNAL = "5 4";
+/** Alto de nodo en modo compacto (mapas grandes). */
+const ARCH_NODE_H_COMPACT = 40;
+/** Insignia de tipo: desplazamiento desde la esquina superior derecha. */
+const ARCH_BADGE_PAD_X = 8;
+const ARCH_BADGE_DY = 14;
+/** Etiqueta corta de la insignia por tipo de nodo. */
+const ARCH_KIND_BADGE = {
+  service: "servicio",
+  database: "base",
+  queue: "cola",
+  actor: "actor",
+  external: "externo",
+} as const;
 
 /** Props del diagrama de arquitectura. */
 export type ArchitectureDiagramProps = {
@@ -63,6 +76,12 @@ export type ArchitectureDiagramProps = {
   edges: ArchEdge[];
   ariaLabel: string;
   direction?: "TB" | "LR";
+  /** Sobrescribe el color de trazo por tipo de nodo. */
+  statusColors?: Partial<Record<Exclude<ArchNode["kind"], undefined>, string>>;
+  /** Muestra la insignia con el tipo de cada nodo. */
+  showBadges?: boolean;
+  /** Reduce la altura de nodo para mapas grandes. */
+  compact?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -77,6 +96,7 @@ export function computeArchitectureLayout(
   nodes: ArchNode[],
   edges: ArchEdge[],
   direction: "TB" | "LR" = "TB",
+  compact = false,
 ): {
   layout: DagLayout;
   byId: Map<string, ArchNode>;
@@ -92,7 +112,7 @@ export function computeArchitectureLayout(
       pad: NODE_FIT.pad,
     },
   );
-  const H = LAYOUT.NODE_H;
+  const H = compact ? ARCH_NODE_H_COMPACT : LAYOUT.NODE_H;
   const layout = layoutDag(
     nodes.map((n) => n.id),
     edges,
@@ -122,6 +142,9 @@ export function ArchitectureDiagram({
   edges,
   ariaLabel,
   direction = "TB",
+  statusColors,
+  showBadges = true,
+  compact = false,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -136,19 +159,21 @@ export function ArchitectureDiagram({
     nodes,
     edges,
     direction,
+    compact,
   );
   const edgeByKey = new Map(
     edges.map((e) => [`${e.from}→${e.to}`, e] as const),
   );
 
   const strokeFor = (kind: ArchNode["kind"]) =>
-    kind === "external"
+    (kind && statusColors?.[kind]) ??
+    (kind === "external"
       ? CHART_TOKEN.muted
       : kind === "database"
         ? CHART_TOKEN.chart3
         : kind === "queue"
           ? CHART_TOKEN.chart4
-          : CHART_TOKEN.chart1;
+          : CHART_TOKEN.chart1);
 
   return (
     <div
@@ -268,6 +293,17 @@ export function ArchitectureDiagram({
                   fill={CHART_TOKEN.muted}
                 >
                   {truncateLabel(n.sub, kind === "actor" ? 18 : 24)}
+                </text>
+              ) : null}
+              {showBadges ? (
+                <text
+                  x={p.x + p.w - ARCH_BADGE_PAD_X}
+                  y={p.y + ARCH_BADGE_DY}
+                  textAnchor="end"
+                  fontSize={EDGE_LABEL_FONT_SIZE}
+                  fill={CHART_TOKEN.muted}
+                >
+                  {ARCH_KIND_BADGE[kind]}
                 </text>
               ) : null}
             </g>

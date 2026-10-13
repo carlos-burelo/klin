@@ -1,0 +1,172 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/candlestick-chart";
+import Examples from "../../demos/examples/candlestick-chart";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+OHLC con mechas y cuerpos. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { CandlestickChart, ChartTooltipPortal } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<CandlestickChart
+  data={/* … */}
+  labelKey={/* … */}
+  openKey={/* … */}
+  highKey={/* … */}
+  lowKey={/* … */}
+  closeKey={/* … */}
+  ariaLabel="Candlestick Chart"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/candlestick-chart.tsx`)</summary>
+
+```tsx
+/**
+ * Demo Velas OHLC del site (no se publica en el bundle de la lib).
+ */
+import { CandlestickChart, ChartTooltipPortal } from "@carlos-burelo/klin";
+
+export default function CandlestickChartDemo() {
+  return (
+    <ChartTooltipPortal>
+      <CandlestickChart
+        ariaLabel="Velas semanales de América Móvil en la BMV de enero a febrero, con cierre al alza en 17.45 pesos"
+        data={[
+          {
+            semana: "6 ene",
+            apertura: 16.8,
+            maximo: 17.05,
+            minimo: 16.6,
+            cierre: 16.95,
+          },
+          {
+            semana: "13 ene",
+            apertura: 16.95,
+            maximo: 17.2,
+            minimo: 16.75,
+            cierre: 17.1,
+          },
+          {
+            semana: "20 ene",
+            apertura: 17.1,
+            maximo: 17.25,
+            minimo: 16.8,
+            cierre: 16.85,
+          },
+          {
+            semana: "27 ene",
+            apertura: 16.85,
+            maximo: 17.0,
+            minimo: 16.5,
+            cierre: 16.6,
+          },
+          {
+            semana: "3 feb",
+            apertura: 16.6,
+            maximo: 16.95,
+            minimo: 16.45,
+            cierre: 16.9,
+          },
+          {
+            semana: "10 feb",
+            apertura: 16.9,
+            maximo: 17.55,
+            minimo: 16.85,
+            cierre: 17.45,
+          },
+        ]}
+        labelKey="semana"
+        openKey="apertura"
+        highKey="maximo"
+        lowKey="minimo"
+        closeKey="cierre"
+        formatY={(v: number) =>
+          new Intl.NumberFormat("es-MX", {
+            style: "currency",
+            currency: "MXN",
+          }).format(v)
+        }
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "data", type: "Array<Record<string, string | number>>", required: true, description: "Filas de datos (records). Valores no-finitos se tratan como 0, nunca NaN en SVG." },
+    { name: "labelKey", type: "string", required: true, description: "Clave de la etiqueta de cada parte." },
+    { name: "openKey", type: "string", required: true, description: "—" },
+    { name: "highKey", type: "string", required: true, description: "—" },
+    { name: "lowKey", type: "string", required: true, description: "—" },
+    { name: "closeKey", type: "string", required: true, description: "—" },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "height", type: "number", required: false, description: "Alto del SVG en px (ancho siempre fluido por viewBox)." },
+    { name: "formatY", type: "ValueFormatter", required: false, description: "Formateador del eje Y (por defecto es-MX)." },
+    { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+    { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda HTML SSR (por defecto true donde aplica)." },
+    { name: "annotations", type: "ValueAnnotation[]", required: false, description: "Líneas de referencia SSR (valor + etiqueta + color opcional)." },
+    { name: "yMin", type: "number", required: false, description: "Mínimo fijo del dominio Y (indefinido = automático con cero)." },
+    { name: "yMax", type: "number", required: false, description: "Máximo fijo del dominio Y (indefinido = automático)." },
+    { name: "gridTicks", type: "number", required: false, description: "Ticks del grid horizontal (por defecto GRID_TICKS)." },
+    { name: "showValues", type: "boolean", required: false, description: "Muestra el valor de cierre sobre cada vela." },
+    { name: "sortGroups", type: "CandleSort", required: false, description: "Orden de las velas por precio de cierre." },
+    { name: "barRadius", type: "number", required: false, description: "Radio del cuerpo de la vela (por defecto BAR_RADIUS)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+]} />
+
+*Tipo completo: `CandlestickChartProps` en `candlestick-chart.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`candlestick-chart.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/candlestick-chart.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)

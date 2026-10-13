@@ -1,27 +1,36 @@
 import { ChartTooltipPortal, ScatterPlot } from "@carlos-burelo/klin";
 
-/** Relación entre horas de estudio y calificación por estudiante. */
+/** Tráfico contra ticket por sucursal: tres nubes por zona más dos atípicas. */
 export default function ScatterPlotDemo() {
   return (
     <ChartTooltipPortal>
       <ScatterPlot
-        ariaLabel="Dispersión de horas de estudio frente a calificación"
-        xLabel="Horas de estudio"
-        yLabel="Calificación"
+        ariaLabel="Tráfico contra ticket por sucursal: norte barato con ticket bajo, sur caro con ticket alto"
+        xLabel="Tráfico (miles)"
+        yLabel="Ticket promedio"
         points={[
-          { label: "Ana", x: 12, y: 9.1 },
-          { label: "Bruno", x: 4, y: 6.2 },
-          { label: "Carla", x: 8, y: 8.0 },
-          { label: "Diego", x: 2, y: 5.4 },
-          { label: "Elena", x: 10, y: 8.7 },
-          { label: "Fabián", x: 6, y: 7.3 },
-          { label: "Greta", x: 14, y: 9.5 },
-          { label: "Hugo", x: 5, y: 6.8 },
-          { label: "Irene", x: 9, y: 8.2 },
-          { label: "Jorge", x: 3, y: 5.9 },
-          { label: "Karla", x: 11, y: 8.9 },
-          { label: "Luis", x: 7, y: 7.6 },
+          { label: "Norte A", x: 42, y: 61 },
+          { label: "Norte B", x: 48, y: 66 },
+          { label: "Norte C", x: 45, y: 58 },
+          { label: "Norte D", x: 51, y: 63 },
+          { label: "Centro A", x: 72, y: 41 },
+          { label: "Centro B", x: 68, y: 48 },
+          { label: "Centro C", x: 75, y: 44 },
+          { label: "Centro D", x: 70, y: 38 },
+          { label: "Sur A", x: 30, y: 25 },
+          { label: "Sur B", x: 34, y: 31 },
+          { label: "Sur C", x: 28, y: 22 },
+          { label: "Sur D", x: 36, y: 28 },
+          { label: "Insurgentes", x: 60, y: 72 },
+          { label: "Doctores", x: 20, y: 55 },
         ]}
+        itemColor={(p) =>
+          (p.label ?? "").startsWith("Norte")
+            ? "var(--chart-1)"
+            : (p.label ?? "").startsWith("Centro")
+              ? "var(--chart-2)"
+              : "var(--chart-4)"
+        }
       />
     </ChartTooltipPortal>
   );

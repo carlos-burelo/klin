@@ -2,7 +2,7 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import { scaleLinear, scalePoint } from "d3-scale";
-import { area, curveMonotoneX, line } from "d3-shape";
+import { area, curveLinear, curveMonotoneX, curveStep, line } from "d3-shape";
 import type { CSSProperties } from "react";
 import type { ValueAnnotation } from "../lib/api";
 import { domainWithZero } from "../lib/domain";
@@ -48,6 +48,18 @@ export type AreaChartProps = {
   stacked?: boolean;
   /** Apila a 100 % (implica `stacked`). */
   normalize?: boolean;
+  /** monotone (suave), linear (recta) o step (escalón). */
+  curve?: "monotone" | "linear" | "step";
+  /** Muestra los puntos sobre cada dato (series densas: ocultar). */
+  showPoints?: boolean;
+  /** Opacidad del relleno del área. */
+  fillOpacity?: number;
+  /** Mínimo fijo del eje Y (se ignora con `normalize`). */
+  yMin?: number;
+  /** Máximo fijo del eje Y (se ignora con `normalize`). */
+  yMax?: number;
+  /** Ticks del grid Y (por defecto GRID_TICKS). */
+  gridTicks?: number;
   locale?: string;
   className?: string;
   style?: CSSProperties;
@@ -72,6 +84,12 @@ export function AreaChart({
   formatY,
   stacked = false,
   normalize = false,
+  curve = "monotone",
+  showPoints = true,
+  fillOpacity,
+  yMin,
+  yMax,
+  gridTicks = GRID_TICKS,
   locale = "es-MX",
   className,
   style,
@@ -93,7 +111,22 @@ export function AreaChart({
     series.reduce((acc, s) => acc + Math.max(0, toNumber(d[s.key])), 0),
   );
   const flat = data.flatMap((d) => series.map((s) => toNumber(d[s.key])));
-  const [lo, hi] = domainWithZero(stacked || normalize ? stackedTotals : flat);
+  const [autoLo, autoHi] = domainWithZero(
+    stacked || normalize ? stackedTotals : flat,
+  );
+  const lo = normalize || yMin === undefined ? autoLo : toNumber(yMin, autoLo);
+  const hi = normalize
+    ? autoHi
+    : yMax === undefined
+      ? autoHi
+      : toNumber(yMax, autoHi);
+  const opacity = toNumber(fillOpacity ?? AREA_FILL_OPACITY, AREA_FILL_OPACITY);
+  const areaCurve =
+    curve === "step"
+      ? curveStep
+      : curve === "linear"
+        ? curveLinear
+        : curveMonotoneX;
 
   const x = scalePoint()
     .domain(labels)
@@ -104,9 +137,9 @@ export function AreaChart({
       ? scaleLinear().domain([0, 1])
       : scaleLinear()
           .domain([lo, Math.max(hi, lo + 1)])
-          .nice(GRID_TICKS)
+          .nice(gridTicks)
   ).range([innerH, 0]);
-  const ticks = y.ticks(GRID_TICKS);
+  const ticks = y.ticks(gridTicks);
   const colors = seriesColors(series);
   const fmtY = formatY ?? ((v: number) => formatDefault(v, locale));
   const fmt = normalize
@@ -191,19 +224,19 @@ export function AreaChart({
               .x((p) => x(p.label) ?? 0)
               .y0((p) => y(p.base))
               .y1((p) => y(p.base + p.value))
-              .curve(curveMonotoneX)(pts) ?? "";
+              .curve(areaCurve)(pts) ?? "";
           const linePath =
             line<{ label: string; value: number; raw: number; base: number }>()
               .x((p) => x(p.label) ?? 0)
               .y((p) => y(p.base + p.value))
-              .curve(curveMonotoneX)(pts) ?? "";
+              .curve(areaCurve)(pts) ?? "";
           return (
             <g
               key={s.key}
               transform={`translate(${MARGIN.left},${MARGIN.top})`}
             >
               <title>{`${s.label}: total ${fmtY(pts.reduce((a, p) => a + p.raw, 0))}`}</title>
-              <path d={areaPath} fill={color} opacity={AREA_FILL_OPACITY} />
+              <path d={areaPath} fill={color} opacity={opacity} />
               <path
                 d={linePath}
                 fill="none"
@@ -211,29 +244,31 @@ export function AreaChart({
                 strokeWidth={LINE_WIDTH}
                 strokeLinecap="round"
               />
-              {pts.map((p, pi) => {
-                const baseTip = `${p.label} · ${s.label}: ${fmtY(p.raw)}`;
-                const total = stackedTotals[pi] ?? 0;
-                const tip = normalize
-                  ? `${p.label} · ${s.label}: ${fmtY(p.raw)} (${Math.round(p.value * PERCENT_FACTOR)}%)`
-                  : stacked && series.length >= 2 && total > 0
-                    ? `${baseTip} (${Math.round((Math.max(0, p.raw) / total) * PERCENT_FACTOR)}% del grupo)`
-                    : baseTip;
-                return (
-                  <g key={stableKey([s.key, p.label], pi)}>
-                    <title>{tip}</title>
-                    <circle
-                      cx={x(p.label) ?? 0}
-                      cy={y(p.base + p.value)}
-                      r={POINT_RADIUS}
-                      fill={color}
-                      stroke={CHART_TOKEN.background}
-                      strokeWidth={POINT_BORDER}
-                      data-chart-tip={tip}
-                    />
-                  </g>
-                );
-              })}
+              {showPoints
+                ? pts.map((p, pi) => {
+                    const baseTip = `${p.label} · ${s.label}: ${fmtY(p.raw)}`;
+                    const total = stackedTotals[pi] ?? 0;
+                    const tip = normalize
+                      ? `${p.label} · ${s.label}: ${fmtY(p.raw)} (${Math.round(p.value * PERCENT_FACTOR)}%)`
+                      : stacked && series.length >= 2 && total > 0
+                        ? `${baseTip} (${Math.round((Math.max(0, p.raw) / total) * PERCENT_FACTOR)}% del grupo)`
+                        : baseTip;
+                    return (
+                      <g key={stableKey([s.key, p.label], pi)}>
+                        <title>{tip}</title>
+                        <circle
+                          cx={x(p.label) ?? 0}
+                          cy={y(p.base + p.value)}
+                          r={POINT_RADIUS}
+                          fill={color}
+                          stroke={CHART_TOKEN.background}
+                          strokeWidth={POINT_BORDER}
+                          data-chart-tip={tip}
+                        />
+                      </g>
+                    );
+                  })
+                : null}
             </g>
           );
         })}

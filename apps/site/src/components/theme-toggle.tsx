@@ -1,6 +1,8 @@
 "use client";
 
+import { MoonIcon, SunIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "klin-theme";
 
@@ -26,14 +28,19 @@ export function ThemeToggle() {
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
+      size="icon-sm"
       onClick={toggle}
       aria-label={dark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
       aria-pressed={mounted && dark}
-      className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
     >
-      {mounted && dark ? "Claro" : "Oscuro"}
-    </button>
+      {mounted && dark ? (
+        <SunIcon aria-hidden="true" />
+      ) : (
+        <MoonIcon aria-hidden="true" />
+      )}
+    </Button>
   );
 }

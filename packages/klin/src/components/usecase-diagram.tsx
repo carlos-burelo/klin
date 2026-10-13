@@ -54,6 +54,12 @@ const ACTOR_LABEL_DY = -2;
 const USECASE_LABEL_DY = 4;
 const EDGE_TAG_DY = -4;
 const DASH_RELATION = "5 4";
+/** Marco del sistema: relleno, radio, guion y posición de la etiqueta. */
+const USECASE_BOUNDARY_PAD = 20;
+const USECASE_BOUNDARY_RX = 10;
+const USECASE_BOUNDARY_DASH = "6 4";
+const USECASE_BOUNDARY_LABEL_X = 12;
+const USECASE_BOUNDARY_LABEL_DY = 18;
 
 /** Props del diagrama de casos de uso. */
 export type UseCaseDiagramProps = {
@@ -61,6 +67,10 @@ export type UseCaseDiagramProps = {
   usecases: UseCaseNode[];
   edges: UseCaseEdge[];
   ariaLabel: string;
+  /** Título del rectángulo de sistema que enmarca los casos de uso. */
+  boundary?: string;
+  /** Muestra las etiquetas de estereotipo (`«include»`/`«extend»`). */
+  showStereotypes?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
@@ -122,6 +132,8 @@ export function UseCaseDiagram({
   usecases,
   edges,
   ariaLabel,
+  boundary,
+  showStereotypes = true,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -140,6 +152,24 @@ export function UseCaseDiagram({
   const edgeByKey = new Map(
     edges.map((e) => [`${e.from}→${e.to}`, e] as const),
   );
+  const caseBoxes = [...layout.nodes.values()].filter(
+    (p) => !actorIds.has(p.id),
+  );
+  const frame =
+    boundary && caseBoxes.length > 0
+      ? {
+          x: Math.min(...caseBoxes.map((p) => p.x)) - USECASE_BOUNDARY_PAD,
+          y: Math.min(...caseBoxes.map((p) => p.y)) - USECASE_BOUNDARY_PAD,
+          w:
+            Math.max(...caseBoxes.map((p) => p.x + p.w)) -
+            Math.min(...caseBoxes.map((p) => p.x)) +
+            USECASE_BOUNDARY_PAD * 2,
+          h:
+            Math.max(...caseBoxes.map((p) => p.y + p.h)) -
+            Math.min(...caseBoxes.map((p) => p.y)) +
+            USECASE_BOUNDARY_PAD * 2,
+        }
+      : null;
 
   return (
     <div
@@ -155,6 +185,30 @@ export function UseCaseDiagram({
         aria-describedby={ariaDescribedBy}
       >
         <title>{ariaLabel}</title>
+        {frame ? (
+          <g>
+            <rect
+              x={frame.x}
+              y={frame.y}
+              width={frame.w}
+              height={frame.h}
+              rx={USECASE_BOUNDARY_RX}
+              fill="none"
+              stroke={CHART_TOKEN.border}
+              strokeWidth={EDGE_WIDTH}
+              strokeDasharray={USECASE_BOUNDARY_DASH}
+            />
+            <text
+              x={frame.x + USECASE_BOUNDARY_LABEL_X}
+              y={frame.y + USECASE_BOUNDARY_LABEL_DY}
+              fontSize={TICK_FONT_SIZE}
+              fontWeight={FONT_SEMIBOLD}
+              fill={CHART_TOKEN.muted}
+            >
+              {truncateLabel(boundary ?? "", 28)}
+            </text>
+          </g>
+        ) : null}
         {layout.edges.map((e, i) => {
           const edge = edgeByKey.get(`${e.from}→${e.to}`);
           const dashed = edge?.kind === "include" || edge?.kind === "extend";
@@ -252,7 +306,8 @@ export function UseCaseDiagram({
         {layout.edges.map((e, i) => {
           const edge = edgeByKey.get(`${e.from}→${e.to}`);
           const tag =
-            edge?.kind === "include" || edge?.kind === "extend"
+            showStereotypes &&
+            (edge?.kind === "include" || edge?.kind === "extend")
               ? `«${edge.kind}»`
               : null;
           return tag ? (

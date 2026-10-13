@@ -6,7 +6,7 @@ import { stableKey } from "../lib/keys";
 import { toNumber } from "../lib/number";
 import type { ValueFormatter } from "../lib/palette";
 import { formatDefault, seriesColor } from "../lib/palette";
-import { PERCENT_FACTOR } from "../lib/theme";
+import { CHART_TOKEN, PERCENT_FACTOR } from "../lib/theme";
 import { ChartEmpty, EMPTY_TITLE } from "./empty";
 
 /** Fila de progreso (etiqueta, valor, total y detalle opcionales). */
@@ -17,10 +17,42 @@ export type ProgressRow = {
   detail?: string;
 };
 
+/** Estado de umbral de una fila (pct de 0 a 100). */
+export type ProgressStatus = "ok" | "warn" | "bad";
+
+/** Grosor de la barra. */
+const BAR_HEIGHT_CLASS = {
+  sm: "h-1",
+  md: "h-2",
+} as const;
+
+/** Color de la barra por estado de umbral (tokens del tema). */
+const STATUS_FILL: Record<ProgressStatus, string> = {
+  ok: CHART_TOKEN.chart2,
+  warn: CHART_TOKEN.chart4,
+  bad: CHART_TOKEN.destructive,
+};
+
 /** Props de la lista de medidores lineales SSR. */
 export type ProgressListProps = {
   rows: ProgressRow[];
   ariaLabel: string;
+  /**
+   * Grosor de la barra.
+   * @default "md"
+   */
+  barHeight?: "sm" | "md";
+  /**
+   * Muestra el % junto al valor.
+   * @default true
+   */
+  showPercent?: boolean;
+  /**
+   * Color de la barra por umbral (recibe el pct de 0 a 100).
+   * Por defecto, el color de serie.
+   * @default undefined
+   */
+  status?: (pct: number) => ProgressStatus;
   format?: ValueFormatter;
   locale?: string;
   color?: string;
@@ -37,6 +69,9 @@ export type ProgressListProps = {
 export function ProgressList({
   rows,
   ariaLabel,
+  barHeight = "md",
+  showPercent = true,
+  status,
   locale = "es-MX",
   format = (v: number) => formatDefault(v, locale),
   color,
@@ -69,6 +104,8 @@ export function ProgressList({
           PERCENT_FACTOR,
           Math.max(0, (value / total) * PERCENT_FACTOR),
         );
+        const rounded = Math.round(pct);
+        const barColor = status ? (STATUS_FILL[status(pct)] ?? fill) : fill;
         const tip =
           `${row.label}: ${format(value)} de ${format(toNumber(row.total ?? row.value))}` +
           (row.detail ? ` (${row.detail})` : "");
@@ -86,16 +123,16 @@ export function ProgressList({
                 {row.label}
               </span>
               <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums">
-                {format(value)}
+                {showPercent ? `${format(value)} · ${rounded}%` : format(value)}
               </span>
             </div>
             <div
-              className="h-2 w-full overflow-hidden rounded-full bg-muted"
+              className={`${BAR_HEIGHT_CLASS[barHeight]} w-full overflow-hidden rounded-full bg-muted`}
               role="presentation"
             >
               <div
                 className="h-full rounded-full"
-                style={{ width: `${pct}%`, backgroundColor: fill }}
+                style={{ width: `${pct}%`, backgroundColor: barColor }}
               />
             </div>
           </div>

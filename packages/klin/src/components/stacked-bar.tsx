@@ -39,12 +39,23 @@ export type StackedBarProps = {
   ariaDescribedBy?: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  /**
+   * Escala de la pista: `global` compara filas entre sí (tope común),
+   * `row` llena cada fila al 100 % de su propio total.
+   */
+  scale?: "row" | "global";
+  /** Insignia con el % del segmento principal (hoy siempre visible). */
+  showPercent?: boolean;
+  /** Alto de la pista de barra. */
+  barHeight?: number;
+  /** Alto fijo del contenedor (por defecto, automático según filas). */
+  height?: number;
+  /** Prefijo de `clipPath` (multi-instancia); por defecto useId. */
+  id?: string;
 };
 
 const TRACK_W = 600;
 const TRACK_H = 24;
-/** Radio de la pista (pastilla). */
-const TRACK_RADIUS = TRACK_H / 2;
 
 /**
  * Barras horizontales apiladas SSR (progreso y comparativas).
@@ -64,18 +75,30 @@ export function StackedBar({
   ariaDescribedBy,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
+  scale = "global",
+  showPercent = true,
+  barHeight,
+  height,
+  id,
 }: StackedBarProps) {
   // useId arriba: hooks siempre en mismo orden (antes del early return).
-  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const autoUid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   if (rows.length === 0 || segments.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const uid =
+    id == null || id === "" ? autoUid : id.replace(/[^a-zA-Z0-9_-]/g, "");
+  const barH = barHeight == null ? TRACK_H : toNumber(barHeight, TRACK_H);
+  const barRadius = barH / 2;
+  const defaultH = barH === TRACK_H;
   const mainKey = percentOf ?? segments[0]?.key ?? "";
   const colors = segments.map((s, i) => seriesColor(i, s.color));
   const totalOf = (values: Record<string, number>) =>
     segments.reduce((acc, s) => acc + toNumber(values[s.key]), 0);
   const maxTotal = Math.max(1, ...rows.map((r) => totalOf(r.values)));
+  const outerStyle =
+    height == null ? style : { ...style, height: toNumber(height) };
 
   return (
     <div
@@ -83,7 +106,7 @@ export function StackedBar({
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}
       className={className}
-      style={style}
+      style={outerStyle}
     >
       <title>{ariaLabel}</title>
       <div className="flex flex-col gap-2.5">
@@ -92,6 +115,8 @@ export function StackedBar({
           const main = toNumber(row.values[mainKey]);
           const percent =
             total === 0 ? 0 : Math.round((main / total) * PERCENT_FACTOR);
+          // En escala por fila cada pista llena su propio total.
+          const denom = scale === "row" ? (total === 0 ? 1 : total) : maxTotal;
           let offset = 0;
           const clipId = `${uid}-st-${ri}`;
           return (
@@ -106,25 +131,26 @@ export function StackedBar({
                 {row.label}
               </span>
               <svg
-                viewBox={`0 0 ${TRACK_W} ${TRACK_H}`}
-                className="h-6 min-w-0 flex-1"
+                viewBox={`0 0 ${TRACK_W} ${barH}`}
+                className={defaultH ? "h-6 min-w-0 flex-1" : "min-w-0 flex-1"}
+                style={defaultH ? undefined : { height: barH }}
                 aria-hidden="true"
               >
                 <defs>
                   <clipPath id={clipId}>
-                    <rect width={TRACK_W} height={TRACK_H} rx={TRACK_RADIUS} />
+                    <rect width={TRACK_W} height={barH} rx={barRadius} />
                   </clipPath>
                 </defs>
                 <rect
                   width={TRACK_W}
-                  height={TRACK_H}
-                  rx={TRACK_RADIUS}
+                  height={barH}
+                  rx={barRadius}
                   fill={CHART_TOKEN.track}
                 />
                 <g clipPath={`url(#${clipId})`}>
                   {segments.map((seg, si) => {
                     const value = toNumber(row.values[seg.key]);
-                    const w = (value / maxTotal) * TRACK_W;
+                    const w = (value / denom) * TRACK_W;
                     const x = offset;
                     offset += w;
                     if (w <= 0) return null;
@@ -142,7 +168,7 @@ export function StackedBar({
                           x={x}
                           y={0}
                           width={w}
-                          height={TRACK_H}
+                          height={barH}
                           fill={colors[si] ?? CHART_TOKEN.chart1}
                           data-chart-tip={tip}
                         />
@@ -151,9 +177,11 @@ export function StackedBar({
                   })}
                 </g>
               </svg>
-              <span className="w-10 shrink-0 text-right font-mono text-[11px] font-medium text-muted-foreground tabular-nums">
-                {percent}%
-              </span>
+              {showPercent ? (
+                <span className="w-10 shrink-0 text-right font-mono text-[11px] font-medium text-muted-foreground tabular-nums">
+                  {percent}%
+                </span>
+              ) : null}
             </div>
           );
         })}

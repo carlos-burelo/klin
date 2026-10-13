@@ -1,0 +1,117 @@
+import { LightbulbIcon } from "lucide-react";
+import Demo from "../../demos/pie-chart";
+import Examples from "../../demos/examples/pie-chart";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+import { DemoBlock } from "../../components/docs/demo-block";
+import { PropsTable } from "../../components/docs/props-table";
+
+## Vista previa
+
+Dona sin agujero. Demo completa con datos realistas, renderizada en el servidor. Más abajo están las configuraciones, una por una.
+
+<DemoBlock>
+  <Demo />
+</DemoBlock>
+
+## Ejemplos
+
+Todas las configuraciones del componente, cada una viva y con datos propios. Cambia entre Preview y Code en cada tarjeta y copia lo que necesites.
+
+<Examples />
+
+## Uso
+
+Ejemplo mínimo con las props requeridas. Copia, pega y cambia los datos:
+
+```tsx
+import { ChartTooltipPortal, PieChart } from "@carlos-burelo/klin";
+import "@carlos-burelo/klin/styles.css";
+
+<ChartTooltipPortal>
+<PieChart
+  data={/* … */}
+  ariaLabel="Pie Chart"
+/>
+</ChartTooltipPortal>
+```
+
+<Alert>
+  <LightbulbIcon />
+  <AlertTitle>SSR-first</AlertTitle>
+  <AlertDescription>
+    La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
+    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Lee la guía [/guias/ssr-first](/guias/ssr-first) una vez y listo.
+  </AlertDescription>
+</Alert>
+
+## Código de esta demo
+
+<details>
+<summary>Ver fuente (`src/demos/pie-chart.tsx`)</summary>
+
+```tsx
+/**
+ * Demo Torta del site (no se publica en el bundle de la lib).
+ */
+import { ChartTooltipPortal, PieChart } from "@carlos-burelo/klin";
+
+export default function PieChartDemo() {
+  return (
+    <ChartTooltipPortal>
+      <PieChart
+        ariaLabel="Torta de ventas por canal"
+        data={[
+          { label: "Tienda física", value: 420 },
+          { label: "En línea", value: 310 },
+          { label: "Mayoreo", value: 180 },
+          { label: "Marketplace", value: 120 },
+          { label: "Teléfono", value: 60 },
+        ]}
+        size={220}
+      />
+    </ChartTooltipPortal>
+  );
+}
+```
+
+</details>
+
+## Props
+
+<PropsTable props={[
+    { name: "data", type: "DonutDatum[]", required: true, description: "Filas de datos (records). Valores no-finitos se tratan como 0, nunca NaN en SVG." },
+    { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
+    { name: "size", type: "number", required: false, description: "—" },
+    { name: "thickness", type: "number", required: false, description: "—" },
+    { name: "format", type: "ValueFormatter", required: false, description: "—" },
+    { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
+    { name: "itemColor", type: "(datum: DonutDatum, index: number) => string | undefined", required: false, description: "Color por rebanada. Si retorna `undefined` se usa el color de serie. Se respeta `datum.color` primero. /" },
+    { name: "totalLabel", type: "string", required: false, description: "—" },
+    { name: "showTotal", type: "boolean", required: false, description: "—" },
+    { name: "startAngle", type: "number", required: false, description: "Ángulo inicial de la primera rebanada en radianes (0 = arriba). @default 0 /" },
+    { name: "padAngle", type: "number", required: false, description: "Separación entre rebanadas en radianes. @default 0 /" },
+    { name: "sortSlices", type: "boolean", required: false, description: "Ordena las rebanadas de mayor a menor (por defecto respeta la entrada). @default false /" },
+    { name: "cornerRadius", type: "number", required: false, description: "Radio de esquina de los arcos (0 = bordes rectos). @default 0 /" },
+    { name: "innerLabels", type: "'none' | 'percent'", required: false, description: "Etiqueta dentro de la rebanada: el % solo si el arco es grande. @default 'none' /" },
+    { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda HTML SSR (por defecto true donde aplica)." },
+    { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
+    { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
+    { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
+    { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
+    { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
+]} />
+
+*Tipo completo: `DonutChartProps` en `donut-chart.tsx`.*
+
+## Accesibilidad
+
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
+- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
+- Detalle del contrato en [/guias/accesibilidad](/guias/accesibilidad).
+
+## Recursos
+
+- Fuente del componente: [`donut-chart.tsx`](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/donut-chart.tsx)
+- Guías: [SSR-first](/guias/ssr-first) · [Tema](/guias/tema) · [Tooltip](/guias/tooltip)
