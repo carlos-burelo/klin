@@ -35,6 +35,8 @@ export type ChartSvgProps = {
   className?: string;
   style?: CSSProperties;
   ariaDescribedBy?: string;
+  /** Tope de ancho renderizado (los SVG chicos no se estiran más allá). */
+  maxWidth?: number;
 };
 
 /** SVG responsivo homogéneo (role img + title + viewBox). */
@@ -46,12 +48,13 @@ export function ChartSvg({
   className = "h-auto w-full",
   style,
   ariaDescribedBy,
+  maxWidth,
 }: ChartSvgProps) {
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       className={className}
-      style={style}
+      style={maxWidth === undefined ? style : { maxWidth, ...style }}
       role="img"
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}

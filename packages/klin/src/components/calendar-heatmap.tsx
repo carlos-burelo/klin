@@ -151,8 +151,8 @@ export function CalendarHeatmap({
       <title>{ariaLabel}</title>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="h-auto"
-        style={{ minWidth: Math.min(W, DIAGRAM_MIN_SCROLL) }}
+        className="h-auto w-full"
+        style={{ minWidth: Math.min(W, DIAGRAM_MIN_SCROLL), maxWidth: W }}
         aria-hidden="true"
       >
         {showMonthLabels
