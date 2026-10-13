@@ -219,7 +219,7 @@ const JSON_LD = {
 /** Portada del proyecto. */
 export default function HomePage() {
   return (
-    <div className="relative flex flex-col gap-24 pt-16 sm:pt-24">
+    <div className="relative flex flex-col gap-24 pt-10 sm:pt-14">
       <script type="application/ld+json">{JSON.stringify(JSON_LD)}</script>
       {/* Fondo: retícula + halos */}
       <div
@@ -239,8 +239,8 @@ export default function HomePage() {
       </div>
 
       {/* Héroe */}
-      <section className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">
-        <div className="flex max-w-xl flex-col gap-7">
+      <section className="grid items-center gap-10 lg:grid-cols-[1.05fr_1fr]">
+        <div className="flex max-w-xl flex-col gap-5">
           <Badge variant="secondary" className="w-fit font-mono shadow-sm">
             <span
               aria-hidden="true"
@@ -248,14 +248,14 @@ export default function HomePage() {
             />
             @carlos-burelo/klin · v1 · ESM + CJS + tipos
           </Badge>
-          <h1 className="text-5xl font-bold tracking-tighter text-balance sm:text-7xl">
+          <h1 className="text-4xl font-bold tracking-tighter text-balance sm:text-6xl">
             Gráficas de producción{" "}
             <span className="bg-gradient-to-r from-primary to-chart-2 bg-clip-text text-transparent">
               para React en el servidor
             </span>
             .
           </h1>
-          <p className="max-w-lg text-lg leading-8 text-muted-foreground text-balance">
+          <p className="max-w-lg text-base leading-7 text-muted-foreground text-balance sm:text-lg sm:leading-8">
             <strong className="font-semibold text-foreground">
               74 componentes con props tipadas y layout determinista.
             </strong>{" "}
@@ -300,9 +300,9 @@ export default function HomePage() {
               {STATS.map((s, i) => (
                 <div
                   key={s.label}
-                  className={`flex flex-col gap-1 px-5 py-4 ${i > 0 ? "border-l border-border" : ""}`}
+                  className={`flex flex-col gap-0.5 px-5 py-3 ${i > 0 ? "border-l border-border" : ""}`}
                 >
-                  <p className="inline-flex items-center gap-1.5 text-2xl font-bold tracking-tight">
+                  <p className="inline-flex items-center gap-1.5 text-xl font-bold tracking-tight">
                     <s.icon
                       aria-hidden="true"
                       className="size-4 text-primary"
