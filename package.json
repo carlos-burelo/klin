@@ -1,7 +1,7 @@
 {
   "name": "klin-monorepo",
   "version": "1.0.0",
-  "private": true,
+  "private": false,
   "description": "Monorepo de klin: lib (packages/klin) + site (apps/site)",
   "license": "AGPL-3.0-or-later",
   "type": "module",
