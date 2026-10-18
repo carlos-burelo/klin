@@ -23,6 +23,15 @@ import {
 /** Desplazamiento vertical de etiquetas del eje X. */
 export const CARTESIAN_AXIS_OFFSET = 10;
 
+/**
+ * Ancho mínimo de banda para una sola fila de etiquetas. Debajo de esto las
+ * etiquetas vecinas se enciman (`DACB|DACEA|…`), así que se escalonan en dos
+ * filas. Estimación: ~7px por carácter a 11px de fuente.
+ */
+export const MIN_BAND_PX = 64;
+/** Desnivel de la segunda fila escalonada. */
+const STAGGER_DY = 13;
+
 export type CartesianXLabel = {
   /** Coordenada interna (sin margen izquierdo). */
   x: number;
@@ -165,6 +174,12 @@ export function CartesianFrame({
   legendItems,
   children,
 }: CartesianFrameProps) {
+  // Con muchas categorías por ancho, una sola fila se vuelve ilegible: se
+  // alternan dos filas y la base sube para que la segunda quepa en el margen.
+  const plotW = width - margin.left - margin.right;
+  const stagger = xLabels.length > 1 && plotW / xLabels.length < MIN_BAND_PX;
+  const baseY = height - axisOffset - (stagger ? STAGGER_DY : 0);
+
   return (
     <div className={className} style={style}>
       <ChartSvg
@@ -192,7 +207,8 @@ export function CartesianFrame({
           <text
             key={stableKey([l.label], i)}
             x={margin.left + l.x}
-            y={height - axisOffset}
+            y={baseY}
+            dy={stagger && i % 2 === 1 ? STAGGER_DY : undefined}
             textAnchor="middle"
             fontSize={TICK_FONT_SIZE}
             fill={CHART_TOKEN.muted}
