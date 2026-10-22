@@ -65,6 +65,7 @@ export { DivergingBar } from "./components/diverging-bar";
 export type {
   DonutChartProps,
   DonutDatum,
+  DonutLabelMode,
   PieChartProps,
 } from "./components/donut-chart";
 export { DonutChart, PieChart } from "./components/donut-chart";
@@ -74,8 +75,6 @@ export type { DumbbellChartProps } from "./components/dumbbell-chart";
 export { DumbbellChart } from "./components/dumbbell-chart";
 export type { ECDFChartProps, EcdfGroup } from "./components/ecdf-chart";
 export { ECDFChart } from "./components/ecdf-chart";
-export type { ChartEmptyProps } from "./components/empty";
-export { ChartEmpty, EMPTY_TITLE } from "./components/empty";
 export type {
   ErAttribute,
   ErDiagramProps,
@@ -98,11 +97,14 @@ export type { FunnelChartProps, FunnelStage } from "./components/funnel-chart";
 export { FunnelChart } from "./components/funnel-chart";
 export type { GanttChartProps, GanttTask } from "./components/gantt-chart";
 export { GanttChart } from "./components/gantt-chart";
-export type { GaugeChartProps } from "./components/gauge-chart";
+export type { GaugeChartProps, GaugeZone } from "./components/gauge-chart";
 export { GaugeChart } from "./components/gauge-chart";
 export type { HexbinPlotProps, HexPoint } from "./components/hexbin-plot";
 export { HexbinPlot } from "./components/hexbin-plot";
-export type { HistogramProps } from "./components/histogram";
+export type {
+  HistogramBinStrategy,
+  HistogramProps,
+} from "./components/histogram";
 export { Histogram } from "./components/histogram";
 export type {
   HorizonChartProps,
@@ -125,8 +127,6 @@ export type {
   KanbanColumn,
 } from "./components/kanban-board";
 export { KanbanBoard } from "./components/kanban-board";
-export type { ChartLegendProps, LegendItem } from "./components/legend";
-export { ChartLegend } from "./components/legend";
 export type { LineChartProps } from "./components/line-chart";
 export { LineChart } from "./components/line-chart";
 export type { LollipopChartProps } from "./components/lollipop-chart";
@@ -136,6 +136,7 @@ export { MarimekkoChart } from "./components/marimekko-chart";
 export type { MatrixHeatmapProps } from "./components/matrix-heatmap";
 export { MatrixHeatmap } from "./components/matrix-heatmap";
 export type {
+  MindmapCapOptions,
   MindmapDiagramProps,
   MindNode,
 } from "./components/mindmap-diagram";
@@ -158,7 +159,11 @@ export type {
   NightingaleDatum,
 } from "./components/nightingale-chart";
 export { NightingaleChart } from "./components/nightingale-chart";
-export type { OrgChartProps, OrgNode } from "./components/org-chart";
+export type {
+  OrgChartProps,
+  OrgLayoutOptions,
+  OrgNode,
+} from "./components/org-chart";
 export { OrgChart } from "./components/org-chart";
 export type {
   ParallelAxis,
@@ -171,6 +176,7 @@ export { ParetoChart } from "./components/pareto-chart";
 export type {
   ProgressListProps,
   ProgressRow,
+  ProgressSortBy,
 } from "./components/progress-list";
 export { ProgressList } from "./components/progress-list";
 export type { PyramidChartProps } from "./components/pyramid-chart";
@@ -180,7 +186,11 @@ export type {
   QuadrantPoint,
 } from "./components/quadrant-chart";
 export { QuadrantChart } from "./components/quadrant-chart";
-export type { RadarChartProps, RadarSeries } from "./components/radar-chart";
+export type {
+  RadarChartProps,
+  RadarGridShape,
+  RadarSeries,
+} from "./components/radar-chart";
 export { RadarChart } from "./components/radar-chart";
 export type {
   RadialBarChartProps,
@@ -200,6 +210,7 @@ export type {
   SankeyDiagramProps,
   SankeyFlow,
   SankeyNode,
+  SankeyNodeAlign,
 } from "./components/sankey-diagram";
 export { SankeyDiagram } from "./components/sankey-diagram";
 export type { ScatterPlotProps, ScatterPoint } from "./components/scatter-plot";
@@ -225,7 +236,10 @@ export type {
   StateNode,
 } from "./components/state-diagram";
 export { StateDiagram } from "./components/state-diagram";
-export type { StreamgraphProps } from "./components/streamgraph";
+export type {
+  StreamgraphProps,
+  StreamOrderKind,
+} from "./components/streamgraph";
 export { Streamgraph } from "./components/streamgraph";
 export type { StripGroup, StripPlotProps } from "./components/strip-plot";
 export {
@@ -243,6 +257,7 @@ export type {
   TableChartProps,
   TableColumn,
   TableRow,
+  TableSortBy,
 } from "./components/table-chart";
 export { TableChart } from "./components/table-chart";
 export type { TernaryPlotProps, TernaryPoint } from "./components/ternary-plot";
@@ -252,8 +267,6 @@ export type {
   TimelineEvent,
 } from "./components/timeline-chart";
 export { TimelineChart } from "./components/timeline-chart";
-export type { ChartTooltipPortalProps } from "./components/tooltip-portal";
-export { ChartTooltipPortal } from "./components/tooltip-portal";
 export type { TreeItem, TreeViewProps } from "./components/tree-view";
 export { TreeView } from "./components/tree-view";
 export type {
@@ -291,63 +304,71 @@ export type {
   DescribedProps,
   RootStyleProps,
   ValueAnnotation,
-} from "./lib/api";
+} from "./core/api";
 export type {
-  AnnotationLayerProps,
-  CartesianFrameProps,
-  CartesianLegendItem,
-  CartesianXLabel,
-} from "./lib/cartesian";
+  BarValueLabel,
+  ValueAxis,
+  ValueAxisOptions,
+} from "./core/cartesian-model";
 export {
-  AnnotationLayer,
-  CARTESIAN_AXIS_OFFSET,
-  CartesianFrame,
-} from "./lib/cartesian";
-export { domainWithZero, logDomain, logFloor, topPositive } from "./lib/domain";
-export { isBlank } from "./lib/empty";
-export { resolveFormatter } from "./lib/format";
-export type { ChartMargin, ChartSvgProps, YGridProps } from "./lib/frame";
-export { CHART_MARGIN, CHART_W, ChartSvg, YGrid } from "./lib/frame";
+  buildValueAxis,
+  placeEndValueLabel,
+  placeTopValueLabel,
+  VALUE_LABEL_DX,
+  VALUE_LABEL_DY,
+} from "./core/cartesian-model";
+export { CHART_PALETTE, seriesColor, seriesColors } from "./core/color";
+export { DAG_DEFAULTS, layoutDag } from "./core/dag/layout";
 export type {
+  DagDirection,
   DagEdge,
   DagLayout,
   DagNode,
-  EdgeLabelProps,
+  DagOptions,
   PlacedNode,
   RoutedEdge,
-} from "./lib/graph";
+} from "./core/dag/types";
 export {
-  EdgeLabel,
-  fitNodeWidth,
-  fitText,
-  layoutDag,
-  measureText,
-} from "./lib/graph";
-export { slugify, stableKey } from "./lib/keys";
+  domainWithZero,
+  logDomain,
+  logFloor,
+  topPositive,
+} from "./core/domain";
+export type { ValueFormatter } from "./core/format";
+export { formatDefault, resolveFormatter } from "./core/format";
+export { isBlank } from "./core/guards";
+export type { KdePoint } from "./core/kde";
+export {
+  cleanValues,
+  KDE_BINS,
+  kdeBandwidth,
+  kdeOf,
+  kdePeak,
+} from "./core/kde";
+export { slugify, stableKey } from "./core/keys";
 export {
   DEFAULT_MAX_LEAVES,
   DEFAULT_MAX_LINKS,
   DEFAULT_MAX_NODES,
   DEFAULT_MAX_ROWS,
-} from "./lib/limits";
+} from "./core/limits";
 export {
   clamp01,
   maxFinite,
   minFinite,
   sumNumbers,
   toNumber,
-} from "./lib/number";
-export type { ValueFormatter } from "./lib/palette";
+} from "./core/number";
+export type { ValueScaleKind } from "./core/scale";
+export { valueScale } from "./core/scale";
+export type { ChartSeries } from "./core/series";
+export type { StackedMatrix } from "./core/stacked-model";
 export {
-  CHART_PALETTE,
-  formatDefault,
-  seriesColor,
-  seriesColors,
-  truncateLabel,
-} from "./lib/palette";
-export type { ValueScaleKind } from "./lib/scale";
-export { valueScale } from "./lib/scale";
-export type { ChartSeries } from "./lib/series";
+  buildStackedMatrix,
+  maxTotalIndex,
+  sortByGroupTotal,
+} from "./core/stacked-model";
+export { truncateLabel } from "./core/text";
 export {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -405,6 +426,45 @@ export {
   TOOLTIP_OFFSET,
   TOOLTIP_WIDTH,
   ZERO_MARK_PX,
-} from "./lib/theme";
-export type { ShareTipOptions } from "./lib/tips";
-export { pctOf, shareTip } from "./lib/tips";
+} from "./core/theme";
+export type { ShareTipOptions } from "./core/tips";
+export { pctOf, shareTip } from "./core/tips";
+export type { AnnotationLayerProps } from "./render/annotation-layer";
+export { AnnotationLayer } from "./render/annotation-layer";
+export type {
+  CartesianFrameProps,
+  CartesianLegendItem,
+  CartesianXLabel,
+  XLabelLayout,
+} from "./render/cartesian-frame";
+export {
+  CARTESIAN_AXIS_OFFSET,
+  CartesianFrame,
+  layoutXLabels,
+} from "./render/cartesian-frame";
+export type { ChartMargin, ChartSvgProps } from "./render/chart-svg";
+export { CHART_MARGIN, CHART_W, ChartSvg } from "./render/chart-svg";
+export type { EdgeLabelProps } from "./render/edge-label";
+export { EdgeLabel } from "./render/edge-label";
+export type { ChartEmptyProps } from "./render/empty";
+export { ChartEmpty, EMPTY_TITLE } from "./render/empty";
+export type { ChartLegendProps, LegendItem } from "./render/legend";
+export { ChartLegend } from "./render/legend";
+export type { MarkerKind, SvgMarkersProps } from "./render/markers";
+export {
+  MARKER,
+  MARKER_LARGE,
+  markerId,
+  markerUrl,
+  SvgMarkers,
+} from "./render/markers";
+export {
+  fitNodeWidth,
+  fitText,
+  fitTextMiddle,
+  measureText,
+} from "./render/measure";
+export type { ChartTooltipPortalProps } from "./render/tooltip-portal";
+export { ChartTooltipPortal } from "./render/tooltip-portal";
+export type { YGridProps } from "./render/y-grid";
+export { YGrid } from "./render/y-grid";

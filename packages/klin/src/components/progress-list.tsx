@@ -1,69 +1,33 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor } from "../lib/palette";
-import { CHART_TOKEN, DEFAULT_LOCALE, PERCENT_FACTOR } from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { DEFAULT_LOCALE } from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  BAR_HEIGHT_CLASS,
+  measureProgressRow,
+  resolveProgressBarColor,
+  resolveProgressFill,
+  sortProgressRows,
+} from "./progress-list.compute";
+import type { ProgressListProps } from "./progress-list.types";
 
-/** Fila de progreso (etiqueta, valor, total y detalle opcionales). */
-export type ProgressRow = {
-  label: string;
-  value: number;
-  total?: number;
-  detail?: string;
-};
-
-/** Estado de umbral de una fila (pct de 0 a 100). */
-export type ProgressStatus = "ok" | "warn" | "bad";
-
-/** Grosor de la barra. */
-const BAR_HEIGHT_CLASS = {
-  sm: "h-1",
-  md: "h-2",
-} as const;
-
-/** Color de la barra por estado de umbral (tokens del tema). */
-const STATUS_FILL: Record<ProgressStatus, string> = {
-  ok: CHART_TOKEN.chart2,
-  warn: CHART_TOKEN.chart4,
-  bad: CHART_TOKEN.destructive,
-};
-
-/** Props de la lista de medidores lineales SSR. */
-export type ProgressListProps = {
-  rows: ProgressRow[];
-  ariaLabel: string;
-  /**
-   * Grosor de la barra.
-   * @default "md"
-   */
-  barHeight?: "sm" | "md";
-  /**
-   * Muestra el % junto al valor.
-   * @default true
-   */
-  showPercent?: boolean;
-  /**
-   * Color de la barra por umbral (recibe el pct de 0 a 100).
-   * Por defecto, el color de serie.
-   * @default undefined
-   */
-  status?: (pct: number) => ProgressStatus;
-  format?: ValueFormatter;
-  locale?: string;
-  color?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
+export type { ProgressMeasure } from "./progress-list.compute";
+export {
+  BAR_HEIGHT_CLASS,
+  measureProgressRow,
+  resolveProgressBarColor,
+  resolveProgressFill,
+  STATUS_FILL,
+  sortProgressRows,
+} from "./progress-list.compute";
+export type {
+  ProgressListProps,
+  ProgressRow,
+  ProgressSortBy,
+  ProgressStatus,
+} from "./progress-list.types";
 
 /**
  * Lista de medidores lineales SSR (label + pista + valor tabular).
@@ -74,6 +38,7 @@ export function ProgressList({
   barHeight = "md",
   showPercent = true,
   status,
+  sortBy = "none",
   locale = DEFAULT_LOCALE,
   format,
   color,
@@ -87,7 +52,8 @@ export function ProgressList({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
   const fmt = resolveFormatter(format, locale);
-  const fill = seriesColor(0, color);
+  const fill = resolveProgressFill(color);
+  const ordered = sortProgressRows(rows, sortBy);
 
   return (
     <div
@@ -99,34 +65,30 @@ export function ProgressList({
       }
       style={style}
     >
-      <title>{ariaLabel}</title>
-      {rows.map((row, ri) => {
-        const value = toNumber(row.value);
-        const total = Math.max(toNumber(row.total ?? row.value), 1);
-        const pct = Math.min(
-          PERCENT_FACTOR,
-          Math.max(0, (value / total) * PERCENT_FACTOR),
-        );
-        const rounded = Math.round(pct);
-        const barColor = status ? (STATUS_FILL[status(pct)] ?? fill) : fill;
+      {ordered.map((row, ri) => {
+        const { value, total, pct, rounded } = measureProgressRow(row);
+        const barColor = resolveProgressBarColor(pct, status, fill);
         const tip =
-          `${row.label}: ${fmt(value)} de ${fmt(toNumber(row.total ?? row.value))}` +
-          (row.detail ? ` (${row.detail})` : "");
+          total === null
+            ? `${row.label}: ${fmt(value)}` +
+              (row.detail ? ` (${row.detail})` : "")
+            : `${row.label}: ${fmt(value)} de ${fmt(total)}` +
+              (row.detail ? ` (${row.detail})` : "");
         return (
-          <div
-            key={stableKey([row.label], ri)}
-            title={tip}
-            data-chart-tip={tip}
-          >
+          <div key={stableKey([row.label], ri)} data-chart-tip={tip}>
             <div className="mb-1 flex items-baseline justify-between gap-2">
               <span
                 className="truncate text-xs text-muted-foreground"
-                title={row.detail ? `${row.label} · ${row.detail}` : row.label}
+                data-chart-tip={
+                  row.detail ? `${row.label} · ${row.detail}` : row.label
+                }
               >
                 {row.label}
               </span>
               <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums">
-                {showPercent ? `${fmt(value)} · ${rounded}%` : fmt(value)}
+                {showPercent && rounded !== null
+                  ? `${fmt(value)} · ${rounded}%`
+                  : fmt(value)}
               </span>
             </div>
             <div
@@ -135,7 +97,7 @@ export function ProgressList({
             >
               <div
                 className="h-full rounded-full"
-                style={{ width: `${pct}%`, backgroundColor: barColor }}
+                style={{ width: `${pct ?? 0}%`, backgroundColor: barColor }}
               />
             </div>
           </div>

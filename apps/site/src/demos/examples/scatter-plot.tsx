@@ -46,6 +46,23 @@ const sueldos: ScatterPoint[] = [
   { x: 2.5, y: 6.2, label: "Becario" },
 ];
 
+const nubeEstres: ScatterPoint[] = Array.from({ length: 400 }, (_, i) => {
+  const g = i % 4;
+  const bx = [-40, 30, -25, 45][g] ?? 0;
+  const by = [35, 40, -30, -35][g] ?? 0;
+  return {
+    x:
+      Math.round(
+        (bx + 14 * Math.sin(i * 1.7 + g) + ((i * 5 + g) % 11) - 5) * 10,
+      ) / 10,
+    y:
+      Math.round(
+        (by + 12 * Math.cos(i * 2.3 + g * 2) + ((i * 3 + g * 7) % 9) - 4) * 10,
+      ) / 10,
+    label: `Punto ${i + 1} del cuadrante ${g + 1}`,
+  };
+});
+
 export default function ScatterPlotExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -182,6 +199,75 @@ const sueldos: ScatterPoint[] = [
             }).format(v)
           }
           ariaLabel="Sueldo por antigüedad: banda de 12 a 15 mil con dos atípicos fuera"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="banda salarial esperada como anotación horizontal"
+        code={`import type { ScatterPoint } from "@carlos-burelo/klin";
+import { ScatterPlot } from "@carlos-burelo/klin";
+
+const sueldos: ScatterPoint[] = [
+  { x: 1, y: 12, label: "Ana" },
+  { x: 4, y: 14.2, label: "Diego" },
+  { x: 8, y: 38, label: "Dirección" },
+  { x: 2.5, y: 6.2, label: "Becario" },
+  // …7 sueldos base entre 12 y 15 mil
+];
+
+<ScatterPlot
+  points={sueldos}
+  xLabel="Antigüedad (años)"
+  yLabel="Sueldo (miles)"
+  annotations={[{ value: 15, label: "Tope banda" }]}
+  ariaLabel="Sueldo por antigüedad con tope de banda anotado en 15 mil"
+/>`}
+      >
+        <ScatterPlot
+          points={sueldos}
+          xLabel="Antigüedad (años)"
+          yLabel="Sueldo (miles)"
+          annotations={[{ value: 15, label: "Tope banda" }]}
+          ariaLabel="Sueldo por antigüedad con tope de banda anotado en 15 mil"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 400 puntos deterministas en 4 cuadrantes con negativos"
+        code={`import type { ScatterPoint } from "@carlos-burelo/klin";
+import { ScatterPlot } from "@carlos-burelo/klin";
+
+const nubeEstres: ScatterPoint[] = Array.from({ length: 400 }, (_, i) => {
+  const g = i % 4;
+  const bx = [-40, 30, -25, 45][g] ?? 0;
+  const by = [35, 40, -30, -35][g] ?? 0;
+  return {
+    x:
+      Math.round(
+        (bx + 14 * Math.sin(i * 1.7 + g) + ((i * 5 + g) % 11) - 5) * 10,
+      ) / 10,
+    y:
+      Math.round(
+        (by + 12 * Math.cos(i * 2.3 + g * 2) + ((i * 3 + g * 7) % 9) - 4) * 10,
+      ) / 10,
+    label: \`Punto \${i + 1} del cuadrante \${g + 1}\`,
+  };
+});
+
+<ScatterPlot
+  points={nubeEstres}
+  xLabel="Desviación X"
+  yLabel="Desviación Y"
+  quadrants
+  pointRadius={2}
+  ariaLabel="Nube de 400 lecturas de sensores en cuatro cuadrantes con cruz en medias"
+/>`}
+      >
+        <ScatterPlot
+          points={nubeEstres}
+          xLabel="Desviación X"
+          yLabel="Desviación Y"
+          quadrants
+          pointRadius={2}
+          ariaLabel="Nube de 400 lecturas de sensores en cuatro cuadrantes con cruz en medias"
         />
       </DemoExample>
     </div>

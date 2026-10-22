@@ -1,19 +1,12 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import {
-  type HierarchyRectangularNode,
-  hierarchy,
-  partition,
-} from "d3-hierarchy";
-import { arc } from "d3-shape";
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_LEAVES } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
+
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -22,95 +15,33 @@ import {
   FONT_SEMIBOLD,
   NODE_BORDER_WIDTH,
   PERCENT_FACTOR,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import type { SunburstRing } from "./sunburst-chart.compute";
+import {
+  buildSunburstPath,
+  computeSunburstLayout,
+  DEFAULT_SIZE,
+  DEFAULT_SUNBURST_CORNER_RADIUS,
+  DEFAULT_SUNBURST_PAD_ANGLE,
+  DEFAULT_SUNBURST_SHOW_ROOT_LABEL,
+  HALF_CIRCLE_DEG,
+  MIN_ARC_SPAN,
+  MIN_RING_W,
+  RING_OPACITY,
+  RING_PAD,
+  resolveSunburstColor,
+  SUNBURST_LABEL_MAX,
+} from "./sunburst-chart.compute";
+import type { SunburstChartProps } from "./sunburst-chart.types";
 
-export type SunburstNode = {
-  label: string;
-  value?: number;
-  color?: string;
-  children?: SunburstNode[];
-};
-
-/** Props del sunburst. */
-export type SunburstChartProps = {
-  data: SunburstNode[];
-  ariaLabel: string;
-  size?: number;
-  format?: (value: number) => string;
-  locale?: string;
-  /** Profundidad máxima de anillos (se podan los más profundos); si se omite no poda. */
-  depth?: number;
-  /** Muestra la etiqueta central con el total. */
-  showRootLabel?: boolean;
-  /** Radio de esquina de los arcos. */
-  cornerRadius?: number;
-  /** Separación angular entre arcos (radianes). */
-  padAngle?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-/** Cap de anillos (alias de DEFAULT_MAX_LEAVES, compat). */
-export const MAX_SUNBURST_RINGS = DEFAULT_MAX_LEAVES;
-
-const DEFAULT_SIZE = 300;
-const RING_PAD = 8;
-const MIN_ARC_SPAN = 0.35;
-const MIN_RING_W = 22;
-const RING_OPACITY = 0.75;
-const FULL_CIRCLE = 2 * Math.PI;
-const HALF_CIRCLE_DEG = 180;
-/** Muestra la etiqueta central con el total (comportamiento por defecto). */
-const DEFAULT_SUNBURST_SHOW_ROOT_LABEL = true;
-/** Radio de esquina de arcos (0 = bordes rectos actuales). */
-const DEFAULT_SUNBURST_CORNER_RADIUS = 0;
-/** Separación angular entre arcos (0 = sin separación actual). */
-const DEFAULT_SUNBURST_PAD_ANGLE = 0;
-/** Truncado de la etiqueta de arco. */
-const SUNBURST_LABEL_MAX = 12;
-
-type SunburstDatum = {
-  label: string;
-  value?: number;
-  color?: string;
-  children?: SunburstNode[];
-};
-
-export type SunburstRing = HierarchyRectangularNode<SunburstDatum>;
-
-/**
- * Cómputo puro del layout sunburst (partición radial).
- * Trunca a los N anillos de mayor valor para SSR.
- */
-export function computeSunburstLayout(
-  data: SunburstNode[],
-  size: number,
-  depth?: number,
-) {
-  const root = hierarchy<SunburstDatum>({ label: "root", children: data })
-    .sum((d) => toNumber(d.value))
-    .sort((a, b) => toNumber(b.value) - toNumber(a.value));
-  const proot = partition<SunburstDatum>().size([FULL_CIRCLE, size / 2])(root);
-  const rings = (
-    proot
-      .descendants()
-      .filter(
-        (d) =>
-          d.depth > 0 &&
-          toNumber(d.value) > 0 &&
-          (depth === undefined || d.depth <= depth),
-      ) as SunburstRing[]
-  )
-    .sort((a, b) => toNumber(b.value) - toNumber(a.value))
-    .slice(0, MAX_SUNBURST_RINGS);
-  const tops = data.map((d) => d.label);
-  return { rings, root, tops };
-}
+export type { SunburstRing } from "./sunburst-chart.compute";
+export {
+  computeSunburstLayout,
+  MAX_SUNBURST_RINGS,
+} from "./sunburst-chart.compute";
+export type { SunburstChartProps, SunburstNode } from "./sunburst-chart.types";
 
 /**
  * Sunburst SSR (jerarquía en anillos con `d3.partition`).
@@ -125,6 +56,9 @@ export function SunburstChart({
   showRootLabel = DEFAULT_SUNBURST_SHOW_ROOT_LABEL,
   cornerRadius = DEFAULT_SUNBURST_CORNER_RADIUS,
   padAngle = DEFAULT_SUNBURST_PAD_ANGLE,
+  showLegend = true,
+  showLabels = true,
+  itemColor,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -143,13 +77,7 @@ export function SunburstChart({
 
   const radius = size / 2;
   const total = toNumber(root.value);
-  const path = arc<SunburstRing>()
-    .startAngle((d) => d.x0)
-    .endAngle((d) => d.x1)
-    .innerRadius((d) => d.y0)
-    .outerRadius((d) => d.y1)
-    .cornerRadius(cornerRadius)
-    .padAngle(padAngle);
+  const path = buildSunburstPath(cornerRadius, padAngle);
 
   return (
     <div
@@ -169,7 +97,6 @@ export function SunburstChart({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         <g transform={`translate(${radius},${radius})`}>
           {showRootLabel ? (
             <text
@@ -191,7 +118,13 @@ export function SunburstChart({
               .reverse()
               .map((a) => a.data.label);
             const topIndex = Math.max(0, tops.indexOf(chain[0] ?? ""));
-            const color = seriesColor(topIndex, d.data.color);
+            const color = resolveSunburstColor(
+              topIndex,
+              d.data.color,
+              d.data,
+              d.depth,
+              itemColor,
+            );
             const value = toNumber(d.value);
             const tip = `${chain.join(" › ")}: ${fmt(value)} (${total > 0 ? Math.round((value / total) * PERCENT_FACTOR) : 0}%)`;
             const midAngle = ((d.x0 ?? 0) + (d.x1 ?? 0)) / 2;
@@ -201,7 +134,6 @@ export function SunburstChart({
               (d.y1 ?? 0) - (d.y0 ?? 0) > MIN_RING_W;
             return (
               <g key={stableKey([...chain, d.depth], i)}>
-                <title>{tip}</title>
                 <path
                   d={
                     path({
@@ -215,7 +147,7 @@ export function SunburstChart({
                   strokeWidth={NODE_BORDER_WIDTH}
                   data-chart-tip={tip}
                 />
-                {showLabel ? (
+                {showLabels && showLabel ? (
                   <text
                     x={midR * Math.cos(midAngle - Math.PI / 2)}
                     y={midR * Math.sin(midAngle - Math.PI / 2)}
@@ -233,12 +165,14 @@ export function SunburstChart({
           })}
         </g>
       </svg>
-      <ChartLegend
-        items={data.map((d, i) => ({
-          label: `${d.label} · ${fmt(root.children?.[i]?.value ?? 0)}`,
-          color: seriesColor(i, d.color),
-        }))}
-      />
+      {showLegend ? (
+        <ChartLegend
+          items={data.map((d, i) => ({
+            label: `${d.label} · ${fmt(root.children?.[i]?.value ?? 0)}`,
+            color: resolveSunburstColor(i, d.color, d, 1, itemColor),
+          }))}
+        />
+      ) : null}
     </div>
   );
 }

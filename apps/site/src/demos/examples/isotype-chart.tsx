@@ -1,6 +1,21 @@
 import { IsotypeChart } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const serieEstres = [
+  { label: "Chiapas", value: 120 },
+  { label: "Veracruz", value: 110 },
+  { label: "Puebla", value: 95 },
+  { label: "Oaxaca", value: 88 },
+  { label: "Guerrero", value: 76 },
+  { label: "Hidalgo", value: 64 },
+  { label: "San Luis", value: 58 },
+  { label: "Nayarit", value: 49 },
+  { label: "Tabasco", value: 42 },
+  { label: "Colima", value: 35 },
+  { label: "Querétaro", value: 28 },
+  { label: "Morelos", value: 19 },
+];
+
 export default function IsotypeChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -92,6 +107,39 @@ const data = [
           unit={500}
           maxPerRow={6}
           format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 12 filas con unidad de 10 mil toneladas"
+        code={`import { IsotypeChart } from "@carlos-burelo/klin";
+
+const data = [
+  { label: "Chiapas", value: 120 },
+  { label: "Veracruz", value: 110 },
+  { label: "Puebla", value: 95 },
+  { label: "Oaxaca", value: 88 },
+  { label: "Guerrero", value: 76 },
+  { label: "Hidalgo", value: 64 },
+  { label: "San Luis", value: 58 },
+  { label: "Nayarit", value: 49 },
+  { label: "Tabasco", value: 42 },
+  { label: "Colima", value: 35 },
+  { label: "Querétaro", value: 28 },
+  { label: "Morelos", value: 19 },
+];
+
+<IsotypeChart
+  ariaLabel="Producción de café por estado con 12 filas y pictograma de 10 mil toneladas"
+  series={data}
+  unit={10}
+  format={(v: number) => \`\${v} mil\`}
+/>`}
+      >
+        <IsotypeChart
+          ariaLabel="Producción de café por estado con 12 filas y pictograma de 10 mil toneladas"
+          series={serieEstres}
+          unit={10}
+          format={(v: number) => `${v} mil`}
         />
       </DemoExample>
     </div>

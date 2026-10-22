@@ -1,6 +1,14 @@
 import { TableChart } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const filasEstres = Array.from({ length: 40 }, (_, i) => ({
+  label: `Municipio ${i + 1}`,
+  values: {
+    nomina: 100 + ((i * 37) % 900),
+    obra: 50 + ((i * 53) % 450),
+  },
+}));
+
 export default function TableChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -115,6 +123,86 @@ const rows = [
             { label: "Jalisco", values: { remesas: 3400, hogares: 760 } },
           ]}
           bars={[{ key: "remesas", label: "Avance a meta", max: 5000 }]}
+          format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Filas ordenadas por cosecha descendente"
+        code={`import { TableChart } from "@carlos-burelo/klin";
+
+const columns = [
+  { key: "superficie", label: "Superficie (miles ha)" },
+  { key: "cosecha", label: "Cosecha (miles t)" },
+];
+
+const rows = [
+  { label: "Chiapas", values: { superficie: 690, cosecha: 1800 } },
+  { label: "Sinaloa", values: { superficie: 520, cosecha: 5800 } },
+  { label: "Michoacán", values: { superficie: 480, cosecha: 2600 } },
+  { label: "Jalisco", values: { superficie: 610, cosecha: 3900 } },
+];
+
+<TableChart
+  ariaLabel="Producción de maíz ordenada por cosecha descendente"
+  columns={columns}
+  rows={rows}
+  sortBy={{ key: "cosecha", dir: "desc" }}
+  bars={[{ key: "cosecha", label: "Cosecha" }]}
+  format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+/>`}
+      >
+        <TableChart
+          ariaLabel="Producción de maíz ordenada por cosecha descendente"
+          columns={[
+            { key: "superficie", label: "Superficie (miles ha)" },
+            { key: "cosecha", label: "Cosecha (miles t)" },
+          ]}
+          rows={[
+            { label: "Chiapas", values: { superficie: 690, cosecha: 1800 } },
+            { label: "Sinaloa", values: { superficie: 520, cosecha: 5800 } },
+            { label: "Michoacán", values: { superficie: 480, cosecha: 2600 } },
+            { label: "Jalisco", values: { superficie: 610, cosecha: 3900 } },
+          ]}
+          sortBy={{ key: "cosecha", dir: "desc" }}
+          bars={[{ key: "cosecha", label: "Cosecha" }]}
+          format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 40 filas compactas con barra de nómina"
+        code={`import { TableChart } from "@carlos-burelo/klin";
+
+const columns = [
+  { key: "nomina", label: "Nómina (mdp)" },
+  { key: "obra", label: "Obra (mdp)" },
+];
+
+const rows = Array.from({ length: 40 }, (_, i) => ({
+  label: \`Municipio \${i + 1}\`,
+  values: {
+    nomina: 100 + ((i * 37) % 900),
+    obra: 50 + ((i * 53) % 450),
+  },
+}));
+
+<TableChart
+  ariaLabel="Presupuesto de 40 municipios con barra de nómina en densidad compacta"
+  columns={columns}
+  rows={rows}
+  bars={[{ key: "nomina", label: "Nómina" }]}
+  density="compact"
+  format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+/>`}
+      >
+        <TableChart
+          ariaLabel="Presupuesto de 40 municipios con barra de nómina en densidad compacta"
+          columns={[
+            { key: "nomina", label: "Nómina (mdp)" },
+            { key: "obra", label: "Obra (mdp)" },
+          ]}
+          rows={filasEstres}
+          bars={[{ key: "nomina", label: "Nómina" }]}
+          density="compact"
           format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
         />
       </DemoExample>

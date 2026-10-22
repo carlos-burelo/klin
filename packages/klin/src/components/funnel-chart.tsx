@@ -1,63 +1,54 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import type { CSSProperties } from "react";
-import { topPositive } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
   FONT_SEMIBOLD,
-  PERCENT_FACTOR,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  cleanFunnelCounts,
+  computeFunnelRowH,
+  FUNNEL_MIN_W,
+  funnelBarWidths,
+  funnelPercents,
+  funnelTotal,
+  GAP,
+  normalizeFunnelGap,
+  normalizeFunnelMinWidth,
+  resolveFunnelTop,
+  STAGE_LABEL_DY,
+  STAGE_LABEL_FONT_SIZE,
+  STAGE_VALUE_DY,
+  STAGE_VALUE_OPACITY,
+  W,
+} from "./funnel-chart.compute";
+import type { FunnelChartProps } from "./funnel-chart.types";
 
-/** Etapa del embudo (etiqueta, valor y color opcional). */
-export type FunnelStage = {
-  label: string;
-  value: number;
-  color?: string;
-};
-
-/** Props del embudo SSR (conversión por etapas). */
-export type FunnelChartProps = {
-  stages: FunnelStage[];
-  ariaLabel: string;
-  height?: number;
-  /** Incluye la pérdida `% previo` en el tooltip de cada etapa. */
-  showDropOff?: boolean;
-  /** Base del % de la etiqueta (`first` del inicio, `previous` de la etapa previa). */
-  baseline?: "first" | "previous";
-  format?: ValueFormatter;
-  locale?: string;
-  /**
-   * Color por etapa. Si retorna `undefined` se usa el color de serie.
-   * Se respeta `stage.color` primero.
-   */
-  itemColor?: (stage: FunnelStage, index: number) => string | undefined;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-const W = 640;
-const GAP = 6;
-/** Ancho mínimo visible del trapecio. */
-const FUNNEL_MIN_W = 8;
-/** Tipografía de la etiqueta de etapa y opacidad del valor. */
-const STAGE_LABEL_FONT_SIZE = 12;
-const STAGE_VALUE_OPACITY = 0.85;
-/** Desplazamientos verticales de etiqueta y valor respecto al centro de fila. */
-const STAGE_LABEL_DY = 2;
-const STAGE_VALUE_DY = 14;
+export type { FunnelBaseline } from "./funnel-chart.compute";
+export {
+  cleanFunnelCounts,
+  computeFunnelRowH,
+  FUNNEL_MIN_W,
+  funnelBarWidths,
+  funnelPercents,
+  funnelTotal,
+  GAP,
+  normalizeFunnelGap,
+  normalizeFunnelMinWidth,
+  resolveFunnelTop,
+  STAGE_LABEL_DY,
+  STAGE_LABEL_FONT_SIZE,
+  STAGE_VALUE_DY,
+  STAGE_VALUE_OPACITY,
+  W,
+} from "./funnel-chart.compute";
+export type { FunnelChartProps, FunnelStage } from "./funnel-chart.types";
 
 /**
  * Embudo SSR (conversión por etapas). Trapecios proporcionales al valor.
@@ -71,6 +62,9 @@ export function FunnelChart({
   locale = DEFAULT_LOCALE,
   format,
   itemColor,
+  showLegend = false,
+  gap = GAP,
+  minWidth = FUNNEL_MIN_W,
   className,
   style,
   ariaDescribedBy,
@@ -81,15 +75,69 @@ export function FunnelChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const counts = cleanFunnelCounts(stages);
+  const total = funnelTotal(counts);
+  if (counts.length === 0 || total <= 0) {
+    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
+  }
+
   const fmt = resolveFormatter(format, locale);
 
-  // Conteos: negativos se fijan a 0.
-  const counts = stages.map((s) => Math.max(0, toNumber(s.value)));
-  const top = topPositive(counts);
-  const rowH = (height - GAP * (stages.length - 1)) / stages.length;
+  const top = resolveFunnelTop(counts);
+  const sep = normalizeFunnelGap(gap);
+  const minW = normalizeFunnelMinWidth(minWidth);
+  const rowH = computeFunnelRowH(stages.length, height, sep);
   const first = counts[0] ?? 1;
+  const colorOf = (stage: (typeof stages)[number], i: number) =>
+    stage.color ?? itemColor?.(stage, i) ?? seriesColor(i);
 
-  return (
+  const body = stages.map((stage, i) => {
+    const value = counts[i] ?? 0;
+    const next = counts[i + 1] ?? value;
+    const { wTop, wBottom } = funnelBarWidths(value, next, top, minW);
+    const y = i * (rowH + sep);
+    const cx = W / 2;
+    const color = colorOf(stage, i);
+    const { conv, step } = funnelPercents(value, first, counts[i - 1] ?? 0, i);
+    const shownPct = baseline === "previous" && i > 0 ? step : conv;
+    const tip =
+      i === 0
+        ? `${stage.label}: ${fmt(value)} (${conv}% del inicio)`
+        : showDropOff
+          ? `${stage.label}: ${fmt(value)} (${conv}% del inicio · ${step}% previo)`
+          : `${stage.label}: ${fmt(value)} (${conv}% del inicio)`;
+    return (
+      <g key={stableKey([stage.label], i)}>
+        <polygon
+          points={`${cx - wTop / 2},${y} ${cx + wTop / 2},${y} ${cx + wBottom / 2},${y + rowH} ${cx - wBottom / 2},${y + rowH}`}
+          fill={color}
+          data-chart-tip={tip}
+        />
+        <text
+          x={cx}
+          y={y + rowH / 2 - STAGE_LABEL_DY}
+          textAnchor="middle"
+          fontSize={STAGE_LABEL_FONT_SIZE}
+          fontWeight={FONT_SEMIBOLD}
+          fill={CHART_TOKEN.onFill}
+        >
+          {stage.label}
+        </text>
+        <text
+          x={cx}
+          y={y + rowH / 2 + STAGE_VALUE_DY}
+          textAnchor="middle"
+          fontSize={TICK_FONT_SIZE}
+          fill={CHART_TOKEN.onFill}
+          opacity={STAGE_VALUE_OPACITY}
+        >
+          {`${fmt(value)} · ${shownPct}%`}
+        </text>
+      </g>
+    );
+  });
+
+  const svg = (
     <svg
       viewBox={`0 0 ${W} ${height}`}
       className={className ? `h-auto w-full ${className}` : "h-auto w-full"}
@@ -98,62 +146,20 @@ export function FunnelChart({
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}
     >
-      <title>{ariaLabel}</title>
-      {stages.map((stage, i) => {
-        const value = counts[i] ?? 0;
-        const next = counts[i + 1] ?? value;
-        const wTop = Math.max(FUNNEL_MIN_W, (value / top) * W);
-        const wBottom = Math.max(FUNNEL_MIN_W, (next / top) * W);
-        const y = i * (rowH + GAP);
-        const cx = W / 2;
-        const color = stage.color ?? itemColor?.(stage, i) ?? seriesColor(i);
-        const conv =
-          i === 0
-            ? PERCENT_FACTOR
-            : Math.round(((value / first) * PERCENT_FACTOR || 0) * 10) / 10;
-        const prev = counts[i - 1] ?? 0;
-        const step =
-          i === 0 || prev <= 0
-            ? 0
-            : Math.round(((value / prev) * PERCENT_FACTOR || 0) * 10) / 10;
-        const shownPct = baseline === "previous" && i > 0 ? step : conv;
-        const tip =
-          i === 0
-            ? `${stage.label}: ${fmt(value)} (${conv}% del inicio)`
-            : showDropOff
-              ? `${stage.label}: ${fmt(value)} (${conv}% del inicio · ${step}% previo)`
-              : `${stage.label}: ${fmt(value)} (${conv}% del inicio)`;
-        return (
-          <g key={stableKey([stage.label], i)}>
-            <title>{tip}</title>
-            <polygon
-              points={`${cx - wTop / 2},${y} ${cx + wTop / 2},${y} ${cx + wBottom / 2},${y + rowH} ${cx - wBottom / 2},${y + rowH}`}
-              fill={color}
-              data-chart-tip={tip}
-            />
-            <text
-              x={cx}
-              y={y + rowH / 2 - STAGE_LABEL_DY}
-              textAnchor="middle"
-              fontSize={STAGE_LABEL_FONT_SIZE}
-              fontWeight={FONT_SEMIBOLD}
-              fill={CHART_TOKEN.onFill}
-            >
-              {stage.label}
-            </text>
-            <text
-              x={cx}
-              y={y + rowH / 2 + STAGE_VALUE_DY}
-              textAnchor="middle"
-              fontSize={TICK_FONT_SIZE}
-              fill={CHART_TOKEN.onFill}
-              opacity={STAGE_VALUE_OPACITY}
-            >
-              {`${fmt(value)} · ${shownPct}%`}
-            </text>
-          </g>
-        );
-      })}
+      {body}
     </svg>
+  );
+
+  if (!showLegend) return svg;
+  return (
+    <div className="flex flex-col items-center">
+      {svg}
+      <ChartLegend
+        items={stages.map((stage, i) => ({
+          label: stage.label,
+          color: colorOf(stage, i),
+        }))}
+      />
+    </div>
   );
 }

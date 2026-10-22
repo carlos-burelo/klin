@@ -144,6 +144,40 @@ const flujosRiego: SankeyFlow[] = [
           ariaLabel="Distribución de agua de presa a parcelas en millones de metros cúbicos"
         />
       </DemoExample>
+      <DemoExample
+        caption="altura compacta con nodos alineados a la izquierda"
+        code={`import type { SankeyFlow, SankeyNode } from "@carlos-burelo/klin";
+import { SankeyDiagram } from "@carlos-burelo/klin";
+
+const nodosEnergia: SankeyNode[] = [
+  { id: "gen", label: "Generación" },
+  { id: "trans", label: "Transmisión" },
+  { id: "hog", label: "Hogares" },
+  { id: "ind", label: "Industria" },
+];
+
+const flujosEnergia: SankeyFlow[] = [
+  { from: "gen", to: "trans", value: 500 },
+  { from: "trans", to: "hog", value: 300 },
+  { from: "trans", to: "ind", value: 200 },
+];
+
+<SankeyDiagram
+  nodes={nodosEnergia}
+  flows={flujosEnergia}
+  height={320}
+  nodeAlign="left"
+  ariaLabel="Flujo de energía compacto con nodos a la izquierda"
+/>`}
+      >
+        <SankeyDiagram
+          nodes={nodosEnergia}
+          flows={flujosEnergia}
+          height={320}
+          nodeAlign="left"
+          ariaLabel="Flujo de energía compacto con nodos a la izquierda"
+        />
+      </DemoExample>
     </div>
   );
 }

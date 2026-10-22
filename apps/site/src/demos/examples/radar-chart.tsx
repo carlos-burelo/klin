@@ -29,6 +29,24 @@ const mínimo: RadarSeries[] = [
   { label: "Turno C", values: [5, 3, 4, 3, 5] },
 ];
 
+const ejesEstres = [
+  "Código",
+  "Diseño",
+  "Datos",
+  "Comunicación",
+  "Liderazgo",
+  "Soporte",
+];
+
+const estresRadar: RadarSeries[] = [
+  { label: "Equipo Alfa", values: [88, 72, 91, 64, 77, 83] },
+  { label: "Equipo Beta", values: [65, 84, 70, 90, 62, 74] },
+  { label: "Equipo Gamma", values: [78, 66, 85, 73, 88, 69] },
+  { label: "Equipo Delta", values: [92, 78, 64, 81, 70, 86] },
+  { label: "Equipo Épsilon", values: [70, 90, 76, 68, 84, 72] },
+  { label: "Equipo Zeta", values: [81, 69, 88, 77, 66, 90] },
+];
+
 export default function RadarChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -128,6 +146,73 @@ const mínimo: RadarSeries[] = [
           levels={5}
           maxValue={5}
           ariaLabel="Desempeño de tres turnos sobre escala de 5"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="retícula circular en lugar de polígono"
+        code={`import type { RadarSeries } from "@carlos-burelo/klin";
+import { RadarChart } from "@carlos-burelo/klin";
+
+const ejes = ["Sabor", "Precio", "Servicio", "Limpieza", "Ubicación"];
+
+const restaurantes: RadarSeries[] = [
+  { label: "Fonda Centro", values: [8, 9, 7, 8, 6] },
+  { label: "Cocina Norte", values: [7, 6, 9, 7, 8] },
+];
+
+<RadarChart
+  axes={ejes}
+  series={restaurantes}
+  gridShape="circle"
+  ariaLabel="Comparativa de dos restaurantes con retícula circular"
+/>`}
+      >
+        <RadarChart
+          axes={ejes}
+          series={restaurantes}
+          gridShape="circle"
+          ariaLabel="Comparativa de dos restaurantes con retícula circular"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 6 series superpuestas sobre 6 ejes"
+        code={`import type { RadarSeries } from "@carlos-burelo/klin";
+import { RadarChart } from "@carlos-burelo/klin";
+
+const ejesEstres = [
+  "Código",
+  "Diseño",
+  "Datos",
+  "Comunicación",
+  "Liderazgo",
+  "Soporte",
+];
+
+const estresRadar: RadarSeries[] = [
+  { label: "Equipo Alfa", values: [88, 72, 91, 64, 77, 83] },
+  { label: "Equipo Beta", values: [65, 84, 70, 90, 62, 74] },
+  { label: "Equipo Gamma", values: [78, 66, 85, 73, 88, 69] },
+  { label: "Equipo Delta", values: [92, 78, 64, 81, 70, 86] },
+  { label: "Equipo Épsilon", values: [70, 90, 76, 68, 84, 72] },
+  { label: "Equipo Zeta", values: [81, 69, 88, 77, 66, 90] },
+];
+
+<RadarChart
+  axes={ejesEstres}
+  series={estresRadar}
+  levels={4}
+  maxValue={100}
+  format={(v) => \`\${v} pts\`}
+  ariaLabel="Evaluación de seis equipos sobre escala de 100 puntos"
+/>`}
+      >
+        <RadarChart
+          axes={ejesEstres}
+          series={estresRadar}
+          levels={4}
+          maxValue={100}
+          format={(v) => `${v} pts`}
+          ariaLabel="Evaluación de seis equipos sobre escala de 100 puntos"
         />
       </DemoExample>
     </div>

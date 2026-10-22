@@ -1,19 +1,7 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { scaleBand, scaleLinear, scalePoint } from "d3-scale";
-import { curveMonotoneX, line } from "d3-shape";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { topPositive } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import type { ChartMargin } from "../lib/frame";
-import { ChartSvg, YGrid } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { sumNumbers, toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -30,56 +18,27 @@ import {
   TICK_DY,
   TICK_FONT_SIZE,
   TICK_GAP_PX,
-} from "../lib/theme";
-import { pctOf } from "../lib/tips";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { pctOf } from "../core/tips";
+import type { ChartMargin } from "../render/chart-svg";
+import { ChartSvg } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { YGrid } from "../render/y-grid";
+import {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  computeParetoModel,
+  PARETO_DEFAULT_THRESHOLD,
+  paretoCountOf,
+} from "./pareto-chart.compute";
+import type { ParetoChartProps } from "./pareto-chart.types";
+
+export type { ParetoChartProps } from "./pareto-chart.types";
 
 const W = 640;
 const MARGIN: ChartMargin = { top: 12, right: 48, bottom: 32, left: 44 };
-
-const GROUP_BAND_PADDING = 0.25;
-const CUM_POINT_PADDING = 0.5;
-const AXIS_LABEL_OFFSET = 10;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
-/** Etiqueta del resto agregado y umbral 80/20 por defecto. */
-const PARETO_OTHERS_LABEL = "Otros";
-const PARETO_DEFAULT_THRESHOLD = 80;
-
-/** Props de Pareto SSR (barras ordenadas + % acumulado). */
-export type ParetoChartProps = {
-  data: Array<Record<string, string | number>>;
-  xKey: string;
-  yKey: string;
-  ariaLabel: string;
-  height?: number;
-  formatY?: ValueFormatter;
-  color?: string;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  annotations?: ValueAnnotation[];
-  /**
-   * Conserva las N primeras causas y agrega el resto en "Otros".
-   * @default undefined
-   */
-  topN?: number;
-  /**
-   * Línea de umbral sobre el % acumulado (80/20).
-   * @default 80
-   */
-  threshold?: number;
-  /**
-   * Muestra el % acumulado sobre cada punto.
-   * @default false
-   */
-  showCumLabels?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
 
 /**
  * Pareto SSR (barras ordenadas + % acumulado en segundo eje).
@@ -110,53 +69,36 @@ export function ParetoChart({
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  // Conteos: negativos se fijan a 0.
-  const countOf = (d: Record<string, string | number>) =>
-    Math.max(0, toNumber(d[yKey]));
-  const ranked = [...data].sort((a, b) => countOf(b) - countOf(a));
-  const rawTop = Math.floor(toNumber(topN, Number.NaN));
-  const ordered =
-    Number.isFinite(rawTop) && rawTop > 0 && ranked.length > rawTop
-      ? [
-          ...ranked.slice(0, rawTop),
-          {
-            [xKey]: PARETO_OTHERS_LABEL,
-            [yKey]: sumNumbers(ranked.slice(rawTop).map(countOf)),
-          },
-        ]
-      : ranked;
-  const total = sumNumbers(ordered.map(countOf));
-  const top = topPositive(ordered.map(countOf));
 
-  const y = scaleLinear().domain([0, top]).nice(GRID_TICKS).range([innerH, 0]);
-  const yp = scaleLinear().domain([0, PERCENT_FACTOR]).range([innerH, 0]);
-  const x = scaleBand()
-    .domain(ordered.map((d) => String(d[xKey] ?? "")))
-    .range([0, innerW])
-    .padding(GROUP_BAND_PADDING);
-  const ticks = y.ticks(GRID_TICKS);
-  const fill = seriesColor(0, color);
-  const lineColor = seriesColor(1, undefined);
-  const fmtY = resolveFormatter(formatY, locale);
-  const rawThreshold = toNumber(threshold, Number.NaN);
-  const thresholdPct = Number.isFinite(rawThreshold)
-    ? Math.min(PERCENT_FACTOR, Math.max(0, rawThreshold))
-    : null;
-
-  let acc = 0;
-  const cum = ordered.map((d) => {
-    acc += total === 0 ? 0 : (countOf(d) / total) * PERCENT_FACTOR;
-    return { label: String(d[xKey] ?? ""), pct: acc };
+  const {
+    ordered,
+    total,
+    top,
+    y,
+    yp,
+    x,
+    xp,
+    ticks,
+    fill,
+    lineColor,
+    fmtY,
+    thresholdPct,
+    cum,
+    path,
+  } = computeParetoModel({
+    data,
+    xKey,
+    yKey,
+    innerW,
+    innerH,
+    gridTicks: GRID_TICKS,
+    formatY,
+    locale,
+    color,
+    topN,
+    threshold,
   });
-  const xp = scalePoint()
-    .domain(cum.map((c) => c.label))
-    .range([0, innerW])
-    .padding(CUM_POINT_PADDING);
-  const path =
-    line<{ label: string; pct: number }>()
-      .x((p) => (xp(p.label) ?? 0) + x.bandwidth() / 2)
-      .y((p) => yp(p.pct))
-      .curve(curveMonotoneX)(cum) ?? "";
+  const countOf = paretoCountOf(yKey);
 
   return (
     <div className={className} style={style}>
@@ -171,8 +113,10 @@ export function ParetoChart({
           if (a.value < 0 || a.value > top) return null;
           const ay = MARGIN.top + y(a.value);
           return (
-            <g key={`ann-${a.value}-${ai}`}>
-              <title>{a.label ?? String(a.value)}</title>
+            <g
+              key={`ann-${a.value}-${ai}`}
+              data-chart-tip={a.label ?? String(a.value)}
+            >
               <line
                 x1={MARGIN.left}
                 x2={W - MARGIN.right}
@@ -216,7 +160,6 @@ export function ParetoChart({
           const tip = `${group}: ${fmtY(value)} (${pct}% · acumulado ${cumPct}%)`;
           return (
             <g key={stableKey([group], di)}>
-              <title>{tip}</title>
               <rect
                 x={MARGIN.left + (x(group) ?? 0)}
                 y={MARGIN.top + y(value)}
@@ -232,8 +175,8 @@ export function ParetoChart({
                 textAnchor="middle"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={group}
               >
-                <title>{group}</title>
                 {truncateLabel(group)}
               </text>
             </g>
@@ -249,7 +192,6 @@ export function ParetoChart({
         />
         {cum.map((c, ci) => (
           <g key={stableKey([c.label], ci)}>
-            <title>{`${c.label}: ${Math.round(c.pct)}% acumulado`}</title>
             <circle
               cx={MARGIN.left + (xp(c.label) ?? 0) + x.bandwidth() / 2}
               cy={MARGIN.top + yp(c.pct)}
@@ -273,8 +215,7 @@ export function ParetoChart({
           </g>
         ))}
         {thresholdPct !== null ? (
-          <g>
-            <title>{`Umbral ${Math.round(thresholdPct)}%`}</title>
+          <g data-chart-tip={`Umbral ${Math.round(thresholdPct)}%`}>
             <line
               x1={MARGIN.left}
               x2={W - MARGIN.right}

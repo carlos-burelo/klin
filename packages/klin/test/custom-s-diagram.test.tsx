@@ -240,7 +240,7 @@ describe("props simples (S) de diagramas", () => {
       <StateDiagram {...props} showInitial />,
     );
     expect(explicit).toBe(base);
-    expect(base).toContain("<title>Inicial</title>");
+    expect(base).toContain('data-chart-tip="Inicial"');
 
     const bare = renderToStaticMarkup(
       <StateDiagram {...props} showInitial={false} />,

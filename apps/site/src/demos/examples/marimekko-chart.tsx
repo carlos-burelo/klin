@@ -164,6 +164,92 @@ export default function MarimekkoChartExamples() {
           ]}
         />
       </DemoExample>
+      <DemoExample
+        caption="estrés: mosaico 6×4 con cuatro segmentos por plantel"
+        code={`import { MarimekkoChart } from "@carlos-burelo/klin";
+
+<MarimekkoChart
+  ariaLabel="Matrícula por plantel y área con mosaico de 6 columnas y 4 segmentos"
+  data={[
+    { plantel: "Norte", matricula: 1200, ciencias: 420, artes: 380, deporte: 260, tecnico: 140 },
+    { plantel: "Sur", matricula: 980, ciencias: 350, artes: 300, deporte: 190, tecnico: 140 },
+    { plantel: "Este", matricula: 860, ciencias: 300, artes: 260, deporte: 180, tecnico: 120 },
+    { plantel: "Oeste", matricula: 740, ciencias: 260, artes: 220, deporte: 150, tecnico: 110 },
+    { plantel: "Centro", matricula: 620, ciencias: 220, artes: 190, deporte: 120, tecnico: 90 },
+    { plantel: "Sierra", matricula: 480, ciencias: 170, artes: 150, deporte: 90, tecnico: 70 },
+  ]}
+  xKey="plantel"
+  widthKey="matricula"
+  series={[
+    { key: "ciencias", label: "Ciencias" },
+    { key: "artes", label: "Artes" },
+    { key: "deporte", label: "Deporte" },
+    { key: "tecnico", label: "Técnico" },
+  ]}
+/>`}
+      >
+        <MarimekkoChart
+          ariaLabel="Matrícula por plantel y área con mosaico de 6 columnas y 4 segmentos"
+          data={[
+            {
+              plantel: "Norte",
+              matricula: 1200,
+              ciencias: 420,
+              artes: 380,
+              deporte: 260,
+              tecnico: 140,
+            },
+            {
+              plantel: "Sur",
+              matricula: 980,
+              ciencias: 350,
+              artes: 300,
+              deporte: 190,
+              tecnico: 140,
+            },
+            {
+              plantel: "Este",
+              matricula: 860,
+              ciencias: 300,
+              artes: 260,
+              deporte: 180,
+              tecnico: 120,
+            },
+            {
+              plantel: "Oeste",
+              matricula: 740,
+              ciencias: 260,
+              artes: 220,
+              deporte: 150,
+              tecnico: 110,
+            },
+            {
+              plantel: "Centro",
+              matricula: 620,
+              ciencias: 220,
+              artes: 190,
+              deporte: 120,
+              tecnico: 90,
+            },
+            {
+              plantel: "Sierra",
+              matricula: 480,
+              ciencias: 170,
+              artes: 150,
+              deporte: 90,
+              tecnico: 70,
+            },
+          ]}
+          xKey="plantel"
+          widthKey="matricula"
+          series={[
+            { key: "ciencias", label: "Ciencias" },
+            { key: "artes", label: "Artes" },
+            { key: "deporte", label: "Deporte" },
+            { key: "tecnico", label: "Técnico" },
+          ]}
+        />
+      </DemoExample>
     </div>
   );
 }

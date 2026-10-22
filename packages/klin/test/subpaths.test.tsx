@@ -22,6 +22,9 @@ describe("subpaths por componente (barril completo)", () => {
   const files = readdirSync(new URL("../src/components/", import.meta.url))
     .filter((f) => f.endsWith(".tsx"))
     .map((f) => f.slice(0, -".tsx".length))
+    // Módulos de parte (`.types`, `.compute`, `.glyphs`) no son componentes
+    // públicos: se prueban aparte y no entran al barril por nombre propio.
+    .filter((slug) => !slug.includes("."))
     .sort();
   test("cada archivo expone su componente en el barril", () => {
     expect(files.length).toBeGreaterThan(70);

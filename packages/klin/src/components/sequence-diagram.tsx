@@ -1,97 +1,54 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_NODES } from "../lib/limits";
-import { truncateLabel } from "../lib/palette";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
+
 import {
   CHART_TOKEN,
   EDGE_WIDTH,
   FONT_SEMIBOLD,
   GRID_WIDTH,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { markerUrl, SvgMarkers } from "../render/markers";
+import {
+  computeSequenceLayout,
+  DASH_LIFELINE,
+  DASH_RETURN,
+  SEQ_ARROW_NUDGE,
+  SEQ_HEAD_H,
+  SEQ_HEAD_RX,
+  SEQ_HEAD_TEXT_DY,
+  SEQ_HEAD_W,
+  SEQ_HEAD_Y,
+  SEQ_LABEL_DY,
+  SEQ_LABEL_X,
+  SEQ_LIFELINE_BOTTOM_PAD,
+  SEQ_LIFELINE_TOP_PAD,
+  SEQ_MSG_DY,
+  SEQ_MSG_LABEL_DY,
+  SEQ_PAD_X,
+  SEQ_SELF_H,
+  SEQ_SELF_TOP,
+  SEQ_SELF_W,
+  SEQ_STEP,
+  SEQ_TOP,
+  SEQ_W,
+} from "./sequence-diagram.compute";
+import type { SequenceDiagramProps } from "./sequence-diagram.types";
 
-export type SequenceMessage = {
-  from: string;
-  to: string;
-  label: string;
-  /** `call` (sólida) o `return` (punteada). */
-  kind?: "call" | "return";
-};
-
-/** Props del diagrama de secuencia. */
-export type SequenceDiagramProps = {
-  participants: string[];
-  messages: SequenceMessage[];
-  ariaLabel: string;
-  /** Muestra el número de orden antes de cada mensaje. */
-  showNumbers?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-const SEQ_W = 680;
-const SEQ_TOP = 44;
-const SEQ_STEP = 40;
-const SEQ_HEAD_W = 120;
-const SEQ_PAD_X = 72;
-const SEQ_HEAD_H = 28;
-const SEQ_HEAD_Y = 8;
-const SEQ_HEAD_RX = 8;
-const SEQ_HEAD_TEXT_DY = 26;
-const SEQ_LIFELINE_TOP_PAD = 4;
-const SEQ_LIFELINE_BOTTOM_PAD = 8;
-const SEQ_BOTTOM_PAD = 24;
-const SEQ_MSG_DY = 16;
-const SEQ_SELF_W = 34;
-const SEQ_SELF_H = 14;
-const SEQ_SELF_TOP = 8;
-const SEQ_LABEL_X = 40;
-const SEQ_LABEL_DY = -2;
-const SEQ_ARROW_NUDGE = 2;
-const SEQ_MSG_LABEL_DY = -6;
-const ARROW_MARKER = {
-  SIZE: 10,
-  REF_X: 8,
-  REF_Y: 5,
-  WIDTH: 7,
-  HEIGHT: 7,
-} as const;
-const DASH_LIFELINE = "4 4";
-const DASH_RETURN = "4 3";
-
-/** Cap de mensajes (alias de DEFAULT_MAX_NODES, compat). */
-export const MAX_SEQUENCE_MESSAGES = DEFAULT_MAX_NODES;
-
-/**
- * Cómputo puro de la secuencia: filtra desconocidos, trunca a N y
- * precalcula posiciones X por participante + altura.
- */
-export function computeSequenceLayout(
-  participants: string[],
-  messages: SequenceMessage[],
-): {
-  clean: SequenceMessage[];
-  colIndex: Map<string, number>;
-  height: number;
-} {
-  const known = new Set(participants);
-  const clean = messages
-    .filter((m) => known.has(m.from) && known.has(m.to))
-    .slice(0, MAX_SEQUENCE_MESSAGES);
-  return {
-    clean,
-    colIndex: new Map(participants.map((p, i) => [p, i])),
-    height: SEQ_TOP + clean.length * SEQ_STEP + SEQ_BOTTOM_PAD,
-  };
-}
+export {
+  computeSequenceLayout,
+  MAX_SEQUENCE_MESSAGES,
+} from "./sequence-diagram.compute";
+export type {
+  SequenceDiagramProps,
+  SequenceMessage,
+} from "./sequence-diagram.types";
 
 /**
  * Secuencia SSR (participantes, líneas de vida y mensajes ordenados).
@@ -101,6 +58,7 @@ export function SequenceDiagram({
   messages,
   ariaLabel,
   showNumbers = true,
+  showLegend = false,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -135,20 +93,7 @@ export function SequenceDiagram({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
-        <defs>
-          <marker
-            id="charts-seq-arrow"
-            viewBox={`0 0 ${ARROW_MARKER.SIZE} ${ARROW_MARKER.SIZE}`}
-            refX={ARROW_MARKER.REF_X}
-            refY={ARROW_MARKER.REF_Y}
-            markerWidth={ARROW_MARKER.WIDTH}
-            markerHeight={ARROW_MARKER.HEIGHT}
-            orient="auto-start-reverse"
-          >
-            <path d="M 0 1 L 9 5 L 0 9 z" fill={CHART_TOKEN.muted} />
-          </marker>
-        </defs>
+        <SvgMarkers prefix="charts-seq" kinds={["arrow"]} />
         {participants.map((p, i) => (
           <g key={stableKey([p], i)}>
             <rect
@@ -194,14 +139,13 @@ export function SequenceDiagram({
           if (m.from === m.to) {
             return (
               <g key={stableKey([m.from, m.label, y], order)}>
-                <title>{tip}</title>
                 <path
                   d={`M ${x1} ${y - SEQ_SELF_TOP} h ${SEQ_SELF_W} v ${SEQ_SELF_H} h -${SEQ_SELF_W}`}
                   fill="none"
                   stroke={CHART_TOKEN.accent}
                   strokeWidth={EDGE_WIDTH}
                   strokeDasharray={dashed ? DASH_RETURN : undefined}
-                  markerEnd="url(#charts-seq-arrow)"
+                  markerEnd={markerUrl("charts-seq", "arrow")}
                   data-chart-tip={tip}
                 />
                 <text
@@ -218,7 +162,6 @@ export function SequenceDiagram({
           const leftToRight = x2 > x1;
           return (
             <g key={stableKey([m.from, m.to, m.label, y], order)}>
-              <title>{tip}</title>
               <line
                 x1={x1}
                 x2={x2 + (leftToRight ? -SEQ_ARROW_NUDGE : SEQ_ARROW_NUDGE)}
@@ -227,7 +170,7 @@ export function SequenceDiagram({
                 stroke={dashed ? CHART_TOKEN.muted : CHART_TOKEN.accent}
                 strokeWidth={EDGE_WIDTH}
                 strokeDasharray={dashed ? DASH_RETURN : undefined}
-                markerEnd="url(#charts-seq-arrow)"
+                markerEnd={markerUrl("charts-seq", "arrow")}
                 data-chart-tip={tip}
               />
               <text
@@ -243,6 +186,14 @@ export function SequenceDiagram({
           );
         })}
       </svg>
+      {showLegend ? (
+        <ChartLegend
+          items={[
+            { label: "Llamada", color: CHART_TOKEN.accent },
+            { label: "Retorno", color: CHART_TOKEN.muted },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }

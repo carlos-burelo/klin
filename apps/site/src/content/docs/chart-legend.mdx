@@ -28,7 +28,7 @@ import { ChartLegend } from "@carlos-burelo/klin";
 import "@carlos-burelo/klin/styles.css";
 
 <ChartLegend
-  items={/* … */}
+
 />
 ```
 
@@ -37,7 +37,7 @@ import "@carlos-burelo/klin/styles.css";
   <AlertTitle>SSR-first</AlertTitle>
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
-    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Las demos vivas ya envuelven en `ChartTooltipPortal` para el tooltip rico (hover vía `data-chart-tip`; no se generan `\<title\>`).
     Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
@@ -67,20 +67,12 @@ export default function ChartLegendDemo() {
 
 ## Props
 
-<PropsTable props={[
-    { name: "items", type: "LegendItem[]", required: true, description: "Elementos a renderizar (filas, columnas o tareas según el componente)." },
-    { name: "layout", type: "'row' | 'column'", required: false, description: "Dirección de la leyenda." },
-    { name: "align", type: "'center' | 'start'", required: false, description: "Alineación dentro del contenedor." },
-    { name: "shape", type: "'square' | 'line' | 'dot'", required: false, description: "Glifo del marcador (`line` para series de línea)." },
-    { name: "maxItems", type: "number", required: false, description: "Máximo de ítems visibles (el resto colapsa en `+N`)." },
-]} />
-
-*Tipo completo: `ChartLegendProps` en `legend.tsx`.*
+*Props: ver tipo en `legend.tsx` ([fuente](https://github.com/carlos-burelo/klin/blob/main/packages/klin/src/components/legend.tsx)).*
 
 ## Accesibilidad
 
-- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
-- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `aria-label` (única fuente de nombre, sin `\<title\>`).
+- Cada forma con hover lleva `data-chart-tip` para el portal rico (las demos lo envuelven por defecto).
 - Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
 - Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 

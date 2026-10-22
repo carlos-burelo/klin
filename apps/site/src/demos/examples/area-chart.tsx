@@ -1,6 +1,29 @@
 import { AreaChart } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const dataHueco = [
+  { mes: "Ene", visitas: 110 },
+  { mes: "Feb", visitas: 135 },
+  { mes: "Mar", visitas: Number.NaN },
+  { mes: "Abr", visitas: 162 },
+  { mes: "May", visitas: 175 },
+];
+
+const clavesArea = ["tienda", "linea", "mayoreo", "exportacion", "mercado"];
+
+const estresArea: Array<Record<string, string | number>> = Array.from(
+  { length: 60 },
+  (_, i) => {
+    const fila: Record<string, string | number> = { dia: `Día ${i + 1}` };
+    clavesArea.forEach((k, s) => {
+      fila[k] = Math.round(
+        40 + 25 * Math.abs(Math.sin(i / 6 + s * 1.2)) + ((i * (s + 4)) % 8),
+      );
+    });
+    return fila;
+  },
+);
+
 export default function AreaChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -120,6 +143,85 @@ const data = [
           stacked
           normalize
           formatY={(v: number) => `${Math.round(v)} %`}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Hueco de marzo unido sin caer a cero"
+        code={`import { AreaChart } from "@carlos-burelo/klin";
+
+const dataHueco = [
+  { mes: "Ene", visitas: 110 },
+  { mes: "Feb", visitas: 135 },
+  { mes: "Mar", visitas: Number.NaN },
+  { mes: "Abr", visitas: 162 },
+  { mes: "May", visitas: 175 },
+];
+
+<AreaChart
+  ariaLabel="Visitas mensuales con marzo sin dato y área continua"
+  data={dataHueco}
+  xKey="mes"
+  series={[{ key: "visitas", label: "Visitas" }]}
+  formatY={(v: number) => \`\${v} mil\`}
+  connectNulls
+  showLegend={false}
+/>`}
+      >
+        <AreaChart
+          ariaLabel="Visitas mensuales con marzo sin dato y área continua"
+          data={dataHueco}
+          xKey="mes"
+          series={[{ key: "visitas", label: "Visitas" }]}
+          formatY={(v: number) => `${v} mil`}
+          connectNulls
+          showLegend={false}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 5 canales apilados con 300 datos en 60 días"
+        code={`import { AreaChart } from "@carlos-burelo/klin";
+
+const clavesArea = ["tienda", "linea", "mayoreo", "exportacion", "mercado"];
+
+const estresArea: Array<Record<string, string | number>> = Array.from(
+  { length: 60 },
+  (_, i) => {
+    const fila: Record<string, string | number> = { dia: \`Día \${i + 1}\` };
+    clavesArea.forEach((k, s) => {
+      fila[k] = Math.round(
+        40 + 25 * Math.abs(Math.sin(i / 6 + s * 1.2)) + ((i * (s + 4)) % 8),
+      );
+    });
+    return fila;
+  },
+);
+
+<AreaChart
+  ariaLabel="Ventas diarias por canal en 60 días con cinco áreas apiladas"
+  data={estresArea}
+  xKey="dia"
+  series={[
+    { key: "tienda", label: "Tienda" },
+    { key: "linea", label: "En línea" },
+    { key: "mayoreo", label: "Mayoreo" },
+    { key: "exportacion", label: "Exportación" },
+    { key: "mercado", label: "Mercado" },
+  ]}
+  stacked
+/>`}
+      >
+        <AreaChart
+          ariaLabel="Ventas diarias por canal en 60 días con cinco áreas apiladas"
+          data={estresArea}
+          xKey="dia"
+          series={[
+            { key: "tienda", label: "Tienda" },
+            { key: "linea", label: "En línea" },
+            { key: "mayoreo", label: "Mayoreo" },
+            { key: "exportacion", label: "Exportación" },
+            { key: "mercado", label: "Mercado" },
+          ]}
+          stacked
         />
       </DemoExample>
     </div>

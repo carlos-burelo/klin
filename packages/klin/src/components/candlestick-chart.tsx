@@ -1,23 +1,11 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { max, min } from "d3-array";
 import { scaleBand, scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_ROWS } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { truncateLabel } from "../lib/palette";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -28,62 +16,35 @@ import {
   LINE_WIDTH,
   TICK_FONT_SIZE,
   ZERO_MARK_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { YGrid } from "../render/y-grid";
+import {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  buildCandles,
+  CANDLE_BAND_PADDING,
+  CANDLE_MAX_WIDTH,
+  candleDomain,
+  orderCandles,
+  resolveCandleRadius,
+  resolveCandleTicks,
+  VALUE_LABEL_GAP,
+} from "./candlestick-chart.compute";
+import type { CandlestickChartProps } from "./candlestick-chart.types";
 
-/** Orden de las velas por cierre (none conserva el orden de entrada). */
-export type CandleSort = "none" | "asc" | "desc";
-
-/** Props de CandlestickChart. */
-export type CandlestickChartProps = {
-  data: Array<Record<string, string | number>>;
-  labelKey: string;
-  openKey: string;
-  highKey: string;
-  lowKey: string;
-  closeKey: string;
-  ariaLabel: string;
-  height?: number;
-  formatY?: ValueFormatter;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  annotations?: ValueAnnotation[];
-  /** Mínimo fijo del dominio Y (indefinido = automático con cero). */
-  yMin?: number;
-  /** Máximo fijo del dominio Y (indefinido = automático). */
-  yMax?: number;
-  /** Ticks del grid horizontal (por defecto GRID_TICKS). */
-  gridTicks?: number;
-  /** Muestra el valor de cierre sobre cada vela. */
-  showValues?: boolean;
-  /** Orden de las velas por precio de cierre. */
-  sortGroups?: CandleSort;
-  /** Radio del cuerpo de la vela (por defecto BAR_RADIUS). */
-  barRadius?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-const CANDLE_BAND_PADDING = 0.35;
-const CANDLE_MAX_WIDTH = 28;
-const TICKS_MIN = 1;
-/** Separación entre la etiqueta de valor y el máximo de la vela. */
-const VALUE_LABEL_GAP = 4;
-const AXIS_LABEL_OFFSET = 10;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
-
-type Candle = {
-  label: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-};
+export type { Candle } from "./candlestick-chart.compute";
+export type {
+  CandleSort,
+  CandlestickChartProps,
+} from "./candlestick-chart.types";
 
 /**
  * Velas OHLC SSR (mecha high-low + cuerpo open-close).
@@ -112,42 +73,29 @@ export function CandlestickChart({
   showValues = false,
   sortGroups = "none",
   barRadius = BAR_RADIUS,
+  bullColor = CHART_TOKEN.chart1,
+  bearColor = CHART_TOKEN.destructive,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: CandlestickChartProps) {
-  const computed: Candle[] = [];
-  for (const d of data.slice(0, DEFAULT_MAX_ROWS)) {
-    const open = toNumber(d[openKey], Number.NaN);
-    const high = toNumber(d[highKey], Number.NaN);
-    const low = toNumber(d[lowKey], Number.NaN);
-    const close = toNumber(d[closeKey], Number.NaN);
-    if (![open, high, low, close].every(Number.isFinite)) continue;
-    computed.push({ label: String(d[labelKey] ?? ""), open, high, low, close });
-  }
+  const computed = buildCandles(
+    data,
+    labelKey,
+    openKey,
+    highKey,
+    lowKey,
+    closeKey,
+  );
   if (isBlank(computed)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const ordered =
-    sortGroups === "none"
-      ? computed
-      : [...computed].sort((a, b) =>
-          sortGroups === "asc" ? a.close - b.close : b.close - a.close,
-        );
+  const ordered = orderCandles(computed, sortGroups);
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const lows = ordered.map((c) => c.low);
-  const highs = ordered.map((c) => c.high);
-  const fixedLo = toNumber(yMin, Number.NaN);
-  const fixedHi = toNumber(yMax, Number.NaN);
-  const blo = Number.isFinite(fixedLo) ? fixedLo : (min(lows) ?? 0);
-  const rawHi = Number.isFinite(fixedHi) ? fixedHi : (max(highs) ?? 1);
-  const bhi = rawHi <= blo ? blo + 1 : rawHi;
+  const { blo, bhi } = candleDomain(ordered, yMin, yMax);
   const fmtY = resolveFormatter(formatY, locale);
-  const safeTicks = Math.max(
-    TICKS_MIN,
-    Math.floor(toNumber(gridTicks, GRID_TICKS)),
-  );
+  const safeTicks = resolveCandleTicks(gridTicks);
   const y = scaleLinear().domain([blo, bhi]).nice(safeTicks).range([innerH, 0]);
   const x = scaleBand()
     .domain(ordered.map((c) => c.label))
@@ -155,7 +103,7 @@ export function CandlestickChart({
     .padding(CANDLE_BAND_PADDING);
   const ticks = y.ticks(safeTicks);
   const bodyW = Math.min(CANDLE_MAX_WIDTH, x.bandwidth());
-  const bodyRx = Math.max(0, toNumber(barRadius, BAR_RADIUS));
+  const bodyRx = resolveCandleRadius(barRadius);
 
   return (
     <div className={className} style={style}>
@@ -170,8 +118,10 @@ export function CandlestickChart({
           if (a.value < blo || a.value > bhi) return null;
           const ay = MARGIN.top + y(a.value);
           return (
-            <g key={`ann-${a.value}-${ai}`}>
-              <title>{a.label ?? String(a.value)}</title>
+            <g
+              key={`ann-${a.value}-${ai}`}
+              data-chart-tip={a.label ?? String(a.value)}
+            >
               <line
                 x1={MARGIN.left}
                 x2={W - MARGIN.right}
@@ -197,22 +147,21 @@ export function CandlestickChart({
         {ordered.map((c, ci) => {
           const cx = MARGIN.left + (x(c.label) ?? 0) + x.bandwidth() / 2;
           const bullish = c.close >= c.open;
-          const color = bullish ? CHART_TOKEN.chart1 : CHART_TOKEN.destructive;
+          const color = bullish ? bullColor : bearColor;
           const top = Math.min(y(c.open), y(c.close));
           const tip =
             `${c.label}: O ${fmtY(c.open)} · H ${fmtY(c.high)} · ` +
             `L ${fmtY(c.low)} · C ${fmtY(c.close)}`;
           return (
             <g key={stableKey([c.label], ci)}>
-              <title>{tip}</title>
               <text
                 x={cx}
                 y={height - AXIS_LABEL_OFFSET}
                 textAnchor="middle"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={c.label}
               >
-                <title>{c.label}</title>
                 {truncateLabel(c.label)}
               </text>
               <line
@@ -253,8 +202,8 @@ export function CandlestickChart({
       {showLegend ? (
         <ChartLegend
           items={[
-            { label: "Alcista", color: CHART_TOKEN.chart1 },
-            { label: "Bajista", color: CHART_TOKEN.destructive },
+            { label: "Alcista", color: bullColor },
+            { label: "Bajista", color: bearColor },
           ]}
         />
       ) : null}

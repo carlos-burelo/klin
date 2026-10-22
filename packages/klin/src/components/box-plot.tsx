@@ -1,21 +1,12 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { max, min, quantileSorted } from "d3-array";
 import { scaleBand, scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { resolveFormatter } from "../lib/format";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -27,94 +18,37 @@ import {
   POINT_BORDER,
   TICK_FONT_SIZE,
   ZERO_MARK_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { YGrid } from "../render/y-grid";
+import {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  BOX_FILL_OPACITY,
+  BOX_LINE_WIDTH,
+  BOX_MAX_WIDTH,
+  GROUP_BAND_PADDING,
+  MEAN_MARKER_HALF,
+  NOTCH_DEPTH,
+  NOTCH_HALF_HEIGHT,
+  OUTLIER_RADIUS,
+  resolveBoxHi,
+  resolveBoxLo,
+  resolveBoxRadius,
+  resolveBoxTicks,
+  SAMPLE_LABEL_SHIFT,
+  statsOf,
+} from "./box-plot.compute";
+import type { BoxPlotProps } from "./box-plot.types";
 
-export type BoxGroup = {
-  label: string;
-  values: number[];
-  color?: string;
-};
-
-const GROUP_BAND_PADDING = 0.45;
-const AXIS_LABEL_OFFSET = 10;
-const BOX_MAX_WIDTH = 56;
-const BOX_LINE_WIDTH = 1.5;
-const BOX_FILL_OPACITY = 0.35;
-const OUTLIER_RADIUS = 3;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
-const IQR_FACTOR = 1.5;
-const SAMPLE_LABEL_SHIFT = 12;
-const NOTCH_HALF_HEIGHT = 6;
-const NOTCH_DEPTH = 10;
-
-/** Props de BoxPlot. */
-export type BoxPlotProps = {
-  groups: BoxGroup[];
-  ariaLabel: string;
-  height?: number;
-  formatY?: ValueFormatter;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  /** Muestra los puntos atípicos fuera de los bigotes. */
-  showOutliers?: boolean;
-  /** Bigotes por rango intercuartílico (1.5) o por mínimo/máximo reales. */
-  whisker?: 1.5 | "minmax";
-  /** Muestra el tamaño de muestra (`n`) bajo cada etiqueta. */
-  showSampleSize?: boolean;
-  /** Dibuja una muesca en la mediana. */
-  notch?: boolean;
-  annotations?: ValueAnnotation[];
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-type Stats = {
-  min: number;
-  q1: number;
-  median: number;
-  q3: number;
-  max: number;
-  outliers: number[];
-};
-
-function statsOf(values: number[], whisker: 1.5 | "minmax"): Stats | null {
-  const clean = values
-    .map((v) => toNumber(v, Number.NaN))
-    .filter((v) => Number.isFinite(v));
-  const sorted = [...clean].sort((a, b) => a - b);
-  if (sorted.length === 0) return null;
-  const q1 = quantileSorted(sorted, 0.25) ?? sorted[0] ?? 0;
-  const median = quantileSorted(sorted, 0.5) ?? sorted[0] ?? 0;
-  const q3 = quantileSorted(sorted, 0.75) ?? sorted[0] ?? 0;
-  if (whisker === "minmax") {
-    return {
-      min: sorted[0] ?? 0,
-      q1,
-      median,
-      q3,
-      max: sorted[sorted.length - 1] ?? 0,
-      outliers: [],
-    };
-  }
-  const iqr = q3 - q1;
-  const lo = q1 - IQR_FACTOR * iqr;
-  const hi = q3 + IQR_FACTOR * iqr;
-  const inside = sorted.filter((v) => v >= lo && v <= hi);
-  return {
-    min: inside[0] ?? sorted[0] ?? 0,
-    q1,
-    median,
-    q3,
-    max: inside[inside.length - 1] ?? sorted[sorted.length - 1] ?? 0,
-    outliers: sorted.filter((v) => v < lo || v > hi),
-  };
-}
+export type { BoxGroup, BoxPlotProps } from "./box-plot.types";
 
 /**
  * Cajas y bigotes SSR (distribución por grupo: min, Q1, mediana, Q3, max).
@@ -135,6 +69,11 @@ export function BoxPlot({
   showSampleSize = false,
   notch = false,
   annotations,
+  gridTicks = GRID_TICKS,
+  yMin,
+  yMax,
+  showMean = false,
+  pointRadius = OUTLIER_RADIUS,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: BoxPlotProps) {
@@ -152,18 +91,18 @@ export function BoxPlot({
     c.stats?.max ?? 0,
     ...(showOutliers ? (c.stats?.outliers ?? []) : []),
   ]);
-  const blo = Math.min(0, min(all) ?? 0);
-  const bhi = max(all) ?? 1;
+  const safeTicks = resolveBoxTicks(gridTicks);
+  const dotR = resolveBoxRadius(pointRadius);
+  const hasOverride = yMin !== undefined || yMax !== undefined;
+  const blo = resolveBoxLo(all, yMin);
+  const bhi = resolveBoxHi(all, yMax, blo, hasOverride);
   const fmtY = resolveFormatter(formatY, locale);
-  const y = scaleLinear()
-    .domain([blo, bhi])
-    .nice(GRID_TICKS)
-    .range([innerH, 0]);
+  const y = scaleLinear().domain([blo, bhi]).nice(safeTicks).range([innerH, 0]);
   const x = scaleBand()
     .domain(computed.map((c) => c.group.label))
     .range([0, innerW])
     .padding(GROUP_BAND_PADDING);
-  const ticks = y.ticks(GRID_TICKS);
+  const ticks = y.ticks(safeTicks);
   const boxW = Math.min(BOX_MAX_WIDTH, x.bandwidth());
 
   return (
@@ -179,8 +118,10 @@ export function BoxPlot({
           if (a.value < blo || a.value > bhi) return null;
           const ay = MARGIN.top + y(a.value);
           return (
-            <g key={`ann-${a.value}-${ai}`}>
-              <title>{a.label ?? String(a.value)}</title>
+            <g
+              key={`ann-${a.value}-${ai}`}
+              data-chart-tip={a.label ?? String(a.value)}
+            >
               <line
                 x1={MARGIN.left}
                 x2={W - MARGIN.right}
@@ -231,15 +172,14 @@ export function BoxPlot({
             `L ${cx - boxW / 2} ${ymed + NOTCH_HALF_HEIGHT} Z`;
           return (
             <g key={stableKey([group.label], gi)}>
-              <title>{tip}</title>
               <text
                 x={cx}
                 y={height - AXIS_LABEL_OFFSET}
                 textAnchor="middle"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={group.label}
               >
-                <title>{group.label}</title>
                 {truncateLabel(group.label)}
               </text>
               {showSampleSize ? (
@@ -315,23 +255,40 @@ export function BoxPlot({
                       key={`${o}__${oi}`}
                       cx={cx}
                       cy={MARGIN.top + y(o)}
-                      r={OUTLIER_RADIUS}
+                      r={dotR}
                       fill={CHART_TOKEN.background}
                       stroke={color}
                       strokeWidth={POINT_BORDER}
                     />
                   ))
                 : null}
+              {showMean &&
+              Number.isFinite(s.mean) &&
+              s.mean >= blo &&
+              s.mean <= bhi ? (
+                <path
+                  d={
+                    `M ${cx} ${MARGIN.top + y(s.mean) - MEAN_MARKER_HALF} ` +
+                    `L ${cx + MEAN_MARKER_HALF} ${MARGIN.top + y(s.mean)} ` +
+                    `L ${cx} ${MARGIN.top + y(s.mean) + MEAN_MARKER_HALF} ` +
+                    `L ${cx - MEAN_MARKER_HALF} ${MARGIN.top + y(s.mean)} Z`
+                  }
+                  fill={color}
+                  stroke={CHART_TOKEN.background}
+                  strokeWidth={POINT_BORDER}
+                  data-chart-tip={`${group.label}: media ${fmtY(s.mean)}`}
+                />
+              ) : null}
             </g>
           );
         })}
       </ChartSvg>
       {showLegend ? (
         <ChartLegend
-          items={[
-            { label: "Q1 – Q3", color: CHART_TOKEN.chart1 },
-            { label: "Mediana", color: CHART_TOKEN.chart2 },
-          ]}
+          items={computed.map(({ group }, gi) => ({
+            label: group.label,
+            color: seriesColor(gi, group.color),
+          }))}
         />
       ) : null}
     </div>

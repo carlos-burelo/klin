@@ -41,7 +41,7 @@ import "@carlos-burelo/klin/styles.css";
   <AlertTitle>SSR-first</AlertTitle>
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
-    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Las demos vivas ya envuelven en `ChartTooltipPortal` para el tooltip rico (hover vía `data-chart-tip`; no se generan `\<title\>`).
     Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
@@ -109,10 +109,12 @@ export default function ErDiagramDemo() {
     { name: "entities", type: "ErEntity[]", required: true, description: "—" },
     { name: "relations", type: "ErRelation[]", required: true, description: "—" },
     { name: "ariaLabel", type: "string", required: true, description: "Etiqueta descriptiva del SVG (role=img). Describe la conclusión, no solo el tipo." },
-    { name: "direction", type: "'TB' | 'LR'", required: false, description: "—" },
+    { name: "direction", type: "'TB' | 'LR'", required: false, description: "Dirección del layout (`TB`, `LR` o `RL` según el diagrama)." },
     { name: "showKeys", type: "boolean", required: false, description: "Muestra las insignias de clave (`PK`/`FK`) en los atributos." },
     { name: "crowFoot", type: "boolean", required: false, description: "Dibuja pata de gallo en el extremo múltiple (`N`/`M`) de cada relación." },
     { name: "showWeak", type: "boolean", required: false, description: "Resalta con doble borde las entidades débiles (`weak`)." },
+    { name: "attributeLimit", type: "number", required: false, description: "Máximo de atributos visibles por entidad; el resto se colapsa en `+N`." },
+    { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda (PK/FK/débil)." },
     { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
     { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
     { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
@@ -124,8 +126,8 @@ export default function ErDiagramDemo() {
 
 ## Accesibilidad
 
-- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
-- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `aria-label` (única fuente de nombre, sin `\<title\>`).
+- Cada forma con hover lleva `data-chart-tip` para el portal rico (las demos lo envuelven por defecto).
 - Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
 - Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 

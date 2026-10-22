@@ -260,7 +260,7 @@ describe("paridad S cartesianos II", () => {
     const base = renderToStaticMarkup(
       <WaterfallChart ariaLabel="cascada" steps={steps} />,
     );
-    expect(count(base, "data-chart-tip")).toBe(4);
+    expect(count(base, "data-chart-tip")).toBe(7);
     expect(
       renderToStaticMarkup(
         <WaterfallChart

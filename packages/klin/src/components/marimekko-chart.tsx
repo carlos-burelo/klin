@@ -2,75 +2,39 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 
-import { scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_ROWS } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColors, truncateLabel } from "../lib/palette";
-import type { ChartSeries } from "../lib/series";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { DEFAULT_MAX_ROWS } from "../core/limits";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   BAR_RADIUS,
   CHART_TOKEN,
   DEFAULT_LOCALE,
-  GRID_TICKS,
   MIN_SHAPE_PX,
   PERCENT_FACTOR,
   TICK_DY,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { YGrid } from "../render/y-grid";
+import {
+  AXIS_LABEL_OFFSET,
+  COLUMN_GAP,
+  computeMarimekkoModel,
+  MIN_PCT_LABEL,
+  MIN_PCT_LABEL_PX,
+  SEGMENT_GAP,
+} from "./marimekko-chart.compute";
+import type { MarimekkoChartProps } from "./marimekko-chart.types";
 
-/** Desplazamiento de la etiqueta x bajo el eje. */
-const AXIS_LABEL_OFFSET = 10;
-/** Separación entre columnas (inset uniforme, no altera proporciones). */
-const COLUMN_GAP = 4;
-/** Separación entre segmentos apilados de una columna. */
-const SEGMENT_GAP = 2;
-/** % mínimo de columna para rotular el % dentro del segmento. */
-const MIN_PCT_LABEL = 8;
-/** Alto (y doble de ancho) mínimo en px para que el % quepa dentro. */
-const MIN_PCT_LABEL_PX = 14;
-
-/** Props del marimekko SSR (ancho ∝ widthKey, apilado 100 %). */
-export type MarimekkoChartProps = {
-  data: Array<Record<string, string | number>>;
-  xKey: string;
-  widthKey: string;
-  series: ChartSeries[];
-  ariaLabel: string;
-  height?: number;
-  formatX?: ValueFormatter;
-  /** Formato de los valores de segmento (por defecto igual que el eje). */
-  format?: ValueFormatter;
-  locale?: string;
-  /** Muestra las etiquetas de grupo bajo cada columna. */
-  showLabels?: boolean;
-  /** Muestra el % dentro de cada segmento que quepa. */
-  showValues?: boolean;
-  /** Agrega el valor crudo junto al % dentro del segmento. */
-  showCounts?: boolean;
-  /** Ordena las columnas por ancho descendente (por defecto respeta la entrada). */
-  sortGroups?: boolean;
-  /** % mínimo de columna para rotular dentro del segmento. */
-  minLabelPct?: number;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
+export type { MarimekkoChartProps } from "./marimekko-chart.types";
 
 /**
  * Marimekko SSR: el ancho de cada columna es ∝ `widthKey` y cada
@@ -92,6 +56,7 @@ export function MarimekkoChart({
   showCounts = false,
   sortGroups = false,
   minLabelPct = MIN_PCT_LABEL,
+  maxItems = DEFAULT_MAX_ROWS,
   className,
   style,
   ariaDescribedBy,
@@ -99,36 +64,40 @@ export function MarimekkoChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: MarimekkoChartProps) {
-  const input = data.slice(0, DEFAULT_MAX_ROWS);
-  const rows = sortGroups
-    ? [...input].sort((a, b) => toNumber(b[widthKey]) - toNumber(a[widthKey]))
-    : input;
+  const innerW = W - MARGIN.left - MARGIN.right;
+  const innerH = height - MARGIN.top - MARGIN.bottom;
+  const {
+    rows,
+    widths,
+    totalW,
+    y,
+    ticks,
+    colors,
+    fmtX,
+    fmtV,
+    fmtPct,
+    minPct,
+    colWs,
+    colXs,
+  } = computeMarimekkoModel({
+    data,
+    widthKey,
+    series,
+    sortGroups,
+    innerW,
+    innerH,
+    formatX,
+    format,
+    locale,
+    minLabelPct,
+    maxItems,
+  });
   if (isBlank(rows) || isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const widths = rows.map((d) => Math.max(0, toNumber(d[widthKey])));
-  const totalW = widths.reduce((acc, w) => acc + w, 0);
   if (totalW <= 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
-  }
-
-  const innerW = W - MARGIN.left - MARGIN.right;
-  const innerH = height - MARGIN.top - MARGIN.bottom;
-  const y = scaleLinear().domain([0, 1]).nice(GRID_TICKS).range([innerH, 0]);
-  const ticks = y.ticks(GRID_TICKS);
-  const colors = seriesColors(series);
-  const fmtX = resolveFormatter(formatX, locale);
-  const fmtV = resolveFormatter(format, locale);
-  const fmtPct = (v: number) => `${Math.round(v * PERCENT_FACTOR)}%`;
-  const minPct = Math.max(0, toNumber(minLabelPct, MIN_PCT_LABEL));
-
-  const colWs = widths.map((w) => (w / totalW) * innerW);
-  const colXs: number[] = [];
-  let acc = 0;
-  for (const w of colWs) {
-    colXs.push(acc);
-    acc += w;
   }
 
   return (
@@ -159,8 +128,8 @@ export function MarimekkoChart({
                   textAnchor="middle"
                   fontSize={TICK_FONT_SIZE}
                   fill={CHART_TOKEN.muted}
+                  data-chart-tip={xTitle}
                 >
-                  <title>{xTitle}</title>
                   {truncateLabel(group)}
                 </text>
               ) : null}
@@ -182,7 +151,6 @@ export function MarimekkoChart({
                   colW >= MIN_PCT_LABEL_PX * 2;
                 return (
                   <g key={s.key}>
-                    <title>{tip}</title>
                     <rect
                       x={colX + COLUMN_GAP / 2}
                       y={MARGIN.top + Math.min(y0pix, y1pix) + SEGMENT_GAP / 2}

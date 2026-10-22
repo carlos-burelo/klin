@@ -4,15 +4,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
 import { CalendarHeatmap } from "../src/components/calendar-heatmap";
-import { ChartEmpty } from "../src/components/empty";
 import { FunnelChart } from "../src/components/funnel-chart";
 import { GanttChart } from "../src/components/gantt-chart";
 import { KanbanBoard } from "../src/components/kanban-board";
-import { ChartLegend } from "../src/components/legend";
 import { MatrixHeatmap } from "../src/components/matrix-heatmap";
 import { TableChart } from "../src/components/table-chart";
 import { TimelineChart } from "../src/components/timeline-chart";
-import { ChartTooltipPortal } from "../src/components/tooltip-portal";
+import { ChartEmpty } from "../src/render/empty";
+import { ChartLegend } from "../src/render/legend";
+import { ChartTooltipPortal } from "../src/render/tooltip-portal";
 
 function count(html: string, tag: string): number {
   return html.match(new RegExp(tag, "g"))?.length ?? 0;

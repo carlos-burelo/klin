@@ -134,6 +134,36 @@ const sensores: HexPoint[] = [
           ariaLabel="Temperatura frente a humedad de sensores meteorológicos en campo"
         />
       </DemoExample>
+      <DemoExample
+        caption="color propio de celdas"
+        code={`import type { HexPoint } from "@carlos-burelo/klin";
+import { HexbinPlot } from "@carlos-burelo/klin";
+
+const repartos: HexPoint[] = [
+  { x: 2.1, y: 16 },
+  { x: 3.4, y: 22 },
+  { x: 4.0, y: 25 },
+  { x: 2.8, y: 19 },
+  { x: 5.2, y: 28 },
+  { x: 3.1, y: 21 },
+  { x: 4.6, y: 27 },
+  { x: 2.4, y: 17 },
+  { x: 5.8, y: 31 },
+  { x: 3.7, y: 24 },
+];
+
+<HexbinPlot
+  points={repartos}
+  color="#7c3aed"
+  ariaLabel="Distancia frente a tiempo de entrega con celdas moradas"
+/>`}
+      >
+        <HexbinPlot
+          points={repartos}
+          color="#7c3aed"
+          ariaLabel="Distancia frente a tiempo de entrega con celdas moradas"
+        />
+      </DemoExample>
     </div>
   );
 }

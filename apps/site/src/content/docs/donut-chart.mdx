@@ -40,7 +40,7 @@ import "@carlos-burelo/klin/styles.css";
   <AlertTitle>SSR-first</AlertTitle>
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
-    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Las demos vivas ya envuelven en `ChartTooltipPortal` para el tooltip rico (hover vía `data-chart-tip`; no se generan `\<title\>`).
     Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
@@ -93,8 +93,10 @@ export default function DonutChartDemo() {
     { name: "padAngle", type: "number", required: false, description: "Separación entre rebanadas en radianes. @default 0 /" },
     { name: "sortSlices", type: "boolean", required: false, description: "Ordena las rebanadas de mayor a menor (por defecto respeta la entrada). @default false /" },
     { name: "cornerRadius", type: "number", required: false, description: "Radio de esquina de los arcos (0 = bordes rectos). @default 0 /" },
-    { name: "innerLabels", type: "'none' | 'percent'", required: false, description: "Etiqueta dentro de la rebanada: el % solo si el arco es grande. @default 'none' /" },
+    { name: "innerLabels", type: "DonutLabelMode", required: false, description: "Etiqueta dentro de la rebanada: contenido solo si el arco es grande. @default 'none' /" },
+    { name: "outerLabels", type: "DonutLabelMode", required: false, description: "Etiqueta fuera de la rebanada con conector: contenido anclado al lado. @default 'none' /" },
     { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda HTML SSR (por defecto true donde aplica)." },
+    { name: "showLegendValues", type: "boolean", required: false, description: "Agrega el valor a cada item de la leyenda (comportamiento actual). @default true /" },
     { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
     { name: "style", type: "CSSProperties", required: false, description: "Estilos inline extra en el contenedor." },
     { name: "ariaDescribedBy", type: "string", required: false, description: "Id de un texto largo que describe la gráfica (opcionales detalles)." },
@@ -106,8 +108,8 @@ export default function DonutChartDemo() {
 
 ## Accesibilidad
 
-- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
-- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `aria-label` (única fuente de nombre, sin `\<title\>`).
+- Cada forma con hover lleva `data-chart-tip` para el portal rico (las demos lo envuelven por defecto).
 - Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
 - Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 

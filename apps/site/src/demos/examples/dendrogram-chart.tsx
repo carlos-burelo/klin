@@ -164,6 +164,41 @@ const universidad: DendrogramNode = {
           ariaLabel="Estructura universitaria de división a carrera en tres niveles: ingenierías es la división más profunda con sistemas dividido en dos"
         />
       </DemoExample>
+      <DemoExample
+        caption="Nodos grandes con radio personalizado"
+        code={`import type { DendrogramNode } from "@carlos-burelo/klin";
+import { DendrogramChart } from "@carlos-burelo/klin";
+
+const ayuntamiento: DendrogramNode = {
+  label: "Presidencia",
+  children: [
+    {
+      label: "Tesorería",
+      children: [{ label: "Catastro" }, { label: "Ingresos" }],
+    },
+    {
+      label: "Obras",
+      children: [{ label: "Pavimentación" }, { label: "Alumbrado" }],
+    },
+    {
+      label: "Seguridad",
+      children: [{ label: "Patrullaje" }, { label: "Vialidad" }],
+    },
+  ],
+};
+
+<DendrogramChart
+  root={ayuntamiento}
+  nodeRadius={7}
+  ariaLabel="Organigrama del ayuntamiento con nodos grandes"
+/>`}
+      >
+        <DendrogramChart
+          root={ayuntamiento}
+          nodeRadius={7}
+          ariaLabel="Organigrama del ayuntamiento con nodos grandes"
+        />
+      </DemoExample>
     </div>
   );
 }

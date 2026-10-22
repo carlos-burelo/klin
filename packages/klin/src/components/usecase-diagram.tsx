@@ -2,128 +2,48 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import type { DagLayout } from "../lib/graph";
-import { EdgeLabel, fitNodeWidth, layoutDag } from "../lib/graph";
-import { stableKey } from "../lib/keys";
-import { truncateLabel } from "../lib/palette";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
-  DIAGRAM_MIN_SCROLL,
   EDGE_WIDTH,
   FONT_SEMIBOLD,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { EdgeLabel } from "../render/edge-label";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  ACTOR_ARM_DY,
+  ACTOR_ARM_HALF,
+  ACTOR_HEAD_DY,
+  ACTOR_HEAD_R,
+  ACTOR_LABEL_DY,
+  ACTOR_LEG_DY,
+  ACTOR_LEG_HALF,
+  ACTOR_NECK_DY,
+  ACTOR_STROKE,
+  ACTOR_TORSO_DY,
+  computeUseCaseLayout,
+  DASH_RELATION,
+  EDGE_TAG_DY,
+  USECASE_BOUNDARY_DASH,
+  USECASE_BOUNDARY_LABEL_DY,
+  USECASE_BOUNDARY_LABEL_X,
+  USECASE_BOUNDARY_PAD,
+  USECASE_BOUNDARY_RX,
+  USECASE_LABEL_DY,
+} from "./usecase-diagram.compute";
+import type { UseCaseDiagramProps } from "./usecase-diagram.types";
 
-export type ActorNode = {
-  id: string;
-  label: string;
-};
-
-export type UseCaseNode = {
-  id: string;
-  label: string;
-};
-
-export type UseCaseEdge = {
-  from: string;
-  to: string;
-  /** `include` / `extend` (punteada) o asociación simple. */
-  kind?: "association" | "include" | "extend";
-};
-
-const NODE_FIT = { min: 150, max: 210, size: 11, pad: 48 } as const;
-const LAYOUT = {
-  NODE_H: 56,
-  GAP_X: 72,
-  GAP_Y: 36,
-  MIN_W: DIAGRAM_MIN_SCROLL,
-  MAX_NODES: 300,
-} as const;
-const ACTOR_STROKE = 1.75;
-const ACTOR_HEAD_R = 7;
-const ACTOR_HEAD_DY = 9;
-const ACTOR_NECK_DY = 16;
-const ACTOR_TORSO_DY = 34;
-const ACTOR_ARM_DY = 22;
-const ACTOR_ARM_HALF = 10;
-const ACTOR_LEG_DY = 48;
-const ACTOR_LEG_HALF = 9;
-const ACTOR_LABEL_DY = -2;
-const USECASE_LABEL_DY = 4;
-const EDGE_TAG_DY = -4;
-const DASH_RELATION = "5 4";
-/** Marco del sistema: relleno, radio, guion y posición de la etiqueta. */
-const USECASE_BOUNDARY_PAD = 20;
-const USECASE_BOUNDARY_RX = 10;
-const USECASE_BOUNDARY_DASH = "6 4";
-const USECASE_BOUNDARY_LABEL_X = 12;
-const USECASE_BOUNDARY_LABEL_DY = 18;
-
-/** Props del diagrama de casos de uso. */
-export type UseCaseDiagramProps = {
-  actors: ActorNode[];
-  usecases: UseCaseNode[];
-  edges: UseCaseEdge[];
-  ariaLabel: string;
-  /** Título del rectángulo de sistema que enmarca los casos de uso. */
-  boundary?: string;
-  /** Muestra las etiquetas de estereotipo (`«include»`/`«extend»`). */
-  showStereotypes?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-/**
- * Cómputo puro del layout de casos de uso (DAG LR con cap SSR).
- */
-export function computeUseCaseLayout(
-  actors: ActorNode[],
-  usecases: UseCaseNode[],
-  edges: UseCaseEdge[],
-): {
-  layout: DagLayout;
-  actorIds: Set<string>;
-  names: Map<string, string>;
-  width: number;
-  height: number;
-} {
-  const W = fitNodeWidth(
-    [...actors.map((a) => a.label), ...usecases.map((u) => u.label)],
-    {
-      min: NODE_FIT.min,
-      max: NODE_FIT.max,
-      size: NODE_FIT.size,
-      pad: NODE_FIT.pad,
-    },
-  );
-  const H = LAYOUT.NODE_H;
-  const all = [...actors.map((a) => a.id), ...usecases.map((u) => u.id)];
-  const layout = layoutDag(all, edges, {
-    direction: "LR",
-    nodeW: W,
-    nodeH: H,
-    gapX: LAYOUT.GAP_X,
-    gapY: LAYOUT.GAP_Y,
-    minW: LAYOUT.MIN_W,
-    maxNodes: LAYOUT.MAX_NODES,
-  });
-  return {
-    layout,
-    actorIds: new Set(actors.map((a) => a.id)),
-    names: new Map([
-      ...actors.map((a) => [a.id, a.label] as const),
-      ...usecases.map((u) => [u.id, u.label] as const),
-    ]),
-    width: Math.max(1, layout.width),
-    height: Math.max(1, layout.height),
-  };
-}
+export { computeUseCaseLayout } from "./usecase-diagram.compute";
+export type {
+  ActorNode,
+  UseCaseDiagramProps,
+  UseCaseEdge,
+  UseCaseNode,
+} from "./usecase-diagram.types";
 
 /**
  * Casos de uso UML SSR (actores + elipses + include/extend).
@@ -133,8 +53,10 @@ export function UseCaseDiagram({
   usecases,
   edges,
   ariaLabel,
+  direction = "LR",
   boundary,
   showStereotypes = true,
+  showLegend = false,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -149,6 +71,7 @@ export function UseCaseDiagram({
     actors,
     usecases,
     edges,
+    direction,
   );
   const edgeByKey = new Map(
     edges.map((e) => [`${e.from}→${e.to}`, e] as const),
@@ -185,7 +108,6 @@ export function UseCaseDiagram({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         {frame ? (
           <g>
             <rect
@@ -232,7 +154,6 @@ export function UseCaseDiagram({
           if (actorIds.has(p.id)) {
             return (
               <g key={stableKey([p.id], i)}>
-                <title>{tip}</title>
                 <g
                   stroke={CHART_TOKEN.foreground}
                   strokeWidth={ACTOR_STROKE}
@@ -279,7 +200,6 @@ export function UseCaseDiagram({
           }
           return (
             <g key={stableKey([p.id], i)}>
-              <title>{tip}</title>
               <ellipse
                 cx={p.cx}
                 cy={p.cy}
@@ -321,6 +241,15 @@ export function UseCaseDiagram({
           ) : null;
         })}
       </svg>
+      {showLegend ? (
+        <ChartLegend
+          items={[
+            { label: "Asociación", color: CHART_TOKEN.muted },
+            { label: "«include»", color: CHART_TOKEN.muted },
+            { label: "«extend»", color: CHART_TOKEN.muted },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }

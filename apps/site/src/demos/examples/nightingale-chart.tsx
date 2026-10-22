@@ -18,6 +18,21 @@ const remesas: NightingaleDatum[] = [
   { label: "T4", value: 16500 },
 ];
 
+const estresAnual: NightingaleDatum[] = [
+  { label: "Enero", value: 4200 },
+  { label: "Febrero", value: 3800 },
+  { label: "Marzo", value: 5100 },
+  { label: "Abril", value: 4700 },
+  { label: "Mayo", value: 6300 },
+  { label: "Junio", value: 5900 },
+  { label: "Julio", value: 7200 },
+  { label: "Agosto", value: 6800 },
+  { label: "Septiembre", value: 5400 },
+  { label: "Octubre", value: 4900 },
+  { label: "Noviembre", value: 1200 },
+  { label: "Diciembre", value: 800 },
+];
+
 const dengue: NightingaleDatum[] = [
   { label: "Jun", value: 320 },
   { label: "Jul", value: 540 },
@@ -118,6 +133,72 @@ const dengue: NightingaleDatum[] = [
           format={(v: number) => `${v} casos`}
           showLegend={false}
           ariaLabel="Casos de dengue por mes: agosto concentra el pico y noviembre cierra con la cifra más baja"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Pétalos con agujero central"
+        code={`import type { NightingaleDatum } from "@carlos-burelo/klin";
+import { NightingaleChart } from "@carlos-burelo/klin";
+
+const museos: NightingaleDatum[] = [
+  { label: "Mar", value: 8400 },
+  { label: "Mié", value: 9200 },
+  { label: "Jue", value: 9800 },
+  { label: "Vie", value: 12500 },
+  { label: "Sáb", value: 18200 },
+  { label: "Dom", value: 21000 },
+];
+
+<NightingaleChart
+  data={museos}
+  innerRadius={48}
+  format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+  ariaLabel="Visitantes al museo por día con agujero central: el domingo duplica el flujo de entre semana"
+/>`}
+      >
+        <NightingaleChart
+          data={museos}
+          innerRadius={48}
+          format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+          ariaLabel="Visitantes al museo por día con agujero central: el domingo duplica el flujo de entre semana"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 12 pétalos con cola fina y etiqueta más valor fuera"
+        code={`import type { NightingaleDatum } from "@carlos-burelo/klin";
+import { NightingaleChart } from "@carlos-burelo/klin";
+
+const estresAnual: NightingaleDatum[] = [
+  { label: "Enero", value: 4200 },
+  { label: "Febrero", value: 3800 },
+  { label: "Marzo", value: 5100 },
+  { label: "Abril", value: 4700 },
+  { label: "Mayo", value: 6300 },
+  { label: "Junio", value: 5900 },
+  { label: "Julio", value: 7200 },
+  { label: "Agosto", value: 6800 },
+  { label: "Septiembre", value: 5400 },
+  { label: "Octubre", value: 4900 },
+  { label: "Noviembre", value: 1200 },
+  { label: "Diciembre", value: 800 },
+];
+
+<NightingaleChart
+  data={estresAnual}
+  format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+  showLabels
+  showValues
+  showLegend={false}
+  ariaLabel="Visitantes mensuales al museo con doce pétalos: julio es el pico y diciembre el más bajo"
+/>`}
+      >
+        <NightingaleChart
+          data={estresAnual}
+          format={(v: number) => new Intl.NumberFormat("es-MX").format(v)}
+          showLabels
+          showValues
+          showLegend={false}
+          ariaLabel="Visitantes mensuales al museo con doce pétalos: julio es el pico y diciembre el más bajo"
         />
       </DemoExample>
     </div>

@@ -1,9 +1,11 @@
 @import "tailwindcss";
-
-/* Registro de Tailwind de la lib (vía paquete, como cualquier consumidor). */
-@import "@carlos-burelo/klin/styles.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+
+/* Clases de la lib (src directo del monorepo, sin importar su css):
+   Tailwind escanea los componentes y genera las utilidades.
+   Consumidores externos usan `@carlos-burelo/klin/styles.css`. */
+@source "../../../../packages/klin/src";
 
 @custom-variant dark (&:is(.dark *));
 

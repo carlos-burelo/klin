@@ -1,6 +1,19 @@
 import { ViolinPlot } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const gruposEstres = ["Norte", "Sur", "Este", "Oeste", "Centro", "Sierra"].map(
+  (label, g) => ({
+    label,
+    values: Array.from(
+      { length: 30 },
+      (_, i) =>
+        Math.round(
+          (70 + 12 * Math.sin((i + g * 5) / 4) + ((i * (g + 3)) % 9)) * 10,
+        ) / 10,
+    ),
+  }),
+);
+
 export default function ViolinPlotExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -83,6 +96,34 @@ const groups: ViolinGroup[] = [
           ]}
           formatY={(v: number) => `${v} min`}
           showLegend={false}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 6 grupos con 30 valores y tamaño de muestra"
+        code={`import { ViolinPlot, type ViolinGroup } from "@carlos-burelo/klin";
+
+const groups: ViolinGroup[] = ["Norte", "Sur", "Este", "Oeste", "Centro", "Sierra"].map(
+  (label, g) => ({
+    label,
+    values: Array.from(
+      { length: 30 },
+      (_, i) =>
+        Math.round((70 + 12 * Math.sin((i + g * 5) / 4) + ((i * (g + 3)) % 9)) * 10) /
+        10,
+    ),
+  }),
+);
+
+<ViolinPlot
+  ariaLabel="Distribución de calificaciones por zona con 6 grupos de 30 alumnos"
+  groups={groups}
+  showSampleSize
+/>`}
+      >
+        <ViolinPlot
+          ariaLabel="Distribución de calificaciones por zona con 6 grupos de 30 alumnos"
+          groups={gruposEstres}
+          showSampleSize
         />
       </DemoExample>
     </div>

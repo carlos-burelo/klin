@@ -8,13 +8,13 @@ import { BarChart } from "../src/components/bar-chart";
 import { CohortChart } from "../src/components/cohort-chart";
 import { ComboChart } from "../src/components/combo-chart";
 import { ECDFChart } from "../src/components/ecdf-chart";
-import { EMPTY_TITLE } from "../src/components/empty";
 import { Histogram } from "../src/components/histogram";
 import { HorizonChart } from "../src/components/horizon-chart";
 import { LineChart } from "../src/components/line-chart";
 import { ParallelCoordinates } from "../src/components/parallel-coordinates";
 import { ScatterPlot } from "../src/components/scatter-plot";
 import { computeStripPositions, StripPlot } from "../src/components/strip-plot";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 const comboData = [
   { t: "Ene", web: 120, tienda: 80, ticket: 45 },
@@ -40,7 +40,7 @@ describe("ComboChart SSR (sin JS)", () => {
     expect(html).toContain('aria-label="combo demo"');
     // 3 grupos × 2 barras.
     expect(html.match(/<rect/g)?.length).toBe(6);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(9);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(15);
     expect(html).toContain("Web");
     expect(html).toContain("Ticket");
     expect(html).toContain("Ene · Web: 120");
@@ -194,7 +194,7 @@ describe("HorizonChart SSR (sin JS)", () => {
       <HorizonChart ariaLabel="horizonte demo" series={series} />,
     );
     expect(mirror).toContain('role="img"');
-    expect(mirror.match(/data-chart-tip/g)?.length).toBe(8);
+    expect(mirror.match(/data-chart-tip/g)?.length).toBe(10);
     expect(mirror).toContain("Web · 1: 10");
     const offset = renderToStaticMarkup(
       <HorizonChart ariaLabel="horizonte demo" series={series} mode="offset" />,

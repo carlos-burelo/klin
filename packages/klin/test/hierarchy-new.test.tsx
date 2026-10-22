@@ -11,11 +11,11 @@ import {
   computeDendrogramLayout,
   DendrogramChart,
 } from "../src/components/dendrogram-chart";
-import { EMPTY_TITLE } from "../src/components/empty";
 import {
   computeIcicleLayout,
   IcicleChart,
 } from "../src/components/icicle-chart";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 const root = {
   label: "A",

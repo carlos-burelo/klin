@@ -1,5 +1,6 @@
 "use client";
 
+import { ChartTooltipPortal } from "@carlos-burelo/klin";
 import { CodeXmlIcon, EyeIcon } from "lucide-react";
 import { useState } from "react";
 import {
@@ -49,7 +50,7 @@ export function DemoWrapper({
         </CardHeader>
         <TabsContent value="preview">
           <CardContent className="overflow-x-auto p-4 sm:p-6">
-            {children}
+            <ChartTooltipPortal>{children}</ChartTooltipPortal>
           </CardContent>
         </TabsContent>
         <TabsContent value="code">

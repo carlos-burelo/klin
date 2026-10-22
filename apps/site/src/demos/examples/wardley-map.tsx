@@ -52,6 +52,34 @@ const libreriaEdges: WardleyEdge[] = [
   { from: "catalogo", to: "nube" },
 ];
 
+const estresNodesW: WardleyNode[] = [
+  { id: "w-portal", label: "Portal", x: 0.2, y: 0.95 },
+  { id: "w-auth", label: "Identidad", x: 0.35, y: 0.8 },
+  { id: "w-api", label: "API", x: 0.45, y: 0.68 },
+  { id: "w-pagos", label: "Pagos", x: 0.62, y: 0.55 },
+  { id: "w-cola", label: "Cola", x: 0.58, y: 0.42 },
+  { id: "w-worker", label: "Worker", x: 0.7, y: 0.35 },
+  { id: "w-cache", label: "Caché", x: 0.75, y: 0.28 },
+  { id: "w-bd", label: "Base", x: 0.8, y: 0.22 },
+  { id: "w-correo", label: "Correo", x: 0.85, y: 0.3 },
+  { id: "w-cdn", label: "CDN", x: 0.9, y: 0.12 },
+];
+
+const estresEdgesW: WardleyEdge[] = [
+  { from: "w-portal", to: "w-auth" },
+  { from: "w-portal", to: "w-api" },
+  { from: "w-api", to: "w-auth" },
+  { from: "w-api", to: "w-pagos" },
+  { from: "w-api", to: "w-cola" },
+  { from: "w-cola", to: "w-worker" },
+  { from: "w-worker", to: "w-correo" },
+  { from: "w-worker", to: "w-bd" },
+  { from: "w-api", to: "w-cache" },
+  { from: "w-cache", to: "w-bd" },
+  { from: "w-portal", to: "w-cdn" },
+  { from: "w-api", to: "w-bd" },
+];
+
 export default function WardleyMapExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -135,6 +163,85 @@ const edges = [
           ariaLabel="Mapa Wardley de librería digital con colores por componente"
           nodes={libreriaNodes}
           edges={libreriaEdges}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="mismo comedor con ejes renombrados y porcentaje entero"
+        code={`import { WardleyMap } from "@carlos-burelo/klin";
+
+const nodes = [
+  { id: "menu", label: "Menú del día", x: 0.25, y: 0.92 },
+  { id: "cocina", label: "Cocina", x: 0.4, y: 0.62 },
+  { id: "insumos", label: "Insumos frescos", x: 0.55, y: 0.4 },
+  { id: "gas", label: "Gas LP", x: 0.88, y: 0.15 },
+];
+
+const edges = [
+  { from: "menu", to: "cocina" },
+  { from: "cocina", to: "insumos" },
+  { from: "cocina", to: "gas" },
+];
+
+<WardleyMap
+  ariaLabel="Mapa Wardley del comedor con ejes propios y formato entero"
+  nodes={nodes}
+  edges={edges}
+  xAxisLabel="Madurez →"
+  yAxisLabel="Valor visible →"
+  format={(v: number) => \`\${Math.round(v * 100)}%\`}
+/>`}
+      >
+        <WardleyMap
+          ariaLabel="Mapa Wardley del comedor con ejes propios y formato entero"
+          nodes={comedorNodes}
+          edges={comedorEdges}
+          xAxisLabel="Madurez →"
+          yAxisLabel="Valor visible →"
+          format={(v: number) => `${Math.round(v * 100)}%`}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés de plataforma con 10 componentes y malla de 12 aristas"
+        code={`import { WardleyMap } from "@carlos-burelo/klin";
+
+const nodes = [
+  { id: "w-portal", label: "Portal", x: 0.2, y: 0.95 },
+  { id: "w-auth", label: "Identidad", x: 0.35, y: 0.8 },
+  { id: "w-api", label: "API", x: 0.45, y: 0.68 },
+  { id: "w-pagos", label: "Pagos", x: 0.62, y: 0.55 },
+  { id: "w-cola", label: "Cola", x: 0.58, y: 0.42 },
+  { id: "w-worker", label: "Worker", x: 0.7, y: 0.35 },
+  { id: "w-cache", label: "Caché", x: 0.75, y: 0.28 },
+  { id: "w-bd", label: "Base", x: 0.8, y: 0.22 },
+  { id: "w-correo", label: "Correo", x: 0.85, y: 0.3 },
+  { id: "w-cdn", label: "CDN", x: 0.9, y: 0.12 },
+];
+
+const edges = [
+  { from: "w-portal", to: "w-auth" },
+  { from: "w-portal", to: "w-api" },
+  { from: "w-api", to: "w-auth" },
+  { from: "w-api", to: "w-pagos" },
+  { from: "w-api", to: "w-cola" },
+  { from: "w-cola", to: "w-worker" },
+  { from: "w-worker", to: "w-correo" },
+  { from: "w-worker", to: "w-bd" },
+  { from: "w-api", to: "w-cache" },
+  { from: "w-cache", to: "w-bd" },
+  { from: "w-portal", to: "w-cdn" },
+  { from: "w-api", to: "w-bd" },
+];
+
+<WardleyMap
+  ariaLabel="Mapa Wardley denso de plataforma con diez componentes"
+  nodes={nodes}
+  edges={edges}
+/>`}
+      >
+        <WardleyMap
+          ariaLabel="Mapa Wardley denso de plataforma con diez componentes"
+          nodes={estresNodesW}
+          edges={estresEdgesW}
         />
       </DemoExample>
     </div>

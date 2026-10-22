@@ -5,7 +5,7 @@ export default function RangeChartExamples() {
   return (
     <div className="flex flex-col gap-6">
       <DemoExample
-        caption="Rangos de humedad con valor observado"
+        caption="Rangos de humedad con valor observado y remates anchos"
         code={`import { RangeChart, type RangeGroup } from "@carlos-burelo/klin";
 
 const groups: RangeGroup[] = [
@@ -19,6 +19,7 @@ const groups: RangeGroup[] = [
   ariaLabel="Rango de humedad mínima y máxima con valor observado por ciudad, con Veracruz como la más húmeda"
   groups={groups}
   formatY={(v: number) => \`\${v} %\`}
+  capWidth={16}
  />`}
       >
         <RangeChart
@@ -30,6 +31,7 @@ const groups: RangeGroup[] = [
             { label: "Mérida", low: 55, high: 90, value: 75 },
           ]}
           formatY={(v: number) => `${v} %`}
+          capWidth={16}
         />
       </DemoExample>
       <DemoExample
@@ -90,6 +92,154 @@ const groups: RangeGroup[] = [
           formatY={(v: number) => `$${v} /kg`}
           annotations={[{ value: 50, label: "Tope" }]}
           showLegend={false}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 18 centrales con nombres largos y rangos ordenados por valor"
+        code={`import { RangeChart, type RangeGroup } from "@carlos-burelo/klin";
+
+const groups: RangeGroup[] = [
+  { label: "Central de Abastos de Iztapalapa", low: 22, high: 30, value: 26 },
+  { label: "Central de Abastos de Ecatepec de Morelos", low: 24, high: 33, value: 29 },
+  { label: "Mercado de Abastos de Guadalajara", low: 21, high: 28, value: 24 },
+  { label: "Central de Abastos de Monterrey", low: 25, high: 34, value: 31 },
+  { label: "Mercado Hidalgo de la Ciudad de Puebla", low: 23, high: 31, value: 27 },
+  { label: "Central de Abastos de Villahermosa", low: 26, high: 36, value: 32 },
+  { label: "Mercado de Abastos de León Guanajuato", low: 22, high: 29, value: 25 },
+  { label: "Central de Abastos de Oaxaca de Juárez", low: 27, high: 38, value: 34 },
+  { label: "Mercado de Abastos de Toluca de Lerdo", low: 23, high: 30, value: 26 },
+  { label: "Central de Abastos de Querétaro Capital", low: 24, high: 32, value: 28 },
+  { label: "Mercado de Abastos de Mérida Yucatán", low: 25, high: 35, value: 30 },
+  { label: "Central de Abastos de Tijuana Frontera", low: 28, high: 39, value: 35 },
+  { label: "Mercado de Abastos de Chihuahua Capital", low: 26, high: 34, value: 30 },
+  { label: "Central de Abastos de Veracruz Puerto", low: 24, high: 33, value: 29 },
+  { label: "Mercado de Abastos de Morelia Michoacán", low: 23, high: 31, value: 27 },
+  { label: "Central de Abastos de Culiacán Sinaloa", low: 25, high: 36, value: 31 },
+  { label: "Mercado de Abastos de Tuxtla Gutiérrez", low: 26, high: 37, value: 33 },
+  { label: "Central de Abastos de Campeche Histórico", low: 24, high: 32, value: 28 },
+];
+
+<RangeChart
+  ariaLabel="Rango de precio del jitomate por central con 18 nombres largos"
+  groups={groups}
+  formatY={(v: number) => \`$\${v} /kg\`}
+  sortGroups="desc"
+/>`}
+      >
+        <RangeChart
+          ariaLabel="Rango de precio del jitomate por central con 18 nombres largos"
+          groups={[
+            {
+              label: "Central de Abastos de Iztapalapa",
+              low: 22,
+              high: 30,
+              value: 26,
+            },
+            {
+              label: "Central de Abastos de Ecatepec de Morelos",
+              low: 24,
+              high: 33,
+              value: 29,
+            },
+            {
+              label: "Mercado de Abastos de Guadalajara",
+              low: 21,
+              high: 28,
+              value: 24,
+            },
+            {
+              label: "Central de Abastos de Monterrey",
+              low: 25,
+              high: 34,
+              value: 31,
+            },
+            {
+              label: "Mercado Hidalgo de la Ciudad de Puebla",
+              low: 23,
+              high: 31,
+              value: 27,
+            },
+            {
+              label: "Central de Abastos de Villahermosa",
+              low: 26,
+              high: 36,
+              value: 32,
+            },
+            {
+              label: "Mercado de Abastos de León Guanajuato",
+              low: 22,
+              high: 29,
+              value: 25,
+            },
+            {
+              label: "Central de Abastos de Oaxaca de Juárez",
+              low: 27,
+              high: 38,
+              value: 34,
+            },
+            {
+              label: "Mercado de Abastos de Toluca de Lerdo",
+              low: 23,
+              high: 30,
+              value: 26,
+            },
+            {
+              label: "Central de Abastos de Querétaro Capital",
+              low: 24,
+              high: 32,
+              value: 28,
+            },
+            {
+              label: "Mercado de Abastos de Mérida Yucatán",
+              low: 25,
+              high: 35,
+              value: 30,
+            },
+            {
+              label: "Central de Abastos de Tijuana Frontera",
+              low: 28,
+              high: 39,
+              value: 35,
+            },
+            {
+              label: "Mercado de Abastos de Chihuahua Capital",
+              low: 26,
+              high: 34,
+              value: 30,
+            },
+            {
+              label: "Central de Abastos de Veracruz Puerto",
+              low: 24,
+              high: 33,
+              value: 29,
+            },
+            {
+              label: "Mercado de Abastos de Morelia Michoacán",
+              low: 23,
+              high: 31,
+              value: 27,
+            },
+            {
+              label: "Central de Abastos de Culiacán Sinaloa",
+              low: 25,
+              high: 36,
+              value: 31,
+            },
+            {
+              label: "Mercado de Abastos de Tuxtla Gutiérrez",
+              low: 26,
+              high: 37,
+              value: 33,
+            },
+            {
+              label: "Central de Abastos de Campeche Histórico",
+              low: 24,
+              high: 32,
+              value: 28,
+            },
+          ]}
+          formatY={(v: number) => `$${v} /kg`}
+          sortGroups="desc"
         />
       </DemoExample>
     </div>

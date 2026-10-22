@@ -1,6 +1,21 @@
 import { DivergingBar } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const opinionEstres = [
+  { tema: "Horario", contra: 32, favor: 68 },
+  { tema: "Remoto", contra: 25, favor: 75 },
+  { tema: "Comedor", contra: 45, favor: 55 },
+  { tema: "Transporte", contra: 58, favor: 42 },
+  { tema: "Becas", contra: 18, favor: 82 },
+  { tema: "Biblioteca", contra: 22, favor: 78 },
+  { tema: "Deporte", contra: 37, favor: 63 },
+  { tema: "Idiomas", contra: 29, favor: 71 },
+  { tema: "Salud", contra: 41, favor: 59 },
+  { tema: "Cultura", contra: 35, favor: 65 },
+  { tema: "Seguridad", contra: 52, favor: 48 },
+  { tema: "Limpieza", contra: 12, favor: 88 },
+];
+
 export default function DivergingBarExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -100,6 +115,41 @@ const data = [
           left={{ key: "no", label: "No" }}
           right={{ key: "si", label: "Sí" }}
           annotations={[{ value: 50, label: "Mitad" }]}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 12 temas en una sola vista"
+        code={`import { DivergingBar } from "@carlos-burelo/klin";
+
+const data = [
+  { tema: "Horario", contra: 32, favor: 68 },
+  { tema: "Remoto", contra: 25, favor: 75 },
+  { tema: "Comedor", contra: 45, favor: 55 },
+  { tema: "Transporte", contra: 58, favor: 42 },
+  { tema: "Becas", contra: 18, favor: 82 },
+  { tema: "Biblioteca", contra: 22, favor: 78 },
+  { tema: "Deporte", contra: 37, favor: 63 },
+  { tema: "Idiomas", contra: 29, favor: 71 },
+  { tema: "Salud", contra: 41, favor: 59 },
+  { tema: "Cultura", contra: 35, favor: 65 },
+  { tema: "Seguridad", contra: 52, favor: 48 },
+  { tema: "Limpieza", contra: 12, favor: 88 },
+];
+
+<DivergingBar
+  ariaLabel="Barras divergentes de opinión sobre 12 servicios del plantel"
+  data={data}
+  yKey="tema"
+  left={{ key: "contra", label: "En contra" }}
+  right={{ key: "favor", label: "A favor" }}
+/>`}
+      >
+        <DivergingBar
+          ariaLabel="Barras divergentes de opinión sobre 12 servicios del plantel"
+          data={opinionEstres}
+          yKey="tema"
+          left={{ key: "contra", label: "En contra" }}
+          right={{ key: "favor", label: "A favor" }}
         />
       </DemoExample>
     </div>

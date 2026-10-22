@@ -40,7 +40,7 @@ import "@carlos-burelo/klin/styles.css";
   <AlertTitle>SSR-first</AlertTitle>
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
-    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Las demos vivas ya envuelven en `ChartTooltipPortal` para el tooltip rico (hover vía `data-chart-tip`; no se generan `\<title\>`).
     Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
@@ -98,6 +98,7 @@ export default function VennDiagramDemo() {
     { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
     { name: "showPercent", type: "boolean", required: false, description: "Añade el % del universo junto a cada valor." },
     { name: "universe", type: "number", required: false, description: "Total de referencia para `showPercent` (obligatorio si se activa)." },
+    { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda bajo el gráfico." },
     { name: "emptyTitle", type: "string", required: false, description: "Título del estado vacío (por defecto EMPTY_TITLE)." },
     { name: "emptyDescription", type: "string", required: false, description: "Descripción del estado vacío." },
     { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
@@ -109,8 +110,8 @@ export default function VennDiagramDemo() {
 
 ## Accesibilidad
 
-- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
-- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `aria-label` (única fuente de nombre, sin `\<title\>`).
+- Cada forma con hover lleva `data-chart-tip` para el portal rico (las demos lo envuelven por defecto).
 - Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
 - Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 

@@ -1,96 +1,41 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { type HierarchyCircularNode, hierarchy, pack } from "d3-hierarchy";
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { CHART_W, ChartSvg } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_NODES } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import { seriesColor, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
   NODE_BORDER_WIDTH,
   PERCENT_FACTOR,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { CHART_W, ChartSvg } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  circlePackChainOf,
+  computeCirclePackLayout,
+  PACK_DEPTH_DEFAULT,
+  PACK_FILL_OPACITY,
+  PACK_H,
+  PACK_LABEL_CHAR_PX,
+  PACK_LABEL_MAX_DEPTH,
+  PACK_LABEL_MIN_D,
+  PACK_PAD,
+} from "./circle-pack-chart.compute";
+import type { CirclePackChartProps } from "./circle-pack-chart.types";
 
-export type CirclePackNode = {
-  label: string;
-  value?: number;
-  color?: string;
-  children?: CirclePackNode[];
-};
-
-/** Props del circle-pack. */
-export type CirclePackChartProps = {
-  root: CirclePackNode;
-  ariaLabel: string;
-  height?: number;
-  format?: (value: number) => string;
-  locale?: string;
-  /** Profundidad máxima visible (por defecto sin límite). */
-  depth?: number;
-  /** Muestra las etiquetas dentro de cada burbuja. */
-  showLabels?: boolean;
-  /** Agrega el valor a la etiqueta de cada burbuja. */
-  showValues?: boolean;
-  /** Diámetro mínimo de burbuja para rotular. */
-  minLabelDiameter?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-/** Cap de nodos (alias de DEFAULT_MAX_NODES, compat). */
-export const MAX_PACK_NODES = DEFAULT_MAX_NODES;
-
-const PACK_H = 420;
-const PACK_PAD = 4;
-const PACK_FILL_OPACITY = 0.45;
-const PACK_LABEL_MIN_D = 48;
-const PACK_LABEL_MAX_DEPTH = 2;
-const PACK_LABEL_CHAR_PX = 7;
-/** Profundidad visible por defecto (sin límite). */
-const PACK_DEPTH_DEFAULT = Number.POSITIVE_INFINITY;
-
-export type PackBubble = HierarchyCircularNode<CirclePackNode>;
-
-/**
- * Cómputo puro del layout circle-pack (empaquetado de círculos).
- * Trunca a los N primeros nodos para SSR.
- */
-export function computeCirclePackLayout(
-  root: CirclePackNode,
-  width: number,
-  height: number,
-): { bubbles: PackBubble[]; total: number } {
-  const packed: PackBubble = pack<CirclePackNode>()
-    .size([width, height])
-    .padding(PACK_PAD)(
-    hierarchy<CirclePackNode>(root)
-      .sum((d) => toNumber(d.value))
-      .sort((a, b) => toNumber(b.value) - toNumber(a.value)),
-  );
-  const bubbles = packed
-    .descendants()
-    .filter((d) => (d.r ?? 0) > 0)
-    .slice(0, MAX_PACK_NODES);
-  return { bubbles, total: toNumber(packed.value) };
-}
-
-function chainOf(node: PackBubble): string[] {
-  return node
-    .ancestors()
-    .reverse()
-    .map((a) => a.data.label);
-}
+export type { PackBubble } from "./circle-pack-chart.compute";
+export {
+  computeCirclePackLayout,
+  MAX_PACK_NODES,
+} from "./circle-pack-chart.compute";
+export type {
+  CirclePackChartProps,
+  CirclePackNode,
+} from "./circle-pack-chart.types";
 
 /**
  * Circle-pack SSR (jerarquía por círculos con `d3.pack`).
@@ -102,6 +47,7 @@ export function CirclePackChart({
   format,
   locale = DEFAULT_LOCALE,
   depth = PACK_DEPTH_DEFAULT,
+  padding = PACK_PAD,
   showLabels = true,
   showValues = false,
   minLabelDiameter = PACK_LABEL_MIN_D,
@@ -114,7 +60,12 @@ export function CirclePackChart({
   if (!root || root.label === "") {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const { bubbles, total } = computeCirclePackLayout(root, CHART_W, height);
+  const { bubbles, total } = computeCirclePackLayout(
+    root,
+    CHART_W,
+    height,
+    padding,
+  );
   const maxDepth = toNumber(depth, PACK_DEPTH_DEFAULT);
   const minD = Math.max(0, toNumber(minLabelDiameter, PACK_LABEL_MIN_D));
   const visible = bubbles.filter((b) => b.depth <= maxDepth);
@@ -133,7 +84,7 @@ export function CirclePackChart({
       style={style}
     >
       {visible.map((b, i) => {
-        const chain = chainOf(b);
+        const chain = circlePackChainOf(b);
         const value = toNumber(b.value);
         const pct =
           total > 0 ? Math.round((value / total) * PERCENT_FACTOR) : 0;
@@ -153,7 +104,6 @@ export function CirclePackChart({
             );
         return (
           <g key={stableKey([...chain, b.depth], i)}>
-            <title>{tip}</title>
             <circle
               cx={b.x}
               cy={b.y}

@@ -17,7 +17,6 @@ import { CalendarHeatmap } from "../src/components/calendar-heatmap";
 import { ClassDiagram } from "../src/components/class-diagram";
 import { DivergingBar } from "../src/components/diverging-bar";
 import { DonutChart, PieChart } from "../src/components/donut-chart";
-import { ChartEmpty, EMPTY_TITLE } from "../src/components/empty";
 import { ErDiagram } from "../src/components/er-diagram";
 import { FlowChart } from "../src/components/flow-chart";
 import { FunnelChart } from "../src/components/funnel-chart";
@@ -26,7 +25,6 @@ import { GaugeChart } from "../src/components/gauge-chart";
 import { Histogram } from "../src/components/histogram";
 import { HorizontalBarChart } from "../src/components/horizontal-bar-chart";
 import { KanbanBoard } from "../src/components/kanban-board";
-import { ChartLegend } from "../src/components/legend";
 import { LineChart } from "../src/components/line-chart";
 import { LollipopChart } from "../src/components/lollipop-chart";
 import { MatrixHeatmap } from "../src/components/matrix-heatmap";
@@ -49,7 +47,6 @@ import { StateDiagram } from "../src/components/state-diagram";
 import { Streamgraph } from "../src/components/streamgraph";
 import { SunburstChart } from "../src/components/sunburst-chart";
 import { TimelineChart } from "../src/components/timeline-chart";
-import { ChartTooltipPortal } from "../src/components/tooltip-portal";
 import { TreeView } from "../src/components/tree-view";
 import { TreemapChart } from "../src/components/treemap-chart";
 import { UseCaseDiagram } from "../src/components/usecase-diagram";
@@ -59,6 +56,9 @@ import { VerticalStackedBar } from "../src/components/vertical-stacked-bar";
 import { WaffleChart } from "../src/components/waffle-chart";
 import { WardleyMap } from "../src/components/wardley-map";
 import { WaterfallChart } from "../src/components/waterfall-chart";
+import { ChartEmpty, EMPTY_TITLE } from "../src/render/empty";
+import { ChartLegend } from "../src/render/legend";
+import { ChartTooltipPortal } from "../src/render/tooltip-portal";
 
 /** Invariantes comunes de todo smoke con datos válidos. */
 function expectSmoke(html: string, label: string, role = 'role="img"') {

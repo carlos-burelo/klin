@@ -1,19 +1,8 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { scaleBand, scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { domainWithZero } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import type { ChartMargin } from "../lib/frame";
-import { ChartSvg } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_ROWS } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -27,56 +16,27 @@ import {
   TICK_DY,
   TICK_FONT_SIZE,
   TICK_GAP_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { ChartSvg } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  AXIS_LABEL_OFFSET,
+  buildDumbbellScales,
+  clampDumbbellAnnotation,
+  cleanDumbbellRows,
+  LABEL_MAX_X,
+  MARGIN,
+  orderDumbbellRows,
+  resolveDumbbellDomain,
+  resolveDumbbellHeight,
+  resolveDumbbellRadius,
+  resolveDumbbellTicks,
+  W,
+} from "./dumbbell-chart.compute";
+import type { DumbbellChartProps } from "./dumbbell-chart.types";
 
-/** Orden de las filas por diferencia b−a (none conserva el orden de entrada). */
-export type DumbbellSort = "none" | "asc" | "desc";
-
-/** Props de DumbbellChart. */
-export type DumbbellChartProps = {
-  data: Array<Record<string, string | number>>;
-  categoryKey: string;
-  aKey: string;
-  bKey: string;
-  aLabel: string;
-  bLabel: string;
-  ariaLabel: string;
-  height?: number;
-  formatX?: ValueFormatter;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  annotations?: ValueAnnotation[];
-  /** Recorte fijo del dominio X [min, max] (indefinido = automático con cero). */
-  domain?: [number, number];
-  /** Ticks del grid vertical (por defecto GRID_TICKS). */
-  gridTicks?: number;
-  /** Muestra los valores junto a cada punto. */
-  showValues?: boolean;
-  /** Orden de las filas por diferencia entre b y a. */
-  sortGroups?: DumbbellSort;
-  /** Radio de los puntos (por defecto POINT_RADIUS_SCATTER). */
-  pointRadius?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-const W = 640;
-const MARGIN: ChartMargin = { top: 8, right: 48, bottom: 28, left: 132 };
-
-const GROUP_BAND_PADDING = 0.25;
-const LABEL_MAX_X = 18;
-const AXIS_LABEL_OFFSET = 10;
-const ROW_H = 34;
-const MIN_HEIGHT = 140;
-/** Mínimo de ticks del grid. */
-const TICKS_MIN = 1;
-
-type DumbbellRow = { label: string; a: number; b: number };
+export type { DumbbellChartProps, DumbbellSort } from "./dumbbell-chart.types";
 
 /**
  * Mancuernas SSR horizontales (dos puntos por categoría unidos por
@@ -104,57 +64,36 @@ export function DumbbellChart({
   showValues = false,
   sortGroups = "none",
   pointRadius = POINT_RADIUS_SCATTER,
+  aColor,
+  bColor,
+  showDiff = false,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: DumbbellChartProps) {
-  const computed: DumbbellRow[] = [];
-  for (const d of data.slice(0, DEFAULT_MAX_ROWS)) {
-    const a = toNumber(d[aKey], Number.NaN);
-    const b = toNumber(d[bKey], Number.NaN);
-    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
-    computed.push({ label: String(d[categoryKey] ?? ""), a, b });
-  }
+  const computed = cleanDumbbellRows(data, categoryKey, aKey, bKey);
   if (isBlank(computed)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const ordered =
-    sortGroups === "none"
-      ? computed
-      : [...computed].sort((m, n) =>
-          sortGroups === "asc"
-            ? m.b - m.a - (n.b - n.a)
-            : n.b - n.a - (m.b - m.a),
-        );
+  const ordered = orderDumbbellRows(computed, sortGroups);
 
-  const chartH =
-    height ??
-    Math.max(MIN_HEIGHT, MARGIN.top + MARGIN.bottom + ordered.length * ROW_H);
+  const chartH = resolveDumbbellHeight(ordered.length, height);
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = chartH - MARGIN.top - MARGIN.bottom;
 
-  const flat = ordered.flatMap((r) => [r.a, r.b]);
-  const auto = domainWithZero(flat);
-  const fixedLo =
-    domain === undefined ? Number.NaN : toNumber(domain[0], Number.NaN);
-  const fixedHi =
-    domain === undefined ? Number.NaN : toNumber(domain[1], Number.NaN);
-  const lo = Number.isFinite(fixedLo) ? fixedLo : auto[0];
-  const hi = Number.isFinite(fixedHi) ? fixedHi : auto[1];
-  const safeTicks = Math.max(
-    TICKS_MIN,
-    Math.floor(toNumber(gridTicks, GRID_TICKS)),
+  const { lo, hi } = resolveDumbbellDomain(ordered, domain);
+  const safeTicks = resolveDumbbellTicks(gridTicks);
+  const dotR = resolveDumbbellRadius(pointRadius);
+  const { x, y0, ticks } = buildDumbbellScales(
+    ordered,
+    lo,
+    hi,
+    safeTicks,
+    innerW,
+    innerH,
   );
-  const dotR = Math.max(0, toNumber(pointRadius, POINT_RADIUS_SCATTER));
-  const x = scaleLinear()
-    .domain([lo, Math.max(hi, lo + 1)])
-    .nice(safeTicks)
-    .range([0, innerW]);
-  const y0 = scaleBand()
-    .domain(ordered.map((r) => r.label))
-    .range([0, innerH])
-    .padding(GROUP_BAND_PADDING);
-  const ticks = x.ticks(safeTicks);
   const fmtX = resolveFormatter(formatX, locale);
+  const aFill = aColor ?? CHART_TOKEN.chart1;
+  const bFill = bColor ?? CHART_TOKEN.chart2;
 
   return (
     <div className={className} style={style}>
@@ -186,12 +125,14 @@ export function DumbbellChart({
           </g>
         ))}
         {(annotations ?? []).map((a, ai) => {
-          const clamped = Math.min(hi, Math.max(lo, toNumber(a.value)));
+          const clamped = clampDumbbellAnnotation(a.value, lo, hi);
           const ax = MARGIN.left + x(clamped);
           const stroke = a.color ?? CHART_TOKEN.accent;
           return (
-            <g key={stableKey([a.label ?? `${a.value}`], ai)}>
-              <title>{a.label ?? fmtX(a.value)}</title>
+            <g
+              key={stableKey([a.label ?? `${a.value}`], ai)}
+              data-chart-tip={a.label ?? fmtX(a.value)}
+            >
               <line
                 x1={ax}
                 x2={ax}
@@ -230,8 +171,8 @@ export function DumbbellChart({
                 textAnchor="end"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={r.label}
               >
-                <title>{r.label}</title>
                 {truncateLabel(r.label, LABEL_MAX_X)}
               </text>
               <line
@@ -239,7 +180,7 @@ export function DumbbellChart({
                 x2={mid}
                 y1={cy}
                 y2={cy}
-                stroke={CHART_TOKEN.chart1}
+                stroke={aFill}
                 strokeWidth={LINE_WIDTH}
               />
               <line
@@ -247,33 +188,43 @@ export function DumbbellChart({
                 x2={xb}
                 y1={cy}
                 y2={cy}
-                stroke={CHART_TOKEN.chart2}
+                stroke={bFill}
                 strokeWidth={LINE_WIDTH}
               />
               <g>
-                <title>{tipA}</title>
                 <circle
                   cx={xa}
                   cy={cy}
                   r={dotR}
-                  fill={CHART_TOKEN.chart1}
+                  fill={aFill}
                   stroke={CHART_TOKEN.background}
                   strokeWidth={POINT_BORDER}
                   data-chart-tip={tipA}
                 />
               </g>
               <g>
-                <title>{tipB}</title>
                 <circle
                   cx={xb}
                   cy={cy}
                   r={dotR}
-                  fill={CHART_TOKEN.chart2}
+                  fill={bFill}
                   stroke={CHART_TOKEN.background}
                   strokeWidth={POINT_BORDER}
                   data-chart-tip={tipB}
                 />
               </g>
+              {showDiff ? (
+                <text
+                  x={mid}
+                  y={cy - dotR - TICK_GAP_PX / 2}
+                  textAnchor="middle"
+                  fontSize={TICK_FONT_SIZE}
+                  fill={CHART_TOKEN.muted}
+                  data-chart-tip={`${r.label}: diferencia ${fmtX(r.b - r.a)}`}
+                >
+                  {fmtX(r.b - r.a)}
+                </text>
+              ) : null}
               {showValues ? (
                 <>
                   <text
@@ -305,8 +256,8 @@ export function DumbbellChart({
       {showLegend ? (
         <ChartLegend
           items={[
-            { label: aLabel, color: CHART_TOKEN.chart1 },
-            { label: bLabel, color: CHART_TOKEN.chart2 },
+            { label: aLabel, color: aFill },
+            { label: bLabel, color: bFill },
           ]}
         />
       ) : null}

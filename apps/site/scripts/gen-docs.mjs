@@ -168,6 +168,64 @@ const PROP_DOCS = {
   maxRows: "Cap SSR de filas.",
   yScale: "Escala del eje Y (`linear` o `log` para magnitudes).",
   xScale: "Escala del eje X (`linear` o `log` para magnitudes).",
+  connectNulls: "Une vecinos saltando nulos (por defecto los nulos van a 0).",
+  binStrategy:
+    "Estrategia de cubetas (`count`, `sturges`, `scott`, `freedman` o `width`).",
+  showMedian: "Muestra la línea de la mediana.",
+  showMean: "Muestra la línea de la media.",
+  pointRadius: "Radio de punto (por defecto el token del tema).",
+  showLegendValues: "La leyenda incluye el valor formateado.",
+  innerRadius: "Radio interior (0 = pétalos desde el centro).",
+  gridShape: "Forma de la retícula (`polygon` o `circle`).",
+  trackColor: "Color de la pista de fondo.",
+  startAngle: "Ángulo inicial en radianes.",
+  zones: "Tramos de color ({ from, to, color }).",
+  tickCount: "Marcas del medidor (por defecto fracciones fijas).",
+  gap: "Separación entre filas o celdas en px.",
+  minWidth: "Ancho mínimo de forma en px.",
+  emptyColor: "Color de las celdas sobrantes.",
+  subtotalAt: "Índices de pasos donde se pinta subtotal acumulado.",
+  sortBy: "Orden (`label`, `value`, `total`, `start`, `date`… según el chart).",
+  direction: "Dirección del layout (`TB`, `LR` o `RL` según el diagrama).",
+  weekStart: "Inicio de semana (1 = lunes, 0 = domingo).",
+  missingLabel: "Etiqueta de celda sin dato.",
+  maxItems: "Cap de elementos (trunca determinista).",
+  maxCards: "Máximo de tarjetas por columna (resto en `+N`).",
+  showCounts: "Muestra contadores.",
+  nodeWidth: "Ancho de nodo en px (por defecto automático).",
+  nodeAlign: "Alineación de nodos (`justify`, `left`, `right` o `center`).",
+  nodePadding: "Separación vertical entre nodos en px.",
+  padAngle: "Separación angular entre grupos en radianes.",
+  density: "Densidad de filas (`comfortable` o `compact`).",
+  depth: "Profundidad máxima (poda determinista).",
+  collapseDepth: "Profundidad de colapso inicial.",
+  roleLegend: "Leyenda de roles con sus colores.",
+  showDetails: "Muestra detalles.",
+  showBadge: "Muestra insignias.",
+  statusColors: "Override de color por estado o kind.",
+  showEdgeLabels: "Muestra etiquetas de arista.",
+  showSub: "Muestra subtítulos de nodo.",
+  showDependencies: "Dibuja flechas de dependencia.",
+  dependsOn: "Ids de tareas predecesoras.",
+  showValues: "Etiqueta de valor sobre cada forma.",
+  sortGroups: "Orden de grupos por total (`none`, `asc` o `desc`).",
+  highlightMax: "Acento en el grupo con mayor total.",
+  showDiff: "Rotula la diferencia entre extremos.",
+  capWidth: "Ancho de remates de rango.",
+  aColor: "Color del extremo inicial.",
+  bColor: "Color del extremo final.",
+  colorUp: "Color de pendientes positivas.",
+  colorDown: "Color de pendientes negativas.",
+  showDelta: "Muestra el delta en etiqueta y tip.",
+  showPoints: "Muestra los puntos de datos.",
+  order: "Orden de apilado (d3 stackOrder).",
+  bullColor: "Color de vela alcista.",
+  bearColor: "Color de vela bajista.",
+  showLabels: "Muestra etiquetas.",
+  xMin: "Mínimo fijo del dominio X.",
+  xMax: "Máximo fijo del dominio X.",
+  yMin: "Mínimo fijo del dominio Y.",
+  yMax: "Máximo fijo del dominio Y.",
   bars: "Series de barras (agrupadas, eje Y izquierdo).",
   lines: "Series de línea (puntos en el centro de cada grupo).",
   yAxisRight: "Las líneas usan escala propia con ticks a la derecha.",
@@ -203,7 +261,19 @@ for (const e of entries) {
   }
   const demoPath = join(site, "src", "demos", `${e.slug}.tsx`);
   const demoSrc = existsSync(demoPath) ? readFileSync(demoPath, "utf8") : "";
-  const libPath = join(root, "packages", "klin", "src", "components", e.source);
+  // Los tipos viven en `<slug>.types.ts` desde la modularización (la vista
+  // solo re-exporta); fallback a la vista para componentes sin partir.
+  const typesPath = join(
+    root,
+    "packages",
+    "klin",
+    "src",
+    "components",
+    `${e.slug}.types.ts`,
+  );
+  const libPath = existsSync(typesPath)
+    ? typesPath
+    : join(root, "packages", "klin", "src", "components", e.source);
   const libSrc = existsSync(libPath) ? readFileSync(libPath, "utf8") : "";
   const propsType = libSrc ? extractPropsType(libSrc) : null;
   const fields = propsType ? parseFields(propsType.body) : [];
@@ -277,7 +347,7 @@ ${usage}
   <AlertTitle>SSR-first</AlertTitle>
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
-    Envuelve en \`ChartTooltipPortal\` solo si quieres tooltip rico; sin JS queda \`\\<title\\>\` nativo.
+    Las demos vivas ya envuelven en \`ChartTooltipPortal\` para el tooltip rico (hover vía \`data-chart-tip\`; no se generan \`\\<title\\>\`).
     Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
@@ -299,8 +369,8 @@ ${propsBlock}
 
 ## Accesibilidad
 
-- Toda gráfica exige \`ariaLabel\` descriptivo; el SVG usa \`role="img"\` con \`\\<title\\>\`.
-- Cada forma lleva \`\\<title\\>\` nativo (tooltip sin JS) y \`data-chart-tip\` para el portal rico.
+- Toda gráfica exige \`ariaLabel\` descriptivo; el SVG usa \`role="img"\` con \`aria-label\` (única fuente de nombre, sin \`\\<title\\>\`).
+- Cada forma con hover lleva \`data-chart-tip\` para el portal rico (las demos lo envuelven por defecto).
 - Sin datos se renderiza estado vacío homogéneo (\`ChartEmpty\`), nunca SVG roto.
 - Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 

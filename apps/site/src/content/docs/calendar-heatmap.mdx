@@ -40,7 +40,7 @@ import "@carlos-burelo/klin/styles.css";
   <AlertTitle>SSR-first</AlertTitle>
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
-    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Las demos vivas ya envuelven en `ChartTooltipPortal` para el tooltip rico (hover vía `data-chart-tip`; no se generan `\<title\>`).
     Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
@@ -60,12 +60,20 @@ export default function CalendarHeatmapDemo() {
   return (
     <ChartTooltipPortal>
       <CalendarHeatmap
-        ariaLabel="Mapa de calor de pedidos diarios de marzo de 2026"
+        ariaLabel="Mapa de calor de pedidos diarios, últimas 12 semanas"
         end="2026-03-31"
-        weeks={5}
+        weeks={12}
         values={{
-          "2026-03-02": 4,
-          "2026-03-05": 9,
+          "2026-01-06": 3,
+          "2026-01-09": 7,
+          "2026-01-15": 5,
+          "2026-01-22": 11,
+          "2026-01-29": 4,
+          "2026-02-04": 8,
+          "2026-02-11": 6,
+          "2026-02-18": 12,
+          "2026-02-25": 7,
+          "2026-03-04": 9,
           "2026-03-11": 6,
           "2026-03-18": 12,
           "2026-03-24": 7,
@@ -87,6 +95,7 @@ export default function CalendarHeatmapDemo() {
     { name: "end", type: "string", required: false, description: "Fecha de fin `YYYY-MM-DD` (por defecto hoy; pasar fija para determinismo)." },
     { name: "start", type: "string", required: false, description: "Fecha de inicio `YYYY-MM-DD` para ventana explícita (si es válida ignora `weeks`)." },
     { name: "weeks", type: "number", required: false, description: "—" },
+    { name: "weekStart", type: "0 | 1", required: false, description: "Día que abre la semana: 1 = lunes (actual), 0 = domingo." },
     { name: "showMonthLabels", type: "boolean", required: false, description: "Muestra etiquetas de mes sobre la parrilla." },
     { name: "showWeekdayLabels", type: "boolean", required: false, description: "Muestra etiquetas de días (L/M/X…) a la izquierda." },
     { name: "showLegend", type: "boolean", required: false, description: "Muestra la leyenda Menos/Más." },
@@ -104,8 +113,8 @@ export default function CalendarHeatmapDemo() {
 
 ## Accesibilidad
 
-- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
-- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `aria-label` (única fuente de nombre, sin `\<title\>`).
+- Cada forma con hover lleva `data-chart-tip` para el portal rico (las demos lo envuelven por defecto).
 - Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
 - Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 

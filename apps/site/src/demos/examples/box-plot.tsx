@@ -1,6 +1,17 @@
 import { BoxPlot } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const gruposEstres = Array.from({ length: 8 }, (_, g) => ({
+  label: `Planta ${g + 1} del Corredor Industrial`,
+  values: Array.from({ length: 60 }, (_, i) =>
+    i === 59
+      ? 40 + g * 6 + 70
+      : Math.round(
+          40 + g * 6 + 14 * Math.sin(i / 6 + g) + ((i * 7 + g * 3) % 9),
+        ),
+  ),
+}));
+
 export default function BoxPlotExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -84,6 +95,59 @@ const groups = [
           ]}
           formatY={(v: number) => `${v} cm`}
           showLegend={false}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Media marcada con rombo en cada grupo"
+        code={`import { BoxPlot } from "@carlos-burelo/klin";
+
+const groups = [
+  { label: "Grupo A", values: [7, 8, 8, 9, 9, 10, 6, 8] },
+  { label: "Grupo B", values: [5, 6, 7, 7, 8, 8, 9, 6] },
+  { label: "Grupo C", values: [8, 9, 9, 9, 10, 10, 8, 9] },
+];
+
+<BoxPlot
+  ariaLabel="Cajas de calificaciones con media marcada en cada grupo"
+  groups={groups}
+  showMean
+/>`}
+      >
+        <BoxPlot
+          ariaLabel="Cajas de calificaciones con media marcada en cada grupo"
+          groups={[
+            { label: "Grupo A", values: [7, 8, 8, 9, 9, 10, 6, 8] },
+            { label: "Grupo B", values: [5, 6, 7, 7, 8, 8, 9, 6] },
+            { label: "Grupo C", values: [8, 9, 9, 9, 10, 10, 8, 9] },
+          ]}
+          showMean
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 8 plantas con nombres largos, 480 datos y un atípico por grupo"
+        code={`import { BoxPlot } from "@carlos-burelo/klin";
+
+const gruposEstres = Array.from({ length: 8 }, (_, g) => ({
+  label: \`Planta \${g + 1} del Corredor Industrial\`,
+  values: Array.from({ length: 60 }, (_, i) =>
+    i === 59
+      ? 40 + g * 6 + 70
+      : Math.round(40 + g * 6 + 14 * Math.sin(i / 6 + g) + ((i * 7 + g * 3) % 9)),
+  ),
+});
+
+<BoxPlot
+  ariaLabel="Cajas de piezas por hora en ocho plantas con un paro atípico cada una"
+  groups={gruposEstres}
+  showOutliers
+  showSampleSize
+/>`}
+      >
+        <BoxPlot
+          ariaLabel="Cajas de piezas por hora en ocho plantas con un paro atípico cada una"
+          groups={gruposEstres}
+          showOutliers
+          showSampleSize
         />
       </DemoExample>
     </div>

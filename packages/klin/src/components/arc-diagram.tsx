@@ -1,106 +1,42 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_LINKS, DEFAULT_MAX_NODES } from "../lib/limits";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DIAGRAM_MIN_SCROLL,
   EDGE_WIDTH,
   NODE_BORDER_WIDTH,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  ARC_JITTER,
+  ARC_MIN_H,
+  ARC_OPACITY,
+  ARC_SPREAD,
+  ARC_W,
+  BASE_Y,
+  computeArcLayout,
+  LABEL_DY,
+  MAX_GROWTH,
+  R,
+} from "./arc-diagram.compute";
+import type { ArcDiagramProps } from "./arc-diagram.types";
 
-export type ArcNode = {
-  id: string;
-  label: string;
-  color?: string;
-};
-
-export type ArcEdge = {
-  from: string;
-  to: string;
-  label?: string;
-};
-
-/** Props del diagrama de arcos. */
-export type ArcDiagramProps = {
-  nodes: ArcNode[];
-  edges: ArcEdge[];
-  ariaLabel: string;
-  /** Tamaño del nodo: fijo (`auto`) o por grado de conexión (`degree`). */
-  nodeSize?: "auto" | "degree";
-  /** Orden de los nodos sobre el eje: por grado, alfabético o de entrada. */
-  sortBy?: "degree" | "label" | "order";
-  /** Qué etiquetas de nodo mostrar (`ends` solo pinta la primera y la última). */
-  showLabels?: "all" | "ends" | "none";
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-const ARC_W = 680;
-const BASE_Y = 120;
-const R = 7;
-const MAX_STEP = 150;
-const AXIS_PAD_X = 48;
-const VIEW_PAD_BOTTOM = 48;
-const LABEL_DY = 22;
-const ARC_MIN_H = 24;
-const ARC_JITTER = 37;
-const ARC_SPREAD = 90;
-const MAX_GROWTH = 5;
-const ARC_OPACITY = 0.8;
-
-/** Caps SSR (alias de los límites centrales, compat). */
-export const MAX_ARC_NODES = DEFAULT_MAX_NODES;
-export const MAX_ARC_LINKS = DEFAULT_MAX_LINKS;
-
-/**
- * Cómputo puro del layout de arcos (eje de nodos + grado + orden).
- * Trunca determinista para SSR.
- */
-export function computeArcLayout(
-  nodes: ArcNode[],
-  edges: ArcEdge[],
-  sortBy: "degree" | "label" | "order" = "degree",
-) {
-  const base = nodes.slice(0, MAX_ARC_NODES);
-  const known = new Set(base.map((n) => n.id));
-  const clean = edges
-    .filter((e) => known.has(e.from) && known.has(e.to))
-    .slice(0, MAX_ARC_LINKS);
-  const degree = new Map<string, number>(base.map((n) => [n.id, 0]));
-  for (const e of clean) {
-    degree.set(e.from, (degree.get(e.from) ?? 0) + 1);
-    degree.set(e.to, (degree.get(e.to) ?? 0) + 1);
-  }
-  const baseIndex = new Map(base.map((n, i) => [n.id, i]));
-  const cappedNodes = [...base].sort((a, b) => {
-    if (sortBy === "label") {
-      if (a.label !== b.label) return a.label < b.label ? -1 : 1;
-    } else if (sortBy === "degree") {
-      const diff = (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0);
-      if (diff !== 0) return diff;
-    }
-    return (baseIndex.get(a.id) ?? 0) - (baseIndex.get(b.id) ?? 0);
-  });
-  const step = Math.min(
-    MAX_STEP,
-    (ARC_W - AXIS_PAD_X) / Math.max(1, cappedNodes.length),
-  );
-  const totalW = step * Math.max(0, cappedNodes.length - 1);
-  const ox = (ARC_W - totalW) / 2;
-  const H = BASE_Y + VIEW_PAD_BOTTOM;
-  const order = new Map(cappedNodes.map((n, i) => [n.id, i]));
-  return { cappedNodes, clean, step, totalW, ox, H, degree, order };
-}
+export {
+  computeArcLayout,
+  MAX_ARC_LINKS,
+  MAX_ARC_NODES,
+} from "./arc-diagram.compute";
+export type {
+  ArcDiagramProps,
+  ArcEdge,
+  ArcNode,
+} from "./arc-diagram.types";
 
 /**
  * Diagrama de arcos SSR (relaciones sobre un eje de nodos).
@@ -142,7 +78,6 @@ export function ArcDiagram({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         {clean.map((e, i) => {
           const a = xOf(e.from);
           const b = xOf(e.to);
@@ -154,7 +89,6 @@ export function ArcDiagram({
             : `${e.from} ↔ ${e.to}`;
           return (
             <g key={stableKey([e.from, e.to], i)}>
-              <title>{tip}</title>
               <path
                 d={`M ${left} ${BASE_Y} C ${left} ${BASE_Y - h}, ${right} ${BASE_Y - h}, ${right} ${BASE_Y}`}
                 fill="none"
@@ -176,7 +110,6 @@ export function ArcDiagram({
               (i === 0 || i === cappedNodes.length - 1));
           return (
             <g key={stableKey([n.id], i)}>
-              <title>{tip}</title>
               <circle
                 cx={xOf(n.id)}
                 cy={BASE_Y}

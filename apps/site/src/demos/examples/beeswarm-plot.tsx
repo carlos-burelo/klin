@@ -1,6 +1,10 @@
 import { BeeswarmPlot } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const puntosEstres = Array.from({ length: 400 }, (_, i) => ({
+  value: Math.round((60 + 25 * Math.sin(i / 7) + ((i * 13) % 19)) * 10) / 10,
+}));
+
 export default function BeeswarmPlotExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -88,6 +92,30 @@ const points: BeeswarmPoint[] = [
           ]}
           radius={6}
           formatX={(v: number) => `$${v} mil`}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 400 puntos, tope del SSR, con tamaño de muestra"
+        code={`import { BeeswarmPlot, type BeeswarmPoint } from "@carlos-burelo/klin";
+
+const points: BeeswarmPoint[] = Array.from({ length: 400 }, (_, i) => ({
+  value: Math.round((60 + 25 * Math.sin(i / 7) + ((i * 13) % 19)) * 10) / 10,
+}));
+
+<BeeswarmPlot
+  ariaLabel="Tiempos de atención con 400 puntos, tope del SSR"
+  points={points}
+  radius={3}
+  showSampleSize
+  formatX={(v: number) => \`\${v} min\`}
+/>`}
+      >
+        <BeeswarmPlot
+          ariaLabel="Tiempos de atención con 400 puntos, tope del SSR"
+          points={puntosEstres}
+          radius={3}
+          showSampleSize
+          formatX={(v: number) => `${v} min`}
         />
       </DemoExample>
     </div>

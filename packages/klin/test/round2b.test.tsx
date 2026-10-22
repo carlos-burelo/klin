@@ -3,7 +3,6 @@
  */
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { EMPTY_TITLE } from "../src/components/empty";
 import {
   computeFishboneLayout,
   FishboneDiagram,
@@ -16,6 +15,7 @@ import {
   MAX_TABLE_ROWS,
   TableChart,
 } from "../src/components/table-chart";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 const causes = [
   {
@@ -131,7 +131,7 @@ describe("TableChart SSR (sin JS, sin SVG)", () => {
     expect(html).toContain("Norte · T1: 80 (100% del máximo)");
     // q2 usa máximo explícito (100): Sur 60%.
     expect(html).toContain("width:60%");
-    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(6);
   });
 
   test("formatea con locale es-MX y sanea no-finitos a 0", () => {

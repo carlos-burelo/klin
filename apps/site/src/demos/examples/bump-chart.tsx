@@ -88,6 +88,46 @@ const series: BumpSeries[] = [
           ]}
         />
       </DemoExample>
+      <DemoExample
+        caption="Estrés: 8 universidades en 6 años recortadas a top 5 con topN"
+        code={`import { BumpChart, type BumpSeries } from "@carlos-burelo/klin";
+
+const periods = ["2020", "2021", "2022", "2023", "2024", "2025"];
+
+const series: BumpSeries[] = [
+  { label: "UNAM", ranks: [1, 1, 1, 1, 1, 1] },
+  { label: "Tec de Monterrey", ranks: [2, 3, 2, 2, 2, 2] },
+  { label: "IPN", ranks: [3, 2, 3, 4, 3, 3] },
+  { label: "UAM", ranks: [5, 4, 4, 3, 4, 4] },
+  { label: "UDG", ranks: [4, 5, 6, 5, 5, 5] },
+  { label: "UANL", ranks: [6, 6, 5, 6, 6, 6] },
+  { label: "BUAP", ranks: [8, 7, 7, 7, 7, 7] },
+  { label: "UV", ranks: [7, 8, 8, 8, 8, 8] },
+];
+
+<BumpChart
+  ariaLabel="Ranking de ocho universidades en seis años recortado a las cinco mejores"
+  periods={periods}
+  series={series}
+  topN={5}
+/>`}
+      >
+        <BumpChart
+          ariaLabel="Ranking de ocho universidades en seis años recortado a las cinco mejores"
+          periods={["2020", "2021", "2022", "2023", "2024", "2025"]}
+          series={[
+            { label: "UNAM", ranks: [1, 1, 1, 1, 1, 1] },
+            { label: "Tec de Monterrey", ranks: [2, 3, 2, 2, 2, 2] },
+            { label: "IPN", ranks: [3, 2, 3, 4, 3, 3] },
+            { label: "UAM", ranks: [5, 4, 4, 3, 4, 4] },
+            { label: "UDG", ranks: [4, 5, 6, 5, 5, 5] },
+            { label: "UANL", ranks: [6, 6, 5, 6, 6, 6] },
+            { label: "BUAP", ranks: [8, 7, 7, 7, 7, 7] },
+            { label: "UV", ranks: [7, 8, 8, 8, 8, 8] },
+          ]}
+          topN={5}
+        />
+      </DemoExample>
     </div>
   );
 }

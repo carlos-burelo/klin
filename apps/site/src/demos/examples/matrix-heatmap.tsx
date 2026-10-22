@@ -96,6 +96,40 @@ const values = [
           ]}
         />
       </DemoExample>
+      <DemoExample
+        caption="Dominio fijo de 0 a 100 con leyenda"
+        code={`import { MatrixHeatmap } from "@carlos-burelo/klin";
+
+const rows = ["Norte", "Sur"];
+const cols = ["Ene", "Feb"];
+const values = [
+  [20, 80],
+  [40, 60],
+];
+
+<MatrixHeatmap
+  ariaLabel="Mapa de calor con dominio fijo de 0 a 100 y leyenda"
+  rows={rows}
+  cols={cols}
+  values={values}
+  min={0}
+  max={100}
+  showLegend
+/>`}
+      >
+        <MatrixHeatmap
+          ariaLabel="Mapa de calor con dominio fijo de 0 a 100 y leyenda"
+          rows={["Norte", "Sur"]}
+          cols={["Ene", "Feb"]}
+          values={[
+            [20, 80],
+            [40, 60],
+          ]}
+          min={0}
+          max={100}
+          showLegend
+        />
+      </DemoExample>
     </div>
   );
 }

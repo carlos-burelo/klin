@@ -1,10 +1,9 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { stableKey } from "../lib/keys";
-import { truncateLabel } from "../lib/palette";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -14,77 +13,28 @@ import {
   FONT_SEMIBOLD,
   GRID_WIDTH,
   NODE_BORDER_WIDTH,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  computeTimelineLayout,
+  DATE_BOTTOM_PAD,
+  DATE_DY,
+  DOT_INNER_R,
+  DOT_R,
+  LABEL_BOTTOM_PAD,
+  LABEL_DY,
+  NODE_FONT_SIZE,
+  STEM_TOP_PAD,
+  TIMELINE_LANE,
+  TIMELINE_LANE_COMPACT,
+  TIMELINE_MARGIN,
+  TIMELINE_W,
+} from "./timeline-chart.compute";
+import type { TimelineChartProps } from "./timeline-chart.types";
 
-export type TimelineEvent = {
-  date: string;
-  label: string;
-  detail?: string;
-  done?: boolean;
-};
-
-/** Props de la línea de tiempo. */
-export type TimelineChartProps = {
-  events: TimelineEvent[];
-  ariaLabel: string;
-  /** Lado de las tarjetas (`left` todas arriba, `right` todas abajo). */
-  side?: "alternate" | "left" | "right";
-  /** Muestra la fecha sobre cada hito. */
-  showDates?: boolean;
-  /** Densidad vertical de carriles. */
-  density?: "comfortable" | "compact";
-  /** Locale para formatear fechas (con `formatDate` o locale no defecto). */
-  locale?: string;
-  /** Formatea la fecha del evento (por defecto cruda para preservar). */
-  formatDate?: (d: Date) => string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-const TIMELINE_W = 680;
-const TIMELINE_MARGIN = 24;
-const TIMELINE_LANE = 76;
-/** Carril vertical en densidad compacta. */
-const TIMELINE_LANE_COMPACT = 52;
-const TIMELINE_BASE_PAD = 56;
-const TIMELINE_MID_PAD = 28;
-const NODE_FONT_SIZE = 12;
-const DOT_R = 7;
-const DOT_INNER_R = 2.5;
-const STEM_TOP_PAD = 18;
-const DATE_DY = 8;
-const LABEL_DY = 24;
-const LABEL_BOTTOM_PAD = 10;
-const DATE_BOTTOM_PAD = 24;
-
-/**
- * Cómputo puro de posiciones X de la línea de tiempo + viewport.
- */
-export function computeTimelineLayout(
-  events: TimelineEvent[],
-  density: "comfortable" | "compact" = "comfortable",
-): {
-  height: number;
-  midY: number;
-  xs: number[];
-} {
-  const lane = density === "compact" ? TIMELINE_LANE_COMPACT : TIMELINE_LANE;
-  const height = lane * 2 + TIMELINE_BASE_PAD;
-  const midY = lane + TIMELINE_MID_PAD;
-  const stepX =
-    events.length <= 1
-      ? 0
-      : (TIMELINE_W - TIMELINE_MARGIN * 2) / (events.length - 1);
-  return {
-    height,
-    midY,
-    xs: events.map((_, i) => TIMELINE_MARGIN + i * stepX),
-  };
-}
+export { computeTimelineLayout } from "./timeline-chart.compute";
+export type { TimelineChartProps, TimelineEvent } from "./timeline-chart.types";
 
 /**
  * Línea de tiempo SSR (hitos alternados sobre un eje).
@@ -97,6 +47,8 @@ export function TimelineChart({
   density = "comfortable",
   locale = DEFAULT_LOCALE,
   formatDate,
+  sortBy,
+  showLegend = false,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -107,7 +59,20 @@ export function TimelineChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { height, midY, xs } = computeTimelineLayout(events, density);
+  const ordered =
+    sortBy === "date"
+      ? [...events].sort((a, b) => {
+          const ta = new Date(`${a.date}T12:00:00`).getTime();
+          const tb = new Date(`${b.date}T12:00:00`).getTime();
+          const na = Number.isNaN(ta);
+          const nb = Number.isNaN(tb);
+          if (na && nb) return a.date.localeCompare(b.date);
+          if (na) return 1;
+          if (nb) return -1;
+          return ta - tb;
+        })
+      : events;
+  const { height, midY, xs } = computeTimelineLayout(ordered, density);
   const lane = density === "compact" ? TIMELINE_LANE_COMPACT : TIMELINE_LANE;
   /** Fecha visible: cruda por defecto; `formatDate` o locale no defecto la localizan. */
   const displayDate = (raw: string): string => {
@@ -140,7 +105,6 @@ export function TimelineChart({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         <line
           x1={TIMELINE_MARGIN}
           x2={TIMELINE_W - TIMELINE_MARGIN}
@@ -149,7 +113,7 @@ export function TimelineChart({
           stroke={CHART_TOKEN.border}
           strokeWidth={NODE_BORDER_WIDTH}
         />
-        {events.map((e, i) => {
+        {ordered.map((e, i) => {
           const up = side === "alternate" ? i % 2 === 0 : side === "left";
           const x = xs[i] ?? TIMELINE_MARGIN;
           const tip = e.detail
@@ -158,7 +122,6 @@ export function TimelineChart({
           const color = e.done ? CHART_TOKEN.primary : CHART_TOKEN.muted;
           return (
             <g key={stableKey([e.date, e.label], i)}>
-              <title>{tip}</title>
               <line
                 x1={x}
                 x2={x}
@@ -212,6 +175,14 @@ export function TimelineChart({
           );
         })}
       </svg>
+      {showLegend ? (
+        <ChartLegend
+          items={[
+            { label: "Completado", color: CHART_TOKEN.primary },
+            { label: "Pendiente", color: CHART_TOKEN.muted },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }

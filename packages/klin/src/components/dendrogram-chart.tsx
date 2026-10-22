@@ -1,98 +1,50 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { cluster, type HierarchyPointNode, hierarchy } from "d3-hierarchy";
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { CHART_W, ChartSvg } from "../lib/frame";
-import { fitText } from "../lib/graph";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_NODES } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
+  DEFAULT_LOCALE,
   EDGE_WIDTH,
   LABEL_GAP_PX,
   POINT_BORDER,
   POINT_RADIUS,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { CHART_W, ChartSvg } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { fitText } from "../render/measure";
+import {
+  computeDendrogramLayout,
+  DENDRO_DEPTH_DEFAULT,
+  DENDRO_H,
+  DENDRO_MARGIN,
+  LABEL_END_PAD,
+  LABEL_MAX_CHARS,
+  LABEL_ROW_H,
+  NODE_LABEL_DY,
+} from "./dendrogram-chart.compute";
+import type {
+  DendrogramChartProps,
+  DendrogramPoint,
+} from "./dendrogram-chart.types";
 
-export type DendrogramNode = {
-  label: string;
-  value?: number;
-  color?: string;
-  children?: DendrogramNode[];
-};
-
-export type DendrogramOrientation = "vertical" | "horizontal";
-
-/** Props del dendrograma. */
-export type DendrogramChartProps = {
-  root: DendrogramNode;
-  ariaLabel: string;
-  orientation?: DendrogramOrientation;
-  height?: number;
-  /** Profundidad máxima visible (por defecto sin límite). */
-  depth?: number;
-  /** Muestra las etiquetas de cada nodo. */
-  showLabels?: boolean;
-  /** Agrega el conteo de descendientes a la etiqueta de cada rama. */
-  showCounts?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-/** Cap de nodos (alias de DEFAULT_MAX_NODES, compat). */
-export const MAX_DENDROGRAM_NODES = DEFAULT_MAX_NODES;
-
-const DENDRO_H = 400;
-const DENDRO_MARGIN = { top: 16, right: 120, bottom: 16, left: 16 } as const;
-const LABEL_MAX_CHARS = 18;
-const NODE_LABEL_DY = 4;
-/** Alto de fila para detectar colisiones y aire al final de la etiqueta. */
-const LABEL_ROW_H = 14;
-const LABEL_END_PAD = 4;
-/** Profundidad visible por defecto (sin límite). */
-const DENDRO_DEPTH_DEFAULT = Number.POSITIVE_INFINITY;
-
-export type DendrogramPoint = HierarchyPointNode<DendrogramNode>;
-export type DendrogramLink = {
-  source: DendrogramPoint;
-  target: DendrogramPoint;
-};
-
-/**
- * Cómputo puro del layout dendrograma (cluster + posiciones y codos).
- * Trunca a los N primeros nodos (recorrido en anchura) para SSR.
- */
-export function computeDendrogramLayout(
-  root: DendrogramNode,
-  width: number,
-  height: number,
-  orientation: DendrogramOrientation = "vertical",
-): { nodes: DendrogramPoint[]; links: DendrogramLink[] } {
-  const innerW = Math.max(1, width - DENDRO_MARGIN.left - DENDRO_MARGIN.right);
-  const innerH = Math.max(1, height - DENDRO_MARGIN.top - DENDRO_MARGIN.bottom);
-  const size: [number, number] =
-    orientation === "vertical" ? [innerW, innerH] : [innerH, innerW];
-  const laid = cluster<DendrogramNode>().size(size)(
-    hierarchy<DendrogramNode>(root).sort((a, b) =>
-      a.data.label.localeCompare(b.data.label),
-    ),
-  );
-  const nodes = laid.descendants().slice(0, MAX_DENDROGRAM_NODES);
-  const visible = new Set(nodes);
-  const links = laid
-    .links()
-    .filter((l) => visible.has(l.source) && visible.has(l.target));
-  return { nodes, links };
-}
+export {
+  computeDendrogramLayout,
+  MAX_DENDROGRAM_NODES,
+} from "./dendrogram-chart.compute";
+export type {
+  DendrogramChartProps,
+  DendrogramLink,
+  DendrogramNode,
+  DendrogramOrientation,
+  DendrogramPoint,
+} from "./dendrogram-chart.types";
 
 function chainOf(node: DendrogramPoint): string[] {
   return node
@@ -112,6 +64,9 @@ export function DendrogramChart({
   depth = DENDRO_DEPTH_DEFAULT,
   showLabels = true,
   showCounts = false,
+  format,
+  locale = DEFAULT_LOCALE,
+  nodeRadius = POINT_RADIUS,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -121,6 +76,9 @@ export function DendrogramChart({
   if (!root || root.label === "") {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
+  const rawR = toNumber(nodeRadius, POINT_RADIUS);
+  const safeR = Number.isFinite(rawR) && rawR > 0 ? rawR : POINT_RADIUS;
+  const fmt = format ? resolveFormatter(format, locale) : null;
   const laid = computeDendrogramLayout(root, CHART_W, height, orientation);
   const maxDepth = toNumber(depth, DENDRO_DEPTH_DEFAULT);
   const nodes = laid.nodes.filter((n) => n.depth <= maxDepth);
@@ -147,7 +105,7 @@ export function DendrogramChart({
   const availW = (me: number): number => {
     const self = placed[me];
     if (!self) return 0;
-    const x0 = self.cx + POINT_RADIUS + LABEL_GAP_PX;
+    const x0 = self.cx + safeR + LABEL_GAP_PX;
     let limit = CHART_W - DENDRO_MARGIN.right;
     for (let j = 0; j < placed.length; j++) {
       if (j === me) continue;
@@ -192,7 +150,12 @@ export function DendrogramChart({
         const cx = px(n);
         const cy = py(n);
         const color = seriesColor(n.depth, n.data.color);
-        const tip = chainOf(n).join(" > ");
+        const chain = chainOf(n).join(" > ");
+        const rawValue = toNumber(n.data.value, Number.NaN);
+        const tip =
+          fmt && Number.isFinite(rawValue)
+            ? `${chain}: ${fmt(rawValue)}`
+            : chain;
         const kids = n.descendants().length - 1;
         const raw =
           showCounts && kids > 0
@@ -201,11 +164,10 @@ export function DendrogramChart({
         const tag = fitText(raw, availW(i), TICK_FONT_SIZE);
         return (
           <g key={stableKey([...chainOf(n), n.depth], i)}>
-            <title>{tip}</title>
             <circle
               cx={cx}
               cy={cy}
-              r={POINT_RADIUS}
+              r={safeR}
               fill={color}
               stroke={CHART_TOKEN.background}
               strokeWidth={POINT_BORDER}
@@ -213,7 +175,7 @@ export function DendrogramChart({
             />
             {showLabels ? (
               <text
-                x={cx + POINT_RADIUS + LABEL_GAP_PX}
+                x={cx + safeR + LABEL_GAP_PX}
                 y={cy}
                 dy={NODE_LABEL_DY}
                 fontSize={TICK_FONT_SIZE}

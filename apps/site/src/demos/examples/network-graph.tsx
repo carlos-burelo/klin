@@ -33,6 +33,16 @@ const riegoEdges: NetworkEdge[] = [
   { from: "sensor", to: "bomba" },
 ];
 
+const mallaNodes: NetworkNode[] = Array.from({ length: 80 }, (_, i) => ({
+  id: `n${i}`,
+  label: `Nodo ${i + 1}`,
+}));
+
+const mallaEdges: NetworkEdge[] = Array.from({ length: 80 }, (_, i) => ({
+  from: `n${i}`,
+  to: `n${(i * 7 + 3) % 80}`,
+}));
+
 export default function NetworkGraphExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -101,6 +111,36 @@ const edges = [
           nodes={riegoNodes}
           edges={riegoEdges}
           seed={21}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 80 nodos y 80 enlaces sin etiquetas y con semilla fija"
+        code={`import { NetworkGraph } from "@carlos-burelo/klin";
+
+const nodes = Array.from({ length: 80 }, (_, i) => ({
+  id: \`n\${i}\`,
+  label: \`Nodo \${i + 1}\`,
+}));
+
+const edges = Array.from({ length: 80 }, (_, i) => ({
+  from: \`n\${i}\`,
+  to: \`n\${(i * 7 + 3) % 80}\`,
+}));
+
+<NetworkGraph
+  ariaLabel="Malla de 80 sensores con un enlace por nodo y semilla fija"
+  nodes={nodes}
+  edges={edges}
+  seed={7}
+  showLabels={false}
+/>`}
+      >
+        <NetworkGraph
+          ariaLabel="Malla de 80 sensores con un enlace por nodo y semilla fija"
+          nodes={mallaNodes}
+          edges={mallaEdges}
+          seed={7}
+          showLabels={false}
         />
       </DemoExample>
     </div>

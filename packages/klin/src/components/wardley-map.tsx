@@ -1,13 +1,9 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import type { ChartMargin } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { clamp01, toNumber } from "../lib/number";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { seriesColor } from "../core/color";
+import { formatDefault } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -18,97 +14,41 @@ import {
   GRID_WIDTH,
   LABEL_GAP_PX,
   NODE_BORDER_WIDTH,
-  NODE_RADIUS,
   PERCENT_FACTOR,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  AXIS_LABEL_BOTTOM_PAD,
+  buildWardleyDegrees,
+  computeWardleyLayout,
+  DEFAULT_WARDLEY_NODE_SIZE,
+  DEFAULT_WARDLEY_SHOW_GRID_LABELS,
+  DEFAULT_WARDLEY_STAGES,
+  GRID_DASHARRAY,
+  GRID_FRACTIONS,
+  H,
+  LABEL_MAX_NODE,
+  MARGIN,
+  NODE_LABEL_DX,
+  NODE_VALUE_DY,
+  STAGE_LABEL_BOTTOM_PAD,
+  W,
+  wardleyInner,
+  wardleyNodeRadius,
+  wardleyPx,
+  wardleyPy,
+  wardleyStageIndex,
+  Y_LABEL_X,
+} from "./wardley-map.compute";
+import type { WardleyMapProps } from "./wardley-map.types";
 
-/** Nodo de Wardley (posición x/y normalizada 0–1). */
-export type WardleyNode = {
-  id: string;
-  label: string;
-  /** 0 (génesis) – 1 (commodity). */
-  x: number;
-  /** 0 (base) – 1 (visible/usuario). */
-  y: number;
-  color?: string;
-};
-
-/** Enlace de Wardley (ids de origen y destino). */
-export type WardleyEdge = {
-  from: string;
-  to: string;
-};
-
-/** Props del mapa de Wardley SSR (cadena de valor vs. evolución). */
-export type WardleyMapProps = {
-  nodes: WardleyNode[];
-  edges: WardleyEdge[];
-  ariaLabel: string;
-  /** Muestra etiquetas de etapas y ejes. */
-  showGridLabels?: boolean;
-  /** Nombres de las 4 etapas de evolución. */
-  stages?: [string, string, string, string];
-  /** Radio fijo o proporcional al grado (nº de enlaces). */
-  nodeSize?: "fixed" | "edges";
-  /** Locale del porcentaje de evolución. */
-  locale?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-const W = 640;
-const H = 420;
-const MARGIN: ChartMargin = { top: 16, right: 16, bottom: 44, left: 16 };
-/** Etapas por defecto (las actuales Génesis → Commodity). */
-const DEFAULT_WARDLEY_STAGES: [string, string, string, string] = [
-  "Génesis",
-  "Custom",
-  "Producto",
-  "Commodity",
-];
-/** Muestra etiquetas de grid por defecto (comportamiento actual). */
-const DEFAULT_WARDLEY_SHOW_GRID_LABELS = true;
-/** Radio fijo por defecto (comportamiento actual). */
-const DEFAULT_WARDLEY_NODE_SIZE = "fixed" as const;
-/** Crecimiento de radio por enlace en modo `edges`. */
-const WARDLEY_EDGE_SIZE_STEP = 2;
-/** Fracciones de grid vertical, trazo punteado y geometría de etiquetas. */
-const GRID_FRACTIONS = [0.25, 0.5, 0.75];
-const GRID_DASHARRAY = "4 4";
-const STAGE_LABEL_BOTTOM_PAD = 24;
-const AXIS_LABEL_BOTTOM_PAD = 8;
-const Y_LABEL_X = 12;
-const NODE_LABEL_DX = 13;
-const NODE_VALUE_DY = 22;
-/** Máximo de truncado de etiqueta de nodo. */
-const LABEL_MAX_NODE = 20;
-
-/**
- * Cómputo puro de posiciones Wardley (normaliza con toNumber + clamp01).
- */
-export function computeWardleyLayout(
-  nodes: WardleyNode[],
-  edges: WardleyEdge[],
-): {
-  points: Array<WardleyNode & { nx: number; ny: number }>;
-  cleanEdges: WardleyEdge[];
-  byId: Map<string, WardleyNode>;
-} {
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  const known = new Set(nodes.map((n) => n.id));
-  const cleanEdges = edges.filter((e) => known.has(e.from) && known.has(e.to));
-  const points = nodes.map((n) => ({
-    ...n,
-    nx: clamp01(toNumber(n.x)),
-    ny: clamp01(toNumber(n.y)),
-  }));
-  return { points, cleanEdges, byId };
-}
+export { computeWardleyLayout } from "./wardley-map.compute";
+export type {
+  WardleyEdge,
+  WardleyMapProps,
+  WardleyNode,
+} from "./wardley-map.types";
 
 /**
  * Mapa de Wardley SSR (cadena de valor vs. evolución).
@@ -121,6 +61,9 @@ export function WardleyMap({
   stages = DEFAULT_WARDLEY_STAGES,
   nodeSize = DEFAULT_WARDLEY_NODE_SIZE,
   locale = DEFAULT_LOCALE,
+  xAxisLabel = "Evolución →",
+  yAxisLabel = "Cadena de valor →",
+  format,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -135,17 +78,10 @@ export function WardleyMap({
   const pointById = new Map(points.map((p) => [p.id, p]));
   const stageLabels = stages;
 
-  const innerW = W - MARGIN.left - MARGIN.right;
-  const innerH = H - MARGIN.top - MARGIN.bottom;
-  const px = (v: number) => MARGIN.left + clamp01(v) * innerW;
-  const py = (v: number) => MARGIN.top + (1 - clamp01(v)) * innerH;
-  const degreeById = new Map<string, number>();
-  if (nodeSize === "edges") {
-    for (const e of cleanEdges) {
-      degreeById.set(e.from, (degreeById.get(e.from) ?? 0) + 1);
-      degreeById.set(e.to, (degreeById.get(e.to) ?? 0) + 1);
-    }
-  }
+  const { innerW, innerH } = wardleyInner();
+  const px = (v: number) => wardleyPx(v, innerW);
+  const py = (v: number) => wardleyPy(v, innerH);
+  const degreeById = buildWardleyDegrees(cleanEdges, nodeSize);
 
   return (
     <svg
@@ -156,7 +92,6 @@ export function WardleyMap({
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}
     >
-      <title>{ariaLabel}</title>
       {GRID_FRACTIONS.map((f, i) => (
         <line
           key={stableKey([f], i)}
@@ -191,7 +126,7 @@ export function WardleyMap({
           fontSize={TICK_FONT_SIZE}
           fill={CHART_TOKEN.muted}
         >
-          Evolución →
+          {xAxisLabel}
         </text>
       ) : null}
       {showGridLabels ? (
@@ -203,7 +138,7 @@ export function WardleyMap({
           fill={CHART_TOKEN.muted}
           transform={`rotate(-90, ${Y_LABEL_X}, ${MARGIN.top + innerH / 2})`}
         >
-          Cadena de valor →
+          {yAxisLabel}
         </text>
       ) : null}
       {cleanEdges.map((e, i) => {
@@ -224,15 +159,11 @@ export function WardleyMap({
       })}
       {points.map((n, i) => {
         const color = seriesColor(i, n.color);
-        const stageIdx = Math.round(n.nx * (stageLabels.length - 1));
+        const stageIdx = wardleyStageIndex(n.nx, stageLabels.length);
         const tip = `${n.label} (${stageLabels[stageIdx] ?? ""})`;
-        const r =
-          nodeSize === "edges"
-            ? NODE_RADIUS + (degreeById.get(n.id) ?? 0) * WARDLEY_EDGE_SIZE_STEP
-            : NODE_RADIUS;
+        const r = wardleyNodeRadius(nodeSize, degreeById, n.id);
         return (
           <g key={stableKey([n.id], i)}>
-            <title>{tip}</title>
             <circle
               cx={px(n.nx)}
               cy={py(n.ny)}
@@ -259,7 +190,7 @@ export function WardleyMap({
               fontFamily={FONT_MONO}
               fill={CHART_TOKEN.muted}
             >
-              {`${formatDefault(Math.round(n.nx * PERCENT_FACTOR), locale)}%`}
+              {`${(format ?? ((v: number) => formatDefault(v, locale)))(Math.round(n.nx * PERCENT_FACTOR))}%`}
             </text>
           </g>
         );

@@ -80,11 +80,93 @@ const cosecha: IcicleNode = {
   ],
 };
 
+const estresRaiz: IcicleNode = {
+  label: "Matrícula estatal",
+  children: [
+    {
+      label: "Plantel Centro",
+      children: [
+        { label: "Matutino primero", value: 820 },
+        { label: "Matutino segundo", value: 610 },
+        { label: "Vespertino primero", value: 540 },
+        { label: "Vespertino segundo", value: 430 },
+        { label: "Nocturno", value: 180 },
+        { label: "Sabatino", value: 60 },
+      ],
+    },
+    {
+      label: "Plantel Norte",
+      children: [
+        { label: "Matutino primero", value: 740 },
+        { label: "Matutino segundo", value: 560 },
+        { label: "Vespertino primero", value: 470 },
+        { label: "Vespertino segundo", value: 380 },
+        { label: "Nocturno", value: 150 },
+        { label: "Sabatino", value: 45 },
+      ],
+    },
+    {
+      label: "Plantel Sur",
+      children: [
+        { label: "Matutino primero", value: 690 },
+        { label: "Matutino segundo", value: 520 },
+        { label: "Vespertino primero", value: 440 },
+        { label: "Vespertino segundo", value: 350 },
+        { label: "Nocturno", value: 130 },
+        { label: "Sabatino", value: 38 },
+      ],
+    },
+    {
+      label: "Plantel Oriente conurbado",
+      children: [
+        { label: "Matutino primero", value: 650 },
+        { label: "Matutino segundo", value: 480 },
+        { label: "Vespertino primero", value: 410 },
+        { label: "Vespertino segundo", value: 320 },
+        { label: "Nocturno", value: 110 },
+        { label: "Sabatino", value: 30 },
+      ],
+    },
+    {
+      label: "Plantel Poniente",
+      children: [
+        { label: "Matutino primero", value: 600 },
+        { label: "Matutino segundo", value: 450 },
+        { label: "Vespertino primero", value: 380 },
+        { label: "Vespertino segundo", value: 290 },
+        { label: "Nocturno", value: 95 },
+        { label: "Sabatino", value: 22 },
+      ],
+    },
+    {
+      label: "Planteles rurales",
+      children: [
+        {
+          label: "Sierra",
+          children: [
+            { label: "Matutino", value: 210 },
+            { label: "Vespertino", value: 140 },
+            { label: "Sabatino", value: 35 },
+          ],
+        },
+        {
+          label: "Costa",
+          children: [
+            { label: "Matutino", value: 190 },
+            { label: "Vespertino", value: 120 },
+            { label: "Sabatino", value: 28 },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 export default function IcicleChartExamples() {
   return (
     <div className="flex flex-col gap-6">
       <DemoExample
-        caption="Dos niveles con formato por defecto"
+        caption="Dos niveles con separación amplia entre bandas"
         code={`import type { IcicleNode } from "@carlos-burelo/klin";
 import { IcicleChart } from "@carlos-burelo/klin";
 
@@ -118,10 +200,12 @@ const matricula: IcicleNode = {
 <IcicleChart
   root={matricula}
   ariaLabel="Matrícula por plantel y turno: el plantel Centro concentra más estudiantes y el matutino domina en los tres"
+  gap={6}
 />`}
       >
         <IcicleChart
           root={matricula}
+          gap={6}
           ariaLabel="Matrícula por plantel y turno: el plantel Centro concentra más estudiantes y el matutino domina en los tres"
         />
       </DemoExample>
@@ -220,6 +304,105 @@ const cosecha: IcicleNode = {
           root={cosecha}
           format={(v) => `${v} t`}
           ariaLabel="Cosecha por cultivo y ciclo en toneladas: el maíz de temporal es la banda más grande y el frijol de riego la más pequeña"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 3 niveles con 36 bandas, varias mínimas y un nombre largo"
+        code={`import type { IcicleNode } from "@carlos-burelo/klin";
+import { IcicleChart } from "@carlos-burelo/klin";
+
+const estresRaiz: IcicleNode = {
+  label: "Matrícula estatal",
+  children: [
+    {
+      label: "Plantel Centro",
+      children: [
+        { label: "Matutino primero", value: 820 },
+        { label: "Matutino segundo", value: 610 },
+        { label: "Vespertino primero", value: 540 },
+        { label: "Vespertino segundo", value: 430 },
+        { label: "Nocturno", value: 180 },
+        { label: "Sabatino", value: 60 },
+      ],
+    },
+    {
+      label: "Plantel Norte",
+      children: [
+        { label: "Matutino primero", value: 740 },
+        { label: "Matutino segundo", value: 560 },
+        { label: "Vespertino primero", value: 470 },
+        { label: "Vespertino segundo", value: 380 },
+        { label: "Nocturno", value: 150 },
+        { label: "Sabatino", value: 45 },
+      ],
+    },
+    {
+      label: "Plantel Sur",
+      children: [
+        { label: "Matutino primero", value: 690 },
+        { label: "Matutino segundo", value: 520 },
+        { label: "Vespertino primero", value: 440 },
+        { label: "Vespertino segundo", value: 350 },
+        { label: "Nocturno", value: 130 },
+        { label: "Sabatino", value: 38 },
+      ],
+    },
+    {
+      label: "Plantel Oriente conurbado",
+      children: [
+        { label: "Matutino primero", value: 650 },
+        { label: "Matutino segundo", value: 480 },
+        { label: "Vespertino primero", value: 410 },
+        { label: "Vespertino segundo", value: 320 },
+        { label: "Nocturno", value: 110 },
+        { label: "Sabatino", value: 30 },
+      ],
+    },
+    {
+      label: "Plantel Poniente",
+      children: [
+        { label: "Matutino primero", value: 600 },
+        { label: "Matutino segundo", value: 450 },
+        { label: "Vespertino primero", value: 380 },
+        { label: "Vespertino segundo", value: 290 },
+        { label: "Nocturno", value: 95 },
+        { label: "Sabatino", value: 22 },
+      ],
+    },
+    {
+      label: "Planteles rurales",
+      children: [
+        {
+          label: "Sierra",
+          children: [
+            { label: "Matutino", value: 210 },
+            { label: "Vespertino", value: 140 },
+            { label: "Sabatino", value: 35 },
+          ],
+        },
+        {
+          label: "Costa",
+          children: [
+            { label: "Matutino", value: 190 },
+            { label: "Vespertino", value: 120 },
+            { label: "Sabatino", value: 28 },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+<IcicleChart
+  root={estresRaiz}
+  format={(v) => \`\${v} alumnos\`}
+  ariaLabel="Matrícula estatal por plantel y turno con 36 bandas: el Centro concentra más y el sabatino rural es la banda más pequeña"
+/>`}
+      >
+        <IcicleChart
+          root={estresRaiz}
+          format={(v) => `${v} alumnos`}
+          ariaLabel="Matrícula estatal por plantel y turno con 36 bandas: el Centro concentra más y el sabatino rural es la banda más pequeña"
         />
       </DemoExample>
     </div>

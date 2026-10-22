@@ -1,16 +1,7 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-
-import { scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { topPositive } from "../lib/domain";
-import type { ChartMargin } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { resolveFormatter } from "../core/format";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -18,57 +9,32 @@ import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
   LABEL_GAP_PX,
-  PERCENT_FACTOR,
   TICK_DY,
   TICK_FONT_SIZE,
-  ZERO_MARK_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  BAR_VERTICAL_INSET,
+  buildDivergingScale,
+  CENTER_LINE_WIDTH,
+  clampDivergingAnnotation,
+  divergingRowShare,
+  divergingSideWidth,
+  LABEL_MAX_X,
+  MARGIN,
+  magOfSide,
+  orderDivergingRows,
+  ROW_H,
+  ROW_TOP_OFFSET,
+  resolveDivergingColors,
+  resolveDivergingHeight,
+  topDivergingValue,
+  W,
+} from "./diverging-bar.compute";
+import type { DivergingBarProps } from "./diverging-bar.types";
 
-const W = 640;
-const MARGIN: ChartMargin = { top: 8, right: 48, bottom: 28, left: 132 };
-
-const LABEL_MAX_X = 24;
-const ROW_H = 34;
-const ROW_TOP_OFFSET = 6;
-const BAR_VERTICAL_INSET = 12;
-const CENTER_LINE_WIDTH = 1.5;
-const MIN_HEIGHT = 140;
-
-/** Props de barras divergentes SSR (encuesta izquierda/derecha). */
-export type DivergingBarProps = {
-  data: Array<Record<string, string | number>>;
-  yKey: string;
-  left: { key: string; label: string; color?: string };
-  right: { key: string; label: string; color?: string };
-  ariaLabel: string;
-  formatX?: ValueFormatter;
-  locale?: string;
-  annotations?: ValueAnnotation[];
-  /**
-   * Color por grupo (aplica a ambos lados de la fila).
-   * Si retorna `undefined` se usan los colores de cada lado.
-   */
-  itemColor?: (
-    datum: Record<string, string | number>,
-    index: number,
-  ) => string | undefined;
-  showLegend?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  /** Alto fijo del lienzo (por defecto, automático según filas). */
-  height?: number;
-  /** Posición de la etiqueta de grupo: sobre la fila o al centro. */
-  midLabels?: "outside" | "center";
-  /** Etiqueta con el % de la fila en cada lado (el tooltip ya lo trae). */
-  showShare?: boolean;
-  /** Orden de filas: por total o por diferencia entre lados. */
-  sortBy?: "total" | "diff" | "none";
-};
+export type { DivergingBarProps } from "./diverging-bar.types";
 
 /**
  * Barras divergentes SSR (encuestas: en contra ← centro → a favor).
@@ -80,7 +46,8 @@ export function DivergingBar({
   right,
   ariaLabel,
   locale = DEFAULT_LOCALE,
-  formatX = (v: number) => formatDefault(v, locale),
+  formatX,
+  formatValues,
   annotations,
   itemColor,
   showLegend = true,
@@ -92,43 +59,26 @@ export function DivergingBar({
   height: heightProp,
   midLabels = "outside",
   showShare = false,
+  showValues = false,
   sortBy = "none",
 }: DivergingBarProps) {
   if (data.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const rowH = ROW_H;
-  const autoHeight = Math.max(
-    MIN_HEIGHT,
-    MARGIN.top + MARGIN.bottom + data.length * rowH,
-  );
-  const height =
-    heightProp == null
-      ? autoHeight
-      : Math.max(MIN_HEIGHT, Math.round(toNumber(heightProp, autoHeight)));
+  const height = resolveDivergingHeight(data.length, heightProp);
   const halfW = (W - MARGIN.left - MARGIN.right) / 2;
-  // Magnitudes opuestas: se grafica el valor absoluto de cada lado.
-  const magOf = (d: Record<string, string | number>, key: string) =>
-    Math.abs(toNumber(d[key]));
-  const rowTotal = (d: Record<string, string | number>) =>
-    magOf(d, left.key) + magOf(d, right.key);
-  const rowDiff = (d: Record<string, string | number>) =>
-    Math.abs(magOf(d, right.key) - magOf(d, left.key));
-  const ordered = [...data];
-  if (sortBy === "total") {
-    ordered.sort((a, b) => rowTotal(b) - rowTotal(a));
-  } else if (sortBy === "diff") {
-    ordered.sort((a, b) => rowDiff(b) - rowDiff(a));
-  }
-  const top = topPositive(
-    ordered.flatMap((d) => [magOf(d, left.key), magOf(d, right.key)]),
-  );
+  const ordered = orderDivergingRows(data, left.key, right.key, sortBy);
+  const top = topDivergingValue(ordered, left.key, right.key);
 
-  const scale = scaleLinear().domain([0, top]).range([0, halfW]);
+  const scale = buildDivergingScale(top, halfW);
   const midX = MARGIN.left + halfW;
-  const leftColor = seriesColor(4, left.color);
-  const rightColor = seriesColor(0, right.color);
+  const { leftColor, rightColor } = resolveDivergingColors(
+    left.color,
+    right.color,
+  );
+  const fmtX = resolveFormatter(formatX, locale);
+  const fmtV = formatValues ? resolveFormatter(formatValues, locale) : fmtX;
 
   return (
     <div className={className} style={style}>
@@ -139,7 +89,6 @@ export function DivergingBar({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         <line
           x1={midX}
           x2={midX}
@@ -149,11 +98,13 @@ export function DivergingBar({
           strokeWidth={CENTER_LINE_WIDTH}
         />
         {(annotations ?? []).map((a, ai) => {
-          const clamped = Math.min(top, Math.max(0, toNumber(a.value)));
+          const clamped = clampDivergingAnnotation(a.value, top);
           const stroke = a.color ?? CHART_TOKEN.accent;
           return (
-            <g key={stableKey([a.label ?? `${a.value}`], ai)}>
-              <title>{a.label ?? formatX(a.value)}</title>
+            <g
+              key={stableKey([a.label ?? `${a.value}`], ai)}
+              data-chart-tip={a.label ?? fmtX(a.value)}
+            >
               <line
                 x1={midX - scale(clamped)}
                 x2={midX - scale(clamped)}
@@ -187,22 +138,18 @@ export function DivergingBar({
         })}
         {ordered.map((d, i) => {
           const group = String(d[yKey] ?? "");
-          const lv = magOf(d, left.key);
-          const rv = magOf(d, right.key);
-          const by = MARGIN.top + i * rowH + ROW_TOP_OFFSET;
-          const bh = rowH - BAR_VERTICAL_INSET;
-          const lw = Math.max(lv === 0 ? 0 : ZERO_MARK_PX, scale(lv));
-          const rw = Math.max(rv === 0 ? 0 : ZERO_MARK_PX, scale(rv));
+          const lv = magOfSide(d, left.key);
+          const rv = magOfSide(d, right.key);
+          const by = MARGIN.top + i * ROW_H + ROW_TOP_OFFSET;
+          const bh = ROW_H - BAR_VERTICAL_INSET;
+          const lw = divergingSideWidth(lv, scale);
+          const rw = divergingSideWidth(rv, scale);
           const override = itemColor?.(d, i);
           const leftFill = override ?? leftColor;
           const rightFill = override ?? rightColor;
-          const total = lv + rv;
-          const pctL =
-            total > 0 ? Math.round((lv / total) * PERCENT_FACTOR) : 0;
-          const pctR =
-            total > 0 ? Math.round((rv / total) * PERCENT_FACTOR) : 0;
-          const tipL = `${group} · ${left.label}: ${formatX(lv)} (${pctL}% de la fila)`;
-          const tipR = `${group} · ${right.label}: ${formatX(rv)} (${pctR}% de la fila)`;
+          const { pctL, pctR } = divergingRowShare(lv, rv);
+          const tipL = `${group} · ${left.label}: ${fmtX(lv)} (${pctL}% de la fila)`;
+          const tipR = `${group} · ${right.label}: ${fmtX(rv)} (${pctR}% de la fila)`;
           return (
             <g key={stableKey([group], i)}>
               {midLabels === "center" ? (
@@ -213,8 +160,8 @@ export function DivergingBar({
                   textAnchor="middle"
                   fontSize={TICK_FONT_SIZE}
                   fill={CHART_TOKEN.muted}
+                  data-chart-tip={group}
                 >
-                  <title>{group}</title>
                   {truncateLabel(group, LABEL_MAX_X)}
                 </text>
               ) : (
@@ -224,13 +171,12 @@ export function DivergingBar({
                   textAnchor="middle"
                   fontSize={TICK_FONT_SIZE}
                   fill={CHART_TOKEN.muted}
+                  data-chart-tip={group}
                 >
-                  <title>{group}</title>
                   {truncateLabel(group, LABEL_MAX_X)}
                 </text>
               )}
               <g>
-                <title>{tipL}</title>
                 <rect
                   x={midX - lw}
                   y={by}
@@ -242,7 +188,6 @@ export function DivergingBar({
                 />
               </g>
               <g>
-                <title>{tipR}</title>
                 <rect
                   x={midX}
                   y={by}
@@ -253,6 +198,30 @@ export function DivergingBar({
                   data-chart-tip={tipR}
                 />
               </g>
+              {showValues && lw > 0 ? (
+                <text
+                  x={midX - lw / 2}
+                  y={by + bh / 2}
+                  dy={TICK_DY}
+                  textAnchor="middle"
+                  fontSize={TICK_FONT_SIZE}
+                  fill={CHART_TOKEN.onFill}
+                >
+                  {fmtV(lv)}
+                </text>
+              ) : null}
+              {showValues && rw > 0 ? (
+                <text
+                  x={midX + rw / 2}
+                  y={by + bh / 2}
+                  dy={TICK_DY}
+                  textAnchor="middle"
+                  fontSize={TICK_FONT_SIZE}
+                  fill={CHART_TOKEN.onFill}
+                >
+                  {fmtV(rv)}
+                </text>
+              ) : null}
               {showShare ? (
                 <>
                   <text

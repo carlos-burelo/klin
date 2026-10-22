@@ -110,6 +110,32 @@ const matrizRemesas = [
           ariaLabel="Remesas entre CDMX, Bogotá, Lima y Quito en miles de dólares"
         />
       </DemoExample>
+      <DemoExample
+        caption="separación amplia entre grupos"
+        code={`import { ChordDiagram } from "@carlos-burelo/klin";
+
+const gruposComercio = ["México", "Colombia", "Chile"];
+
+const matrizComercio = [
+  [0, 1250, 980],
+  [1100, 0, 640],
+  [870, 590, 0],
+];
+
+<ChordDiagram
+  labels={gruposComercio}
+  matrix={matrizComercio}
+  padAngle={0.15}
+  ariaLabel="Comercio entre México, Colombia y Chile con separación amplia"
+/>`}
+      >
+        <ChordDiagram
+          labels={gruposComercio}
+          matrix={matrizComercio}
+          padAngle={0.15}
+          ariaLabel="Comercio entre México, Colombia y Chile con separación amplia"
+        />
+      </DemoExample>
     </div>
   );
 }

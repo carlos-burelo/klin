@@ -1,23 +1,9 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { bin, extent, quantileSorted } from "d3-array";
-import { scaleLinear } from "d3-scale";
-import { area, curveMonotoneX, line } from "d3-shape";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { topPositive } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
-import { sumNumbers, toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { kdeOf } from "../core/kde";
+import { toNumber } from "../core/number";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -29,42 +15,51 @@ import {
   LINE_WIDTH,
   MIN_SHAPE_PX,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { pctOf } from "../lib/tips";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { kdeOf } from "./violin-plot";
+} from "../core/theme";
+import { pctOf } from "../core/tips";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { YGrid } from "../render/y-grid";
+import {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  BUCKET_INSET_PX,
+  buildHistogramBins,
+  buildHistogramKdePaths,
+  buildHistogramScales,
+  cleanHistogramValues,
+  computeHistogramStats,
+  histogramKdeStep,
+  MEAN_LABEL_DX,
+  MEAN_LABEL_DY,
+  resolveHistogramBinDomain,
+  resolveHistogramScope,
+} from "./histogram.compute";
+import type { HistogramProps } from "./histogram.types";
 
-/** Props de Histogram. */
-export type HistogramProps = {
-  values: number[];
-  ariaLabel: string;
-  bins?: number;
-  height?: number;
-  format?: ValueFormatter;
-  color?: string;
-  locale?: string;
-  /** Dibuja las líneas de media y mediana con su valor. */
-  showMean?: boolean;
-  /** Curva de densidad KDE sobre las cubetas (reusa la KDE de ViolinPlot). */
-  showCurve?: boolean;
-  /** Ancho de banda KDE (`auto` = Silverman). */
-  bandwidth?: "auto" | number;
-  /** Recorta los valores a [mínimo, máximo] (outliers fuera). */
-  domain?: [number, number];
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  annotations?: ValueAnnotation[];
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-const BUCKET_INSET_PX = 1;
-const AXIS_LABEL_OFFSET = 10;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
-const MEAN_LABEL_DX = 4;
-const MEAN_LABEL_DY = 12;
+export type { HistogramKdePoint } from "./histogram.compute";
+export {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  BUCKET_INSET_PX,
+  buildHistogramBins,
+  buildHistogramKdePaths,
+  buildHistogramScales,
+  cleanHistogramValues,
+  computeHistogramStats,
+  histogramKdeStep,
+  MEAN_LABEL_DX,
+  MEAN_LABEL_DY,
+  resolveHistogramBinDomain,
+  resolveHistogramScope,
+} from "./histogram.compute";
+export type { HistogramBinStrategy, HistogramProps } from "./histogram.types";
 
 /**
  * Histograma SSR (distribuciones). Cubetas con `d3.bin`.
@@ -79,6 +74,7 @@ export function Histogram({
   color,
   locale = DEFAULT_LOCALE,
   showMean = false,
+  showMedian,
   showCurve = false,
   bandwidth = "auto",
   domain,
@@ -86,81 +82,66 @@ export function Histogram({
   style,
   ariaDescribedBy,
   annotations,
+  gridTicks = GRID_TICKS,
+  binStrategy,
+  normalize = false,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: HistogramProps) {
-  const clean = values
-    .map((v) => toNumber(v, Number.NaN))
-    .filter((v) => Number.isFinite(v));
-  const clipLo =
-    domain === undefined ? Number.NaN : toNumber(domain[0], Number.NaN);
-  const clipHi =
-    domain === undefined ? Number.NaN : toNumber(domain[1], Number.NaN);
-  const hasClip =
-    Number.isFinite(clipLo) && Number.isFinite(clipHi) && clipLo < clipHi;
-  const scoped =
-    hasClip && domain !== undefined
-      ? clean.filter((v) => v >= clipLo && v <= clipHi)
-      : clean;
+  const clean = cleanHistogramValues(values);
+  const { clipLo, clipHi, hasClip, scoped } = resolveHistogramScope(
+    clean,
+    domain,
+  );
   if (isBlank(scoped)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const [lo, hi] = extent(scoped);
-  const binDomain: [number, number] =
-    hasClip && domain !== undefined
-      ? [clipLo, clipHi]
-      : lo === undefined || hi === undefined || lo === hi
-        ? [Math.min(0, lo ?? 0), Math.max(1, hi ?? 1)]
-        : [lo, hi];
+  const binDomain = resolveHistogramBinDomain(
+    scoped,
+    domain,
+    clipLo,
+    clipHi,
+    hasClip,
+  );
 
-  const buckets = bin().domain(binDomain).thresholds(bins)(scoped);
-  const top = topPositive(buckets.map((b) => b.length));
-
-  const x = scaleLinear().domain(binDomain).range([0, innerW]);
-  const y = scaleLinear().domain([0, top]).nice(GRID_TICKS).range([innerH, 0]);
-  const ticks = y.ticks(GRID_TICKS);
+  const { total, mean, median } = computeHistogramStats(scoped);
+  const buckets = buildHistogramBins(scoped, binDomain, bins, binStrategy);
+  const { top, x, y, ticks } = buildHistogramScales(
+    binDomain,
+    buckets,
+    innerW,
+    innerH,
+    gridTicks,
+    normalize,
+    total,
+  );
   const fill = seriesColor(2, color);
-  const total = scoped.length;
+  // La mediana sigue a `showMean` salvo override explícito (paridad con el
+  // comportamiento anterior, donde una sola prop controlaba ambas líneas).
+  const showMedianLine = showMedian ?? showMean;
   const fmtTick = resolveFormatter(format, locale);
-  const mean = sumNumbers(scoped) / scoped.length;
-  const median =
-    quantileSorted(
-      [...scoped].sort((a, b) => a - b),
-      0.5,
-    ) ??
-    scoped[0] ??
-    0;
+  const fmtY = normalize ? (v: number) => `${fmtTick(v)}%` : fmtTick;
   const meanInRange = mean >= binDomain[0] && mean <= binDomain[1];
   const medianInRange = median >= binDomain[0] && median <= binDomain[1];
   const given = bandwidth === "auto" ? 0 : toNumber(bandwidth);
   const kde = showCurve ? kdeOf(scoped, given, binDomain[0], binDomain[1]) : [];
-  // La rejilla KDE es uniforme: conteo ≈ densidad · n · ancho de paso.
-  const kdeStep =
-    kde.length > 1
-      ? (binDomain[1] - binDomain[0]) / (kde.length - 1)
-      : binDomain[1] - binDomain[0];
-  const kdeCount = (density: number) => density * scoped.length * kdeStep;
-  // La curva nunca sale del lienzo: se fija al tope del dominio Y.
-  const kdeY = (density: number) =>
-    y(Math.min(Math.max(0, kdeCount(density)), top));
-  const curvePath =
-    kde.length > 0
-      ? (line<{ value: number; density: number }>()
-          .x((p) => MARGIN.left + x(p.value))
-          .y((p) => kdeY(p.density))
-          .curve(curveMonotoneX)(kde) ?? "")
-      : "";
-  const curveArea =
-    kde.length > 0
-      ? (area<{ value: number; density: number }>()
-          .x((p) => MARGIN.left + x(p.value))
-          .y0(() => MARGIN.top + innerH)
-          .y1((p) => kdeY(p.density))
-          .curve(curveMonotoneX)(kde) ?? "")
-      : "";
+  const kdeStep = histogramKdeStep(binDomain, kde.length);
+  const { curvePath, curveArea } = buildHistogramKdePaths(
+    kde,
+    x,
+    y,
+    top,
+    scoped.length,
+    kdeStep,
+    MARGIN.left,
+    MARGIN.top,
+    innerH,
+    normalize,
+    total,
+  );
 
   return (
     <ChartSvg
@@ -171,13 +152,15 @@ export function Histogram({
       style={style}
       ariaDescribedBy={ariaDescribedBy}
     >
-      <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={fmtTick} />
+      <YGrid ticks={ticks} y={y} margin={MARGIN} width={W} format={fmtY} />
       {(annotations ?? []).map((a, ai) => {
         if (a.value < 0 || a.value > top) return null;
         const ay = MARGIN.top + y(a.value);
         return (
-          <g key={`ann-${a.value}-${ai}`}>
-            <title>{a.label ?? String(a.value)}</title>
+          <g
+            key={`ann-${a.value}-${ai}`}
+            data-chart-tip={a.label ?? String(a.value)}
+          >
             <line
               x1={MARGIN.left}
               x2={W - MARGIN.right}
@@ -206,15 +189,16 @@ export function Histogram({
           MIN_SHAPE_PX,
           x(b.x1 ?? 0) - x(b.x0 ?? 0) - BUCKET_INSET_PX * 2,
         );
+        const magnitude =
+          normalize && total > 0 ? (b.length / total) * 100 : b.length;
         const tip = `${fmtTick(b.x0 ?? 0)} – ${fmtTick(b.x1 ?? 0)}: ${b.length} (${pctOf(b.length, total)}% · ${total} total)`;
         return (
           <g key={`${b.x0}-${b.x1}__${i}`}>
-            <title>{tip}</title>
             <rect
               x={bx}
-              y={MARGIN.top + y(b.length)}
+              y={MARGIN.top + y(magnitude)}
               width={bw}
-              height={Math.max(MIN_SHAPE_PX, innerH - y(b.length))}
+              height={Math.max(MIN_SHAPE_PX, innerH - y(magnitude))}
               rx={BAR_RADIUS}
               fill={fill}
               data-chart-tip={tip}
@@ -223,8 +207,7 @@ export function Histogram({
         );
       })}
       {showCurve && kde.length > 0 ? (
-        <g>
-          <title>Densidad estimada (KDE)</title>
+        <g data-chart-tip="Densidad estimada (KDE)">
           <path d={curveArea} fill={fill} opacity={AREA_FILL_OPACITY} />
           <path
             d={curvePath}
@@ -236,8 +219,7 @@ export function Histogram({
         </g>
       ) : null}
       {showMean && meanInRange ? (
-        <g>
-          <title>{`media ${fmtTick(mean)}`}</title>
+        <g data-chart-tip={`media ${fmtTick(mean)}`}>
           <line
             x1={MARGIN.left + x(mean)}
             x2={MARGIN.left + x(mean)}
@@ -257,9 +239,8 @@ export function Histogram({
           </text>
         </g>
       ) : null}
-      {showMean && medianInRange ? (
-        <g>
-          <title>{`mediana ${fmtTick(median)}`}</title>
+      {showMedianLine && medianInRange ? (
+        <g data-chart-tip={`mediana ${fmtTick(median)}`}>
           <line
             x1={MARGIN.left + x(median)}
             x2={MARGIN.left + x(median)}

@@ -124,6 +124,34 @@ const rentas: DensityPoint[] = [
           ariaLabel="Densidad de superficie frente a renta mensual de departamentos"
         />
       </DemoExample>
+      <DemoExample
+        caption="color propio sin puntos de muestra"
+        code={`import type { DensityPoint } from "@carlos-burelo/klin";
+import { DensityContourPlot } from "@carlos-burelo/klin";
+
+const cafeterias: DensityPoint[] = [
+  { x: 48, y: 210, label: "Condesa" },
+  { x: 52, y: 235, label: "Roma" },
+  { x: 45, y: 190, label: "Del Valle" },
+  { x: 55, y: 250, label: "Polanco" },
+  { x: 50, y: 220, label: "Narvarte" },
+  { x: 47, y: 185, label: "Coyoacán" },
+];
+
+<DensityContourPlot
+  points={cafeterias}
+  color="#db2777"
+  showPoints={false}
+  ariaLabel="Densidad de cafeterías solo con contornos rosas"
+/>`}
+      >
+        <DensityContourPlot
+          points={cafeterias}
+          color="#db2777"
+          showPoints={false}
+          ariaLabel="Densidad de cafeterías solo con contornos rosas"
+        />
+      </DemoExample>
     </div>
   );
 }

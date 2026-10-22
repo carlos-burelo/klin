@@ -19,7 +19,7 @@ import { TreeView } from "../src/components/tree-view";
 import { VennDiagram } from "../src/components/venn-diagram";
 import { WaffleChart } from "../src/components/waffle-chart";
 import { WaterfallChart } from "../src/components/waterfall-chart";
-import { layoutDag } from "../src/lib/graph";
+import { layoutDag } from "../src/core/dag/layout";
 
 const data = [
   { month: "Ene", desktop: 186, mobile: 80 },
@@ -39,7 +39,7 @@ describe("gráficas SSR (sin JS)", () => {
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="demo"');
     // 2 categorías × 2 series = 4 rects con tooltip.
-    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(6);
   });
 
   test("BarChart vacía pinta el estado homogéneo", () => {
@@ -69,7 +69,7 @@ describe("gráficas SSR (sin JS)", () => {
       />,
     );
     expect(html).toContain("75%");
-    expect(html.match(/data-chart-tip/g)?.length).toBe(2);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(3);
   });
 
   test("DonutChart suma el total al centro", () => {

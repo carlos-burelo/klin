@@ -8,8 +8,8 @@ import {
   computeBeeswarmPositions,
 } from "../src/components/beeswarm-plot";
 import { BumpChart } from "../src/components/bump-chart";
-import { EMPTY_TITLE } from "../src/components/empty";
 import { SlopeChart } from "../src/components/slope-chart";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 describe("líneas nuevas SSR (sin JS)", () => {
   test("BeeswarmPlot pinta un círculo por punto con su tip", () => {

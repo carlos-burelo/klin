@@ -1,63 +1,30 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { type CSSProperties, useId } from "react";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor } from "../lib/palette";
-import { CHART_TOKEN, DEFAULT_LOCALE, PERCENT_FACTOR } from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { useId } from "react";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
 
-/** Segmento apilado (clave, etiqueta y color opcional). */
-export type StackSegment = {
-  key: string;
-  label: string;
-  color?: string;
-};
+import { CHART_TOKEN, DEFAULT_LOCALE, PERCENT_FACTOR } from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  mainSegmentKey,
+  maxStackedTotal,
+  resolveStackedBarHeight,
+  resolveStackedOuterStyle,
+  segmentColors,
+  stackedRowDenom,
+  stackedRowShare,
+  TRACK_W,
+} from "./stacked-bar.compute";
+import type { StackedBarProps } from "./stacked-bar.types";
 
-/** Fila apilada (etiqueta, detalle y valores por segmento). */
-export type StackRow = {
-  label: string;
-  detail?: string;
-  values: Record<string, number>;
-};
-
-/** Props de barras apiladas SSR (progreso y comparativas). */
-export type StackedBarProps = {
-  rows: StackRow[];
-  segments: StackSegment[];
-  ariaLabel: string;
-  format?: ValueFormatter;
-  /** Clave del segmento para el % (por defecto, el primero). */
-  percentOf?: string;
-  locale?: string;
-  showLegend?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  /**
-   * Escala de la pista: `global` compara filas entre sí (tope común),
-   * `row` llena cada fila al 100 % de su propio total.
-   */
-  scale?: "row" | "global";
-  /** Insignia con el % del segmento principal (hoy siempre visible). */
-  showPercent?: boolean;
-  /** Alto de la pista de barra. */
-  barHeight?: number;
-  /** Alto fijo del contenedor (por defecto, automático según filas). */
-  height?: number;
-  /** Prefijo de `clipPath` (multi-instancia); por defecto useId. */
-  id?: string;
-};
-
-const TRACK_W = 600;
-const TRACK_H = 24;
+export type {
+  StackedBarProps,
+  StackRow,
+  StackSegment,
+} from "./stacked-bar.types";
 
 /**
  * Barras horizontales apiladas SSR (progreso y comparativas).
@@ -70,6 +37,7 @@ export function StackedBar({
   ariaLabel,
   locale = DEFAULT_LOCALE,
   format,
+  formatValues,
   percentOf,
   showLegend = true,
   className,
@@ -79,6 +47,7 @@ export function StackedBar({
   emptyDescription,
   scale = "global",
   showPercent = true,
+  showValues = false,
   barHeight,
   height,
   id,
@@ -91,17 +60,13 @@ export function StackedBar({
 
   const uid =
     id == null || id === "" ? autoUid : id.replace(/[^a-zA-Z0-9_-]/g, "");
-  const barH = barHeight == null ? TRACK_H : toNumber(barHeight, TRACK_H);
-  const barRadius = barH / 2;
-  const defaultH = barH === TRACK_H;
-  const mainKey = percentOf ?? segments[0]?.key ?? "";
-  const colors = segments.map((s, i) => seriesColor(i, s.color));
+  const { barH, barRadius, defaultH } = resolveStackedBarHeight(barHeight);
+  const mainKey = mainSegmentKey(segments, percentOf);
+  const colors = segmentColors(segments);
   const fmt = resolveFormatter(format, locale);
-  const totalOf = (values: Record<string, number>) =>
-    segments.reduce((acc, s) => acc + toNumber(values[s.key]), 0);
-  const maxTotal = Math.max(1, ...rows.map((r) => totalOf(r.values)));
-  const outerStyle =
-    height == null ? style : { ...style, height: toNumber(height) };
+  const fmtV = formatValues ? resolveFormatter(formatValues, locale) : fmt;
+  const maxTotal = maxStackedTotal(rows, segments);
+  const outerStyle = resolveStackedOuterStyle(style, height);
 
   return (
     <div
@@ -111,15 +76,11 @@ export function StackedBar({
       className={className}
       style={outerStyle}
     >
-      <title>{ariaLabel}</title>
       <div className="flex flex-col gap-2.5">
         {rows.map((row, ri) => {
-          const total = totalOf(row.values);
-          const main = toNumber(row.values[mainKey]);
-          const percent =
-            total === 0 ? 0 : Math.round((main / total) * PERCENT_FACTOR);
+          const { total, percent } = stackedRowShare(row, segments, mainKey);
           // En escala por fila cada pista llena su propio total.
-          const denom = scale === "row" ? (total === 0 ? 1 : total) : maxTotal;
+          const denom = stackedRowDenom(scale, total, maxTotal);
           let offset = 0;
           const clipId = `${uid}-st-${ri}`;
           return (
@@ -129,7 +90,9 @@ export function StackedBar({
             >
               <span
                 className="w-36 shrink-0 truncate text-xs text-muted-foreground"
-                title={row.detail ? `${row.label} · ${row.detail}` : row.label}
+                data-chart-tip={
+                  row.detail ? `${row.label} · ${row.detail}` : row.label
+                }
               >
                 {row.label}
               </span>
@@ -166,7 +129,6 @@ export function StackedBar({
                       (row.detail ? ` (${row.detail})` : "");
                     return (
                       <g key={stableKey([seg.key], si)}>
-                        <title>{tip}</title>
                         <rect
                           x={x}
                           y={0}
@@ -183,6 +145,11 @@ export function StackedBar({
               {showPercent ? (
                 <span className="w-10 shrink-0 text-right font-mono text-[11px] font-medium text-muted-foreground tabular-nums">
                   {percent}%
+                </span>
+              ) : null}
+              {showValues ? (
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">
+                  {fmtV(total)}
                 </span>
               ) : null}
             </div>

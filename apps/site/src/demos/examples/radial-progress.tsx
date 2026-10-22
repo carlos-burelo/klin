@@ -1,6 +1,17 @@
 import { RadialProgress } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const anillosEstres = [
+  { label: "Agua", value: 2 },
+  { label: "Luz", value: 17 },
+  { label: "Drenaje", value: 34 },
+  { label: "Internet", value: 48 },
+  { label: "Parques", value: 63 },
+  { label: "Bacheo", value: 77 },
+  { label: "Alumbrado", value: 89 },
+  { label: "Programa de reforestación municipal 2026", value: 100 },
+];
+
 export default function RadialProgressExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -23,7 +34,7 @@ export default function RadialProgressExamples() {
         </div>
       </DemoExample>
       <DemoExample
-        caption="anillo grueso con color y formato personalizados"
+        caption="anillo grueso con color, inicio a la derecha y formato personalizado"
         code={`import { RadialProgress } from "@carlos-burelo/klin";
 
 <RadialProgress
@@ -31,6 +42,7 @@ export default function RadialProgressExamples() {
   label="Meta anual"
   thickness={26}
   color="var(--chart-2)"
+  startAngle={Math.PI / 2}
   format={(v) => \`\${v} / 100\`}
   ariaLabel="Meta anual con 82 de 100 puntos"
 />`}
@@ -41,6 +53,7 @@ export default function RadialProgressExamples() {
             label="Meta anual"
             thickness={26}
             color="var(--chart-2)"
+            startAngle={Math.PI / 2}
             format={(v) => `${v} / 100`}
             ariaLabel="Meta anual con 82 de 100 puntos"
           />
@@ -66,6 +79,43 @@ export default function RadialProgressExamples() {
             format={(v) => `${v}% crítico`}
             ariaLabel="Nivel de batería crítico al 7 por ciento"
           />
+        </div>
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 8 anillos con extremos en 2 y 100 y un nombre largo"
+        code={`import { RadialProgress } from "@carlos-burelo/klin";
+
+const anillosEstres = [
+  { label: "Agua", value: 2 },
+  { label: "Luz", value: 17 },
+  { label: "Drenaje", value: 34 },
+  { label: "Internet", value: 48 },
+  { label: "Parques", value: 63 },
+  { label: "Bacheo", value: 77 },
+  { label: "Alumbrado", value: 89 },
+  { label: "Programa de reforestación municipal 2026", value: 100 },
+];
+
+<div className="flex flex-wrap justify-center gap-4">
+  {anillosEstres.map((anillo) => (
+    <RadialProgress
+      key={anillo.label}
+      value={anillo.value}
+      label={anillo.label}
+      ariaLabel={\`Avance de \${anillo.label}\`}
+    />
+  ))}
+</div>`}
+      >
+        <div className="flex flex-wrap justify-center gap-4">
+          {anillosEstres.map((anillo) => (
+            <RadialProgress
+              key={anillo.label}
+              value={anillo.value}
+              label={anillo.label}
+              ariaLabel={`Avance de ${anillo.label}`}
+            />
+          ))}
         </div>
       </DemoExample>
     </div>

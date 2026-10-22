@@ -43,7 +43,7 @@ import "@carlos-burelo/klin/styles.css";
   <AlertTitle>SSR-first</AlertTitle>
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
-    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Las demos vivas ya envuelven en `ChartTooltipPortal` para el tooltip rico (hover vía `data-chart-tip`; no se generan `\<title\>`).
     Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
@@ -98,8 +98,14 @@ export default function ComboChartDemo() {
     { name: "formatY", type: "ValueFormatter", required: false, description: "Formateador del eje Y (por defecto es-MX)." },
     { name: "curve", type: "'monotone' | 'linear' | 'step'", required: false, description: "monotone (suave), linear (recta) o step (escalón)." },
     { name: "showPoints", type: "boolean", required: false, description: "Muestra los puntos sobre cada dato de línea." },
+    { name: "showValues", type: "boolean", required: false, description: "Etiqueta de valor sobre cada barra." },
+    { name: "sortGroups", type: "'none' | 'asc' | 'desc'", required: false, description: "Orden de grupos por total (suma de barras + líneas)." },
+    { name: "barRadius", type: "number", required: false, description: "Radio de esquina de barra (`0` para estilo denso)." },
     { name: "yMin", type: "number", required: false, description: "Mínimo fijo del eje Y izquierdo (barras)." },
     { name: "yMax", type: "number", required: false, description: "Máximo fijo del eje Y izquierdo (barras)." },
+    { name: "yMinR", type: "number", required: false, description: "Mínimo fijo del eje Y derecho (series con `axis: 'right'`)." },
+    { name: "yMaxR", type: "number", required: false, description: "Máximo fijo del eje Y derecho (series con `axis: 'right'`)." },
+    { name: "formatYR", type: "ValueFormatter", required: false, description: "Formato de ticks del eje Y derecho (por defecto `formatY`)." },
     { name: "gridTicks", type: "number", required: false, description: "Ticks del grid Y (por defecto GRID_TICKS)." },
     { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
     { name: "className", type: "string", required: false, description: "Clase extra en el contenedor (aditivo, no rompe estilos)." },
@@ -115,8 +121,8 @@ export default function ComboChartDemo() {
 
 ## Accesibilidad
 
-- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
-- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `aria-label` (única fuente de nombre, sin `\<title\>`).
+- Cada forma con hover lleva `data-chart-tip` para el portal rico (las demos lo envuelven por defecto).
 - Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
 - Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 

@@ -1,6 +1,24 @@
 import { ParetoChart } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const causasEstres = [
+  { causa: "Empaque dañado", devoluciones: 96 },
+  { causa: "Talla equivocada", devoluciones: 82 },
+  { causa: "Entrega tardía", devoluciones: 74 },
+  { causa: "Color distinto", devoluciones: 61 },
+  { causa: "Falla eléctrica", devoluciones: 55 },
+  { causa: "Etiqueta rota", devoluciones: 47 },
+  { causa: "Precio distinto", devoluciones: 39 },
+  { causa: "Sin stock", devoluciones: 33 },
+  { causa: "Garantía", devoluciones: 27 },
+  { causa: "Pago duplicado", devoluciones: 22 },
+  { causa: "Falla de app", devoluciones: 18 },
+  { causa: "Costo de envío", devoluciones: 14 },
+  { causa: "Devolución parcial", devoluciones: 11 },
+  { causa: "Sin factura", devoluciones: 8 },
+  { causa: "Otra causa", devoluciones: 5 },
+];
+
 export default function ParetoChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -104,6 +122,44 @@ const data = [
           yKey="faltas"
           color="#dc2626"
           showLegend={false}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 15 causas con topN 10 y resto en Otros"
+        code={`import { ParetoChart } from "@carlos-burelo/klin";
+
+const data = [
+  { causa: "Empaque dañado", devoluciones: 96 },
+  { causa: "Talla equivocada", devoluciones: 82 },
+  { causa: "Entrega tardía", devoluciones: 74 },
+  { causa: "Color distinto", devoluciones: 61 },
+  { causa: "Falla eléctrica", devoluciones: 55 },
+  { causa: "Etiqueta rota", devoluciones: 47 },
+  { causa: "Precio distinto", devoluciones: 39 },
+  { causa: "Sin stock", devoluciones: 33 },
+  { causa: "Garantía", devoluciones: 27 },
+  { causa: "Pago duplicado", devoluciones: 22 },
+  { causa: "Falla de app", devoluciones: 18 },
+  { causa: "Costo de envío", devoluciones: 14 },
+  { causa: "Devolución parcial", devoluciones: 11 },
+  { causa: "Sin factura", devoluciones: 8 },
+  { causa: "Otra causa", devoluciones: 5 },
+];
+
+<ParetoChart
+  ariaLabel="Pareto de 15 causas de devolución con las 10 primeras y resto en Otros"
+  data={data}
+  xKey="causa"
+  yKey="devoluciones"
+  topN={10}
+/>`}
+      >
+        <ParetoChart
+          ariaLabel="Pareto de 15 causas de devolución con las 10 primeras y resto en Otros"
+          data={causasEstres}
+          xKey="causa"
+          yKey="devoluciones"
+          topN={10}
         />
       </DemoExample>
     </div>

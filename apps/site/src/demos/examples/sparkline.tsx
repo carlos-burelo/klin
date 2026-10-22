@@ -5,6 +5,10 @@ const alza = [12, 15, 14, 18, 22, 27, 31];
 const caida = [48, 44, 45, 38, 33, 29, 24];
 const meseta = [20, 20, 0, 0, 22, 22, 23];
 
+const estresSpark: number[] = Array.from({ length: 400 }, (_, i) =>
+  Math.round(50 + 30 * Math.sin(i / 9) + ((i * 7) % 13)),
+);
+
 export default function SparklineExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -66,6 +70,29 @@ const meseta = [20, 20, 0, 0, 22, 22, 23];
             values={meseta}
             color="var(--chart-2)"
             ariaLabel="Asistencia con dos días en cero y recuperación a 23"
+          />
+        </div>
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 400 puntos con generador determinista y marcas de mínimo y máximo"
+        code={`import { Sparkline } from "@carlos-burelo/klin";
+
+const estres = Array.from({ length: 400 }, (_, i) =>
+  Math.round(50 + 30 * Math.sin(i / 9) + ((i * 7) % 13)),
+);
+
+<Sparkline
+  values={estres}
+  showMinMax
+  ariaLabel="Lecturas de sensor con 400 puntos deterministas"
+/>`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-sm">Sensor</span>
+          <Sparkline
+            values={estresSpark}
+            showMinMax
+            ariaLabel="Lecturas de sensor con 400 puntos deterministas"
           />
         </div>
       </DemoExample>

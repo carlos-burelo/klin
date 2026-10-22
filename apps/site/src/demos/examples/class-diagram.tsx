@@ -63,6 +63,70 @@ const cuentasEdges: ClassEdge[] = [
   { from: "usuario", to: "perfil", kind: "association", label: "tiene" },
 ];
 
+const estresNodes: ClassNode[] = [
+  {
+    id: "c-cuenta",
+    name: "Cuenta",
+    attributes: [
+      "id: string",
+      "titular: string",
+      "curp: string",
+      "saldo: number",
+      "moneda: string",
+      "creada: Date",
+      "estado: string",
+      "sucursal: string",
+      "nivel: number",
+    ],
+    methods: [
+      "abrir()",
+      "cerrar()",
+      "abonar(monto: number)",
+      "cargar(monto: number)",
+    ],
+  },
+  {
+    id: "c-movimiento",
+    name: "Movimiento",
+    attributes: [
+      "folio: string",
+      "fecha: Date",
+      "monto: number",
+      "tipo: string",
+    ],
+    methods: ["aplicar()", "revertir()"],
+  },
+  {
+    id: "c-tarjeta",
+    name: "Tarjeta",
+    attributes: ["pan: string", "vence: Date", "nip: string"],
+    methods: ["bloquear()", "reponer()"],
+  },
+  {
+    id: "c-cliente",
+    name: "Cliente",
+    attributes: ["id: string", "nombre: string", "régimen: string"],
+    methods: ["validar()"],
+  },
+];
+
+const estresEdges: ClassEdge[] = [
+  {
+    from: "c-movimiento",
+    to: "c-cuenta",
+    kind: "composition",
+    label: "registra",
+  },
+  { from: "c-tarjeta", to: "c-cuenta", kind: "association", label: "dispone" },
+  {
+    from: "c-cuenta",
+    to: "c-cliente",
+    kind: "association",
+    label: "pertenece",
+  },
+  { from: "c-movimiento", to: "c-tarjeta", kind: "dependency", label: "usa" },
+];
+
 export default function ClassDiagramExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -177,6 +241,136 @@ const edges = [
           ariaLabel="Diagrama de clases de usuario y perfil con asociación simple"
           nodes={cuentasNodes}
           edges={cuentasEdges}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="mismo módulo de pedidos con leyenda de relaciones"
+        code={`import { ClassDiagram } from "@carlos-burelo/klin";
+
+const nodes = [
+  {
+    id: "pedido",
+    name: "Pedido",
+    attributes: ["id: string", "total: number"],
+    methods: ["confirmar()", "cancelar()"],
+  },
+  {
+    id: "linea",
+    name: "Línea",
+    attributes: ["cantidad: number", "precio: number"],
+    methods: ["subtotal()"],
+  },
+  {
+    id: "pagos",
+    name: "Pagos",
+    attributes: ["proveedor: string"],
+    methods: ["cobrar()"],
+  },
+];
+
+const edges = [
+  { from: "linea", to: "pedido", kind: "composition", label: "contiene" },
+  { from: "pedido", to: "pagos", kind: "dependency", label: "usa" },
+];
+
+<ClassDiagram
+  ariaLabel="Diagrama de clases de pedidos con leyenda de relaciones"
+  nodes={nodes}
+  edges={edges}
+  direction="LR"
+  showLegend
+/>`}
+      >
+        <ClassDiagram
+          ariaLabel="Diagrama de clases de pedidos con leyenda de relaciones"
+          nodes={pedidoNodes}
+          edges={pedidoEdges}
+          direction="LR"
+          showLegend
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés con cuenta de 9 atributos colapsados a 4 visibles"
+        code={`import { ClassDiagram } from "@carlos-burelo/klin";
+
+const nodes = [
+  {
+    id: "c-cuenta",
+    name: "Cuenta",
+    attributes: [
+      "id: string",
+      "titular: string",
+      "curp: string",
+      "saldo: number",
+      "moneda: string",
+      "creada: Date",
+      "estado: string",
+      "sucursal: string",
+      "nivel: number",
+    ],
+    methods: [
+      "abrir()",
+      "cerrar()",
+      "abonar(monto: number)",
+      "cargar(monto: number)",
+    ],
+  },
+  {
+    id: "c-movimiento",
+    name: "Movimiento",
+    attributes: [
+      "folio: string",
+      "fecha: Date",
+      "monto: number",
+      "tipo: string",
+    ],
+    methods: ["aplicar()", "revertir()"],
+  },
+  {
+    id: "c-tarjeta",
+    name: "Tarjeta",
+    attributes: ["pan: string", "vence: Date", "nip: string"],
+    methods: ["bloquear()", "reponer()"],
+  },
+  {
+    id: "c-cliente",
+    name: "Cliente",
+    attributes: ["id: string", "nombre: string", "régimen: string"],
+    methods: ["validar()"],
+  },
+];
+
+const edges = [
+  {
+    from: "c-movimiento",
+    to: "c-cuenta",
+    kind: "composition",
+    label: "registra",
+  },
+  { from: "c-tarjeta", to: "c-cuenta", kind: "association", label: "dispone" },
+  {
+    from: "c-cuenta",
+    to: "c-cliente",
+    kind: "association",
+    label: "pertenece",
+  },
+  { from: "c-movimiento", to: "c-tarjeta", kind: "dependency", label: "usa" },
+];
+
+<ClassDiagram
+  ariaLabel="Diagrama bancario denso con miembros colapsados a cuatro"
+  nodes={nodes}
+  edges={edges}
+  direction="LR"
+  memberLimit={4}
+/>`}
+      >
+        <ClassDiagram
+          ariaLabel="Diagrama bancario denso con miembros colapsados a cuatro"
+          nodes={estresNodes}
+          edges={estresEdges}
+          direction="LR"
+          memberLimit={4}
         />
       </DemoExample>
     </div>

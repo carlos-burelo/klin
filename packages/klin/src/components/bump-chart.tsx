@@ -1,16 +1,9 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { scaleLinear, scalePoint } from "d3-scale";
-import { curveMonotoneX, line } from "d3-shape";
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { ChartSvg, CHART_W as W } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -23,60 +16,47 @@ import {
   TICK_DY,
   TICK_FONT_SIZE,
   TICK_GAP_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { ChartSvg, CHART_W as W } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  BUMP_AXIS_LABEL_OFFSET,
+  BUMP_LABEL_MAX,
+  BUMP_MARGIN_BOTTOM,
+  BUMP_MARGIN_LEFT,
+  BUMP_MARGIN_RIGHT,
+  BUMP_MARGIN_TOP,
+  buildBumpRows,
+  buildBumpXScale,
+  buildBumpYScale,
+  bumpPathFor,
+  resolveBumpDotRadius,
+  selectBumpVisible,
+  VALUE_LABEL_GAP,
+} from "./bump-chart.compute";
+import type { BumpChartProps } from "./bump-chart.types";
 
-export type BumpSeries = {
-  label: string;
-  ranks: number[];
-  color?: string;
-};
-
-/** Props de BumpChart. */
-export type BumpChartProps = {
-  periods: string[];
-  series: BumpSeries[];
-  ariaLabel: string;
-  height?: number;
-  locale?: string;
-  /** Formato de los puestos (por defecto locale). */
-  formatRank?: ValueFormatter;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  /** Muestra la leyenda de series (por defecto oculta: ya hay etiquetas laterales). */
-  showLegend?: boolean;
-  /** Ticks del grid de puestos (por defecto GRID_TICKS). */
-  gridTicks?: number;
-  /** Muestra los puntos de cada periodo. */
-  showPoints?: boolean;
-  /** Muestra el puesto sobre cada punto. */
-  showValues?: boolean;
-  /** Radio de los puntos (por defecto POINT_RADIUS). */
-  pointRadius?: number;
-  /** Conserva las N series con mejor puesto final (resto fuera). */
-  topN?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-type BumpPoint = {
-  period: string;
-  rank: number;
-};
-
-const BUMP_MARGIN_TOP = 12;
-const BUMP_MARGIN_RIGHT = 72;
-const BUMP_MARGIN_BOTTOM = 32;
-const BUMP_MARGIN_LEFT = 72;
-const BUMP_POINT_PADDING = 0.5;
-const BUMP_AXIS_LABEL_OFFSET = 10;
-const BUMP_LABEL_MAX = 10;
-const BUMP_MIN_RANK = 1;
-/** Mínimo de ticks y separación de la etiqueta de valor. */
-const TICKS_MIN = 1;
-const VALUE_LABEL_GAP = 4;
+export type { BumpPoint, BumpRow } from "./bump-chart.compute";
+export {
+  BUMP_AXIS_LABEL_OFFSET,
+  BUMP_LABEL_MAX,
+  BUMP_MARGIN_BOTTOM,
+  BUMP_MARGIN_LEFT,
+  BUMP_MARGIN_RIGHT,
+  BUMP_MARGIN_TOP,
+  BUMP_MIN_RANK,
+  BUMP_POINT_PADDING,
+  buildBumpRows,
+  buildBumpXScale,
+  buildBumpYScale,
+  bumpPathFor,
+  resolveBumpDotRadius,
+  selectBumpVisible,
+  TICKS_MIN,
+  VALUE_LABEL_GAP,
+} from "./bump-chart.compute";
+export type { BumpChartProps, BumpSeries } from "./bump-chart.types";
 
 /**
  * Carreras de puestos SSR (eje Y = rank invertido 1..N, líneas suaves).
@@ -101,65 +81,22 @@ export function BumpChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: BumpChartProps) {
-  const rows = series.map((s, si) => {
-    const pts: BumpPoint[] = [];
-    const count = Math.min(s.ranks.length, periods.length);
-    for (let i = 0; i < count; i++) {
-      const rank = toNumber(s.ranks[i], Number.NaN);
-      if (!Number.isFinite(rank)) continue;
-      pts.push({
-        period: periods[i] ?? "",
-        rank: Math.max(BUMP_MIN_RANK, Math.round(rank)),
-      });
-    }
-    return { label: s.label, color: s.color, points: pts, si };
-  });
-  const wanted =
-    topN === undefined ? Number.NaN : Math.floor(toNumber(topN, Number.NaN));
-  const visible =
-    Number.isFinite(wanted) && wanted >= 0
-      ? rows
-          .filter((r) => r.points.length > 0)
-          .sort(
-            (a, b) =>
-              (a.points[a.points.length - 1]?.rank ?? BUMP_MIN_RANK) -
-              (b.points[b.points.length - 1]?.rank ?? BUMP_MIN_RANK),
-          )
-          .slice(0, wanted)
-      : rows;
+  const rows = buildBumpRows(series, periods);
+  const visible = selectBumpVisible(rows, topN);
   const total = visible.length;
   if (isBlank(periods) || !visible.some((r) => r.points.length > 0)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const fmtRank = resolveFormatter(formatRank, locale);
-  const safeTicks = Math.max(
-    TICKS_MIN,
-    Math.floor(toNumber(gridTicks, GRID_TICKS)),
-  );
-  const dotR = Math.max(0, toNumber(pointRadius, POINT_RADIUS));
+  const dotR = resolveBumpDotRadius(pointRadius);
   const innerW = W - BUMP_MARGIN_LEFT - BUMP_MARGIN_RIGHT;
   const innerH = height - BUMP_MARGIN_TOP - BUMP_MARGIN_BOTTOM;
-  let top = BUMP_MIN_RANK;
-  for (const row of visible) {
-    for (const p of row.points) top = Math.max(top, p.rank);
-  }
-  const y = scaleLinear()
-    .domain([BUMP_MIN_RANK, Math.max(top, BUMP_MIN_RANK + 1)])
-    .range([innerH, 0]);
-  const ticks = y.ticks(safeTicks).filter((t) => Number.isInteger(t));
-  const x = scalePoint()
-    .domain(periods)
-    .range([0, innerW])
-    .padding(BUMP_POINT_PADDING);
-  const firstX = x(periods[0] ?? "") ?? 0;
-  const lastX = x(periods[periods.length - 1] ?? "") ?? 0;
+  const { y, ticks } = buildBumpYScale(visible, gridTicks, innerH);
+  const { x, firstX, lastX } = buildBumpXScale(periods, innerW);
 
-  const pathFor = (pts: BumpPoint[]) =>
-    line<BumpPoint>()
-      .x((p) => BUMP_MARGIN_LEFT + (x(p.period) ?? 0))
-      .y((p) => BUMP_MARGIN_TOP + y(p.rank))
-      .curve(curveMonotoneX)(pts);
+  const pathFor = (pts: { period: string; rank: number }[]) =>
+    bumpPathFor(pts, x, y);
 
   return (
     <div className={className} style={style}>
@@ -247,7 +184,6 @@ export function BumpChart({
                     const tip = `${row.label} · ${p.period}: puesto ${fmtRank(p.rank)} de ${fmtRank(total)}`;
                     return (
                       <g key={stableKey([row.label, p.period], pi)}>
-                        <title>{tip}</title>
                         <circle
                           cx={BUMP_MARGIN_LEFT + (x(p.period) ?? 0)}
                           cy={BUMP_MARGIN_TOP + y(p.rank)}

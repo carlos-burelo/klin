@@ -1,22 +1,8 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { scaleLinear, scalePoint } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { domainWithZero } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -27,48 +13,30 @@ import {
   LINE_WIDTH,
   NODE_BORDER_WIDTH,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { YGrid } from "../render/y-grid";
+import {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  buildLollipopPoints,
+  buildLollipopValueAxis,
+  LOLLIPOP_RADIUS,
+  orderLollipopGroups,
+  resolveLollipopFill,
+  resolveLollipopRadius,
+  STEM_OPACITY,
+  VALUE_LABEL_DY,
+} from "./lollipop-chart.compute";
+import type { LollipopChartProps } from "./lollipop-chart.types";
 
-/** Props de LollipopChart. */
-export type LollipopChartProps = {
-  data: Array<Record<string, string | number>>;
-  xKey: string;
-  yKey: string;
-  ariaLabel: string;
-  height?: number;
-  formatY?: ValueFormatter;
-  color?: string;
-  /**
-   * Override de color por punto (p. ej. un color por categoría).
-   * Devuelve un color (token/var) o undefined para usar el de la serie.
-   */
-  itemColor?: (
-    datum: Record<string, string | number>,
-    datumIndex: number,
-  ) => string | undefined;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  annotations?: ValueAnnotation[];
-  emptyTitle?: string;
-  emptyDescription?: string;
-  /** Estilo del tallo: continuo o punteado. */
-  stemStyle?: "solid" | "dashed";
-  /** Orden de grupos por valor. */
-  sortGroups?: "none" | "asc" | "desc";
-  /** Etiqueta de valor sobre cada punto (hoy siempre visible). */
-  showValues?: boolean;
-};
-
-const POINT_PADDING = 0.5;
-const AXIS_LABEL_OFFSET = 10;
-const VALUE_LABEL_DY = 10;
-const LOLLIPOP_RADIUS = 5;
-const STEM_OPACITY = 0.5;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
+export type { LollipopChartProps } from "./lollipop-chart.types";
 
 /**
  * Paleta SSR (puntos sobre palos): una serie con valores rotulados.
@@ -93,36 +61,31 @@ export function LollipopChart({
   stemStyle = "solid",
   sortGroups = "none",
   showValues = true,
+  pointRadius = LOLLIPOP_RADIUS,
+  gridTicks = GRID_TICKS,
+  yMin,
+  yMax,
 }: LollipopChartProps) {
   if (isBlank(data)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const ordered = [...data];
-  if (sortGroups !== "none") {
-    ordered.sort((a, b) =>
-      sortGroups === "asc"
-        ? toNumber(a[yKey]) - toNumber(b[yKey])
-        : toNumber(b[yKey]) - toNumber(a[yKey]),
-    );
-  }
+  const ordered = orderLollipopGroups(data, yKey, sortGroups);
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const [lo, hi] = domainWithZero(ordered.map((d) => toNumber(d[yKey])));
-
-  const y = scaleLinear()
-    .domain([lo, Math.max(hi, lo + 1)])
-    .nice(GRID_TICKS)
-    .range([innerH, 0]);
+  const { lo, hi, y, ticks, fmtY } = buildLollipopValueAxis(
+    ordered,
+    yKey,
+    formatY,
+    locale,
+    innerH,
+    { gridTicks, yMin, yMax },
+  );
   const y0 = y(0);
-  const x = scalePoint()
-    .domain(ordered.map((d) => String(d[xKey] ?? "")))
-    .range([0, innerW])
-    .padding(POINT_PADDING);
-  const ticks = y.ticks(GRID_TICKS);
-  const fill = seriesColor(0, color);
-  const fmtY = resolveFormatter(formatY, locale);
+  const x = buildLollipopPoints(ordered, xKey, innerW);
+  const fill = resolveLollipopFill(color);
+  const dotR = resolveLollipopRadius(pointRadius);
 
   return (
     <ChartSvg
@@ -138,8 +101,10 @@ export function LollipopChart({
         if (a.value < lo || a.value > hi) return null;
         const ay = MARGIN.top + y(a.value);
         return (
-          <g key={`ann-${a.value}-${ai}`}>
-            <title>{a.label ?? String(a.value)}</title>
+          <g
+            key={`ann-${a.value}-${ai}`}
+            data-chart-tip={a.label ?? String(a.value)}
+          >
             <line
               x1={MARGIN.left}
               x2={W - MARGIN.right}
@@ -170,7 +135,6 @@ export function LollipopChart({
         const c = itemColor?.(d, di) ?? fill;
         return (
           <g key={stableKey([group], di)}>
-            <title>{tip}</title>
             <line
               x1={cx}
               x2={cx}
@@ -186,7 +150,7 @@ export function LollipopChart({
             <circle
               cx={cx}
               cy={MARGIN.top + y(value)}
-              r={LOLLIPOP_RADIUS}
+              r={dotR}
               fill={c}
               stroke={CHART_TOKEN.background}
               strokeWidth={NODE_BORDER_WIDTH}
@@ -210,8 +174,8 @@ export function LollipopChart({
               textAnchor="middle"
               fontSize={TICK_FONT_SIZE}
               fill={CHART_TOKEN.muted}
+              data-chart-tip={group}
             >
-              <title>{group}</title>
               {truncateLabel(group)}
             </text>
           </g>
