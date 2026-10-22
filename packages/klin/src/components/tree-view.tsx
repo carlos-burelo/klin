@@ -1,67 +1,24 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { stableKey } from "../lib/keys";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  CHEVRON_SIZE,
+  CHEVRON_STROKE,
+  capTreeItems,
+  sortTreeItems,
+} from "./tree-view.compute";
+import type { TreeItem, TreeViewProps } from "./tree-view.types";
 
-export type TreeItem = {
-  label: string;
-  detail?: string;
-  badge?: string | number;
-  children?: TreeItem[];
-};
-
-/** Props del árbol. */
-export type TreeViewProps = {
-  items: TreeItem[];
-  ariaLabel: string;
-  /** Abre el primer nivel al cargar. */
-  defaultOpen?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-const CHEVRON_SIZE = 12;
-const CHEVRON_STROKE = 1.75;
-
-export const MAX_TREE_DEPTH = 6;
-export const MAX_TREE_NODES = 300;
-
-/**
- * Trunca determinista del árbol (profundidad + total de nodos).
- * Pura y testable; el componente la llama antes de renderizar.
- */
-export function capTreeItems(items: TreeItem[]): TreeItem[] {
-  let count = 0;
-  const clone = (node: TreeItem, depth: number): TreeItem | null => {
-    if (count >= MAX_TREE_NODES) return null;
-    count += 1;
-    if (depth >= MAX_TREE_DEPTH || !node.children?.length) {
-      return { ...node, children: undefined };
-    }
-    const kids: TreeItem[] = [];
-    for (const k of node.children) {
-      if (count >= MAX_TREE_NODES) break;
-      const c = clone(k, depth + 1);
-      if (c) kids.push(c);
-    }
-    return kids.length > 0
-      ? { ...node, children: kids }
-      : { ...node, children: undefined };
-  };
-  const out: TreeItem[] = [];
-  for (const item of items) {
-    if (count >= MAX_TREE_NODES) break;
-    const c = clone(item, 0);
-    if (c) out.push(c);
-  }
-  return out;
-}
+export {
+  CHEVRON_SIZE,
+  CHEVRON_STROKE,
+  capTreeItems,
+  MAX_TREE_DEPTH,
+  MAX_TREE_NODES,
+  sortTreeItems,
+} from "./tree-view.compute";
+export type { TreeItem, TreeViewProps } from "./tree-view.types";
 
 /**
  * Árbol SSR con `<details>` nativo: expande/colapsa sin JS.
@@ -70,6 +27,12 @@ export function TreeView({
   items,
   ariaLabel,
   defaultOpen = true,
+  depth,
+  maxItems,
+  showDetail = true,
+  showBadge = true,
+  sortBy,
+  density = "comfortable",
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -80,7 +43,9 @@ export function TreeView({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const capped = capTreeItems(items);
+  const sorted = sortTreeItems(items, sortBy);
+  const capped = capTreeItems(sorted, { depth, maxItems });
+  const compact = density === "compact";
 
   return (
     <ul
@@ -90,17 +55,23 @@ export function TreeView({
       aria-describedby={ariaDescribedBy}
       className={
         className
-          ? `flex flex-col gap-0.5 ${className}`
-          : "flex flex-col gap-0.5"
+          ? compact
+            ? `flex flex-col gap-0 ${className}`
+            : `flex flex-col gap-0.5 ${className}`
+          : compact
+            ? "flex flex-col gap-0"
+            : "flex flex-col gap-0.5"
       }
       style={style}
     >
-      <title>{ariaLabel}</title>
       {capped.map((item, i) => (
         <TreeNode
           key={stableKey([item.label], i)}
           item={item}
           open={defaultOpen}
+          showDetail={showDetail}
+          showBadge={showBadge}
+          compact={compact}
         />
       ))}
     </ul>
@@ -128,29 +99,44 @@ function Chevron() {
   );
 }
 
-function TreeNode({ item, open }: { item: TreeItem; open: boolean }) {
+function TreeNode({
+  item,
+  open,
+  showDetail,
+  showBadge,
+  compact,
+}: {
+  item: TreeItem;
+  open: boolean;
+  showDetail: boolean;
+  showBadge: boolean;
+  compact: boolean;
+}) {
   const kids = item.children ?? [];
   const row = (
     <>
       <span className="truncate text-sm">{item.label}</span>
-      {item.detail ? (
+      {showDetail && item.detail ? (
         <span className="truncate font-mono text-[11px] text-muted-foreground">
           {item.detail}
         </span>
       ) : null}
-      {item.badge !== undefined ? (
+      {showBadge && item.badge !== undefined ? (
         <span className="shrink-0 rounded-full bg-muted px-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">
           {item.badge}
         </span>
       ) : null}
     </>
   );
+  const rowCls = compact
+    ? "flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+    : "flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors hover:bg-muted";
 
   if (kids.length === 0) {
     return (
       // biome-ignore lint/a11y/useFocusableInteractive: hoja informativa; las ramas se operan por <summary> enfocable
-      <li role="treeitem" aria-label={item.label} title={item.label}>
-        <div className="flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors hover:bg-muted">
+      <li role="treeitem" aria-label={item.label} data-chart-tip={item.label}>
+        <div className={rowCls}>
           <span className="w-3 shrink-0" aria-hidden="true" />
           {row}
         </div>
@@ -163,8 +149,12 @@ function TreeNode({ item, open }: { item: TreeItem; open: boolean }) {
     <li role="treeitem" aria-label={item.label} aria-expanded={open}>
       <details open={open} className="group">
         <summary
-          title={item.label}
-          className="flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden"
+          data-chart-tip={item.label}
+          className={
+            compact
+              ? "flex cursor-pointer list-none items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden"
+              : "flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden"
+          }
         >
           <Chevron />
           {row}
@@ -172,10 +162,21 @@ function TreeNode({ item, open }: { item: TreeItem; open: boolean }) {
         {/* biome-ignore lint/a11y/useSemanticElements: rol group anidado del patrón tree */}
         <ul
           role="group"
-          className="ml-[13px] flex flex-col gap-0.5 border-l pl-2"
+          className={
+            compact
+              ? "ml-[13px] flex flex-col gap-0 border-l pl-1.5"
+              : "ml-[13px] flex flex-col gap-0.5 border-l pl-2"
+          }
         >
           {kids.map((kid, ki) => (
-            <TreeNode key={stableKey([kid.label], ki)} item={kid} open={open} />
+            <TreeNode
+              key={stableKey([kid.label], ki)}
+              item={kid}
+              open={open}
+              showDetail={showDetail}
+              showBadge={showBadge}
+              compact={compact}
+            />
           ))}
         </ul>
       </details>

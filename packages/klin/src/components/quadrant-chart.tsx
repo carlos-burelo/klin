@@ -2,12 +2,11 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import type { ChartMargin } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { clamp01, toNumber } from "../lib/number";
-import { formatDefault, truncateLabel } from "../lib/palette";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { clamp01, toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -18,80 +17,39 @@ import {
   PERCENT_FACTOR,
   POINT_BORDER,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  AXIS_LABEL_BOTTOM_PAD,
+  computeQuadrantPositions,
+  DEFAULT_QUADRANT_SHOW_COUNTS,
+  DEFAULT_QUADRANT_THRESHOLD_X,
+  DEFAULT_QUADRANT_THRESHOLD_Y,
+  H,
+  LABEL_MAX_POINT,
+  MARGIN,
+  QUAD_FILL_HIGH,
+  QUAD_FILL_LOW,
+  QUAD_INDEX_DY,
+  QUAD_INDEX_FONT_SIZE,
+  QUAD_INDEX_FONT_WEIGHT,
+  QUAD_LABEL_FONT_SIZE,
+  QUAD_LABEL_PAD_BOTTOM,
+  QUAD_LABEL_PAD_TOP,
+  QUAD_LABEL_PAD_X,
+  QUAD_POINT_LABEL_DY,
+  QUAD_POINT_OPACITY,
+  QUAD_RADIUS,
+  W,
+  Y_LABEL_X,
+} from "./quadrant-chart.compute";
+import type { QuadrantChartProps } from "./quadrant-chart.types";
 
-/** Punto del cuadrante (x/y en 0–100 con etiqueta). */
-export type QuadrantPoint = {
-  x: number;
-  y: number;
-  label: string;
-};
-
-/** Props de cuadrantes SSR (matriz 2×2 con puntos). */
-export type QuadrantChartProps = {
-  points: QuadrantPoint[];
-  ariaLabel: string;
-  xLabel?: string;
-  yLabel?: string;
-  /** [arriba-izq, arriba-der, abajo-izq, abajo-der]. */
-  quads?: [string, string, string, string];
-  /** Muestra el nº de puntos junto a cada etiqueta de cuadrante. */
-  showCounts?: boolean;
-  /** Posición de la cruz en escala 0–100 (por defecto centrada, como hasta ahora). */
-  thresholds?: { x: number; y: number };
-  locale?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-const W = 560;
-const H = 460;
-const MARGIN: ChartMargin = { top: 36, right: 16, bottom: 36, left: 16 };
-/** Posición de etiquetas de cuadrante, radio y opacidades de fondo. */
-const QUAD_LABEL_PAD_X = 10;
-const QUAD_LABEL_PAD_TOP = 18;
-const QUAD_LABEL_PAD_BOTTOM = 10;
-const QUAD_RADIUS = 8;
-const QUAD_FILL_HIGH = 0.12;
-const QUAD_FILL_LOW = 0.05;
-const QUAD_POINT_OPACITY = 0.85;
-/** Tipografía de etiqueta de cuadrante e índice/label de punto. */
-const QUAD_LABEL_FONT_SIZE = 12;
-const QUAD_INDEX_FONT_SIZE = 8;
-const QUAD_INDEX_FONT_WEIGHT = 700;
-const QUAD_INDEX_DY = 3.5;
-const QUAD_POINT_LABEL_DY = 13;
-/** Separación del eje inferior y posición de la etiqueta Y. */
-const AXIS_LABEL_BOTTOM_PAD = 6;
-const Y_LABEL_X = 10;
-/** Máximo de truncado de etiqueta de punto. */
-const LABEL_MAX_POINT = 16;
-/** Sin conteos por defecto (etiquetas limpias, como hasta ahora). */
-const DEFAULT_QUADRANT_SHOW_COUNTS = false;
-/** Cruz centrada por defecto (50/50, como hasta ahora). */
-const DEFAULT_QUADRANT_THRESHOLD_X = 50;
-/** Cruz centrada por defecto (50/50, como hasta ahora). */
-const DEFAULT_QUADRANT_THRESHOLD_Y = 50;
-
-/**
- * Cómputo puro de posiciones del cuadrante ( clamp 0–100 → px ).
- * Normaliza valores externos con toNumber.
- */
-export function computeQuadrantPositions(points: QuadrantPoint[]): Array<{
-  cx: number;
-  cy: number;
-}> {
-  const innerW = W - MARGIN.left - MARGIN.right;
-  const innerH = H - MARGIN.top - MARGIN.bottom;
-  return points.map((p) => ({
-    cx: MARGIN.left + clamp01(toNumber(p.x) / PERCENT_FACTOR) * innerW,
-    cy: MARGIN.top + (1 - clamp01(toNumber(p.y) / PERCENT_FACTOR)) * innerH,
-  }));
-}
+export { computeQuadrantPositions } from "./quadrant-chart.compute";
+export type {
+  QuadrantChartProps,
+  QuadrantPoint,
+} from "./quadrant-chart.types";
 
 /**
  * Cuadrantes SSR (matriz 2×2 con puntos). x/y en 0–100.
@@ -107,6 +65,8 @@ export function QuadrantChart({
     x: DEFAULT_QUADRANT_THRESHOLD_X,
     y: DEFAULT_QUADRANT_THRESHOLD_Y,
   },
+  format,
+  height = H,
   locale = DEFAULT_LOCALE,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
@@ -118,9 +78,12 @@ export function QuadrantChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
+  const rawH = toNumber(height, H);
+  const safeH = Number.isFinite(rawH) && rawH > 0 ? rawH : H;
+  const fmt = resolveFormatter(format, locale);
   const innerW = W - MARGIN.left - MARGIN.right;
-  const innerH = H - MARGIN.top - MARGIN.bottom;
-  const pos = computeQuadrantPositions(points);
+  const innerH = safeH - MARGIN.top - MARGIN.bottom;
+  const pos = computeQuadrantPositions(points, safeH);
   const midX =
     MARGIN.left + clamp01(toNumber(thresholds.x) / PERCENT_FACTOR) * innerW;
   const midY =
@@ -168,14 +131,13 @@ export function QuadrantChart({
 
   return (
     <svg
-      viewBox={`0 0 ${W} ${H}`}
+      viewBox={`0 0 ${W} ${safeH}`}
       className={className ? `h-auto w-full ${className}` : "h-auto w-full"}
       style={style}
       role="img"
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}
     >
-      <title>{ariaLabel}</title>
       <rect
         x={midX}
         y={MARGIN.top}
@@ -224,16 +186,15 @@ export function QuadrantChart({
         </text>
       ))}
       {points.map((p, i) => {
-        const tip = `${p.label} (${formatDefault(toNumber(p.x), locale)}, ${formatDefault(toNumber(p.y), locale)})`;
+        const tip = `${p.label} (${fmt(toNumber(p.x))}, ${fmt(toNumber(p.y))})`;
         const c = pos[i] ?? { cx: 0, cy: 0 };
         return (
           <g key={stableKey([p.label], i)}>
-            <title>{tip}</title>
             <circle
               cx={c.cx}
               cy={c.cy}
               r={NODE_RADIUS}
-              fill={CHART_TOKEN.primary}
+              fill={p.color ?? CHART_TOKEN.primary}
               fillOpacity={QUAD_POINT_OPACITY}
               stroke={CHART_TOKEN.background}
               strokeWidth={NODE_BORDER_WIDTH}
@@ -263,7 +224,7 @@ export function QuadrantChart({
       })}
       <text
         x={MARGIN.left + innerW / 2}
-        y={H - AXIS_LABEL_BOTTOM_PAD}
+        y={safeH - AXIS_LABEL_BOTTOM_PAD}
         textAnchor="middle"
         fontSize={TICK_FONT_SIZE}
         fill={CHART_TOKEN.muted}

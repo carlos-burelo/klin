@@ -12,7 +12,6 @@ import {
   DensityContourPlot,
 } from "../src/components/density-contour-plot";
 import { DotPlot } from "../src/components/dot-plot";
-import { EMPTY_TITLE } from "../src/components/empty";
 import {
   computeFishboneLayout,
   FishboneDiagram,
@@ -20,6 +19,7 @@ import {
 import { computeHexbins, HexbinPlot } from "../src/components/hexbin-plot";
 import { IsotypeChart } from "../src/components/isotype-chart";
 import { TernaryPlot } from "../src/components/ternary-plot";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 function count(html: string, tag: string): number {
   return html.match(new RegExp(tag, "g"))?.length ?? 0;

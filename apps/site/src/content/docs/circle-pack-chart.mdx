@@ -40,7 +40,7 @@ import "@carlos-burelo/klin/styles.css";
   <AlertTitle>SSR-first</AlertTitle>
   <AlertDescription>
     La gráfica es función pura de props a SVG: el HTML llega renderizado y sin JS se ve completa.
-    Envuelve en `ChartTooltipPortal` solo si quieres tooltip rico; sin JS queda `\<title\>` nativo.
+    Las demos vivas ya envuelven en `ChartTooltipPortal` para el tooltip rico (hover vía `data-chart-tip`; no se generan `\<title\>`).
     Lee la guía [/docs/ssr-first](/docs/ssr-first) una vez y listo.
   </AlertDescription>
 </Alert>
@@ -104,6 +104,7 @@ export default function CirclePackChartDemo() {
     { name: "format", type: "(value: number) => string", required: false, description: "—" },
     { name: "locale", type: "string", required: false, description: "Locale de formato (por defecto es-MX)." },
     { name: "depth", type: "number", required: false, description: "Profundidad máxima visible (por defecto sin límite)." },
+    { name: "padding", type: "number", required: false, description: "Relleno entre burbujas (por defecto `PACK_PAD`)." },
     { name: "showLabels", type: "boolean", required: false, description: "Muestra las etiquetas dentro de cada burbuja." },
     { name: "showValues", type: "boolean", required: false, description: "Agrega el valor a la etiqueta de cada burbuja." },
     { name: "minLabelDiameter", type: "number", required: false, description: "Diámetro mínimo de burbuja para rotular." },
@@ -118,8 +119,8 @@ export default function CirclePackChartDemo() {
 
 ## Accesibilidad
 
-- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `\<title\>`.
-- Cada forma lleva `\<title\>` nativo (tooltip sin JS) y `data-chart-tip` para el portal rico.
+- Toda gráfica exige `ariaLabel` descriptivo; el SVG usa `role="img"` con `aria-label` (única fuente de nombre, sin `\<title\>`).
+- Cada forma con hover lleva `data-chart-tip` para el portal rico (las demos lo envuelven por defecto).
 - Sin datos se renderiza estado vacío homogéneo (`ChartEmpty`), nunca SVG roto.
 - Detalle del contrato en [/docs/accesibilidad](/docs/accesibilidad).
 

@@ -252,7 +252,7 @@ describe("MarimekkoChart props S", () => {
     const html = renderToStaticMarkup(
       <MarimekkoChart ariaLabel="mari" {...base} />,
     );
-    expect(count(html, "data-chart-tip")).toBe(4);
+    expect(count(html, "data-chart-tip")).toBe(6);
     expect(html).toContain(">X<");
     expect(html).toContain(">30%<");
     expect(html.indexOf(">X<")).toBeLessThan(html.indexOf(">Y<"));

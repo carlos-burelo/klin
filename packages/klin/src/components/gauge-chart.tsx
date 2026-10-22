@@ -2,76 +2,39 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 
-import { arc } from "d3-shape";
-import type { CSSProperties } from "react";
-import { resolveFormatter } from "../lib/format";
-import { clamp01, toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { formatDefault } from "../lib/palette";
+import { formatDefault, resolveFormatter } from "../core/format";
+import { toNumber } from "../core/number";
+
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
   EDGE_LABEL_FONT_SIZE,
   FONT_SEMIBOLD,
-  PERCENT_FACTOR,
   POINT_BORDER,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  buildGaugeBackground,
+  buildGaugeForeground,
+  buildGaugeZonePath,
+  CENTER_LABEL_DY,
+  CENTER_VALUE_DY,
+  CENTER_VALUE_FONT_SIZE,
+  GAUGE_BOTTOM_PAD,
+  gaugeNeedleTip,
+  gaugeRadii,
+  gaugeTick,
+  NEEDLE_HUB_RADIUS,
+  NEEDLE_WIDTH,
+  normalizeGaugeScale,
+  normalizeGaugeTickFracs,
+  normalizeGaugeZones,
+  TICK_LABEL_DY,
+} from "./gauge-chart.compute";
+import type { GaugeChartProps } from "./gauge-chart.types";
 
-const START = -Math.PI;
-const END = 0;
-/** Tamaño del valor central, etiqueta y relleno inferior del lienzo. */
-const CENTER_VALUE_FONT_SIZE = 26;
-const CENTER_VALUE_DY = 8;
-const CENTER_LABEL_DY = 6;
-const GAUGE_BOTTOM_PAD = 22;
-/** Separación de marcas y etiquetas de escala. */
-const TICK_OUTER_OFFSET = 6;
-const TICK_INNER_OFFSET = 12;
-const TICK_LABEL_OFFSET = 12;
-const TICK_LABEL_DY = 3;
-/** Fracciones de la escala donde van las marcas (0–100 por defecto). */
-const GAUGE_TICK_FRACS = [0, 0.25, 0.5, 0.75, 1];
-/** Margen de la punta de la aguja y radio/grosor del buje. */
-const NEEDLE_TIP_INSET = 10;
-const NEEDLE_HUB_RADIUS = 5;
-const NEEDLE_WIDTH = 3;
-
-/** Props del velocímetro SSR (semicírculo 0–100). */
-export type GaugeChartProps = {
-  /** Valor en unidades de la escala. */
-  value: number;
-  ariaLabel: string;
-  label?: string;
-  /**
-   * Mínimo de la escala.
-   * @default 0
-   */
-  min?: number;
-  /**
-   * Máximo de la escala (si no supera a `min`, se usa `min + 100`).
-   * @default 100
-   */
-  max?: number;
-  /**
-   * Muestra aguja en lugar del arco de valor.
-   * @default false
-   */
-  showNeedle?: boolean;
-  size?: number;
-  thickness?: number;
-  color?: string;
-  trackColor?: string;
-  format?: ValueFormatter;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  /** Descripción del estado vacío. */
-  emptyDescription?: string;
-};
+export type { GaugeChartProps, GaugeZone } from "./gauge-chart.types";
 
 /**
  * Velocímetro SSR (semicírculo 0–100 con marcas y valor central).
@@ -87,6 +50,8 @@ export function GaugeChart({
   thickness = 22,
   color = CHART_TOKEN.chart1,
   trackColor = CHART_TOKEN.track,
+  zones,
+  tickCount,
   format,
   locale = DEFAULT_LOCALE,
   className,
@@ -99,48 +64,18 @@ export function GaugeChart({
   if (!Number.isFinite(numeric)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const lo = toNumber(min);
-  const rawHi = toNumber(max);
-  const hi = rawHi > lo ? rawHi : lo + PERCENT_FACTOR;
-  const frac = clamp01((numeric - lo) / (hi - lo));
-  const clamped = lo + frac * (hi - lo);
-  const radius = size / 2;
-  const inner = radius - thickness;
-  const datum = { innerRadius: inner, outerRadius: radius };
-  const bg = arc().innerRadius(inner).outerRadius(radius)({
-    ...datum,
-    startAngle: START,
-    endAngle: END,
-  });
-  const fg = arc().innerRadius(inner).outerRadius(radius)({
-    ...datum,
-    startAngle: START,
-    endAngle: START + frac * Math.PI,
-  });
-  const needleAngle = START + frac * Math.PI;
-  const needleLen = Math.max(0, radius - NEEDLE_TIP_INSET);
-  const needleTip = {
-    x: radius + needleLen * Math.cos(needleAngle),
-    y: radius + needleLen * Math.sin(needleAngle),
-  };
+  const { lo, hi, frac, clamped } = normalizeGaugeScale(numeric, min, max);
+  const { radius, inner } = gaugeRadii(size, thickness);
+  const zoneSegs = normalizeGaugeZones(lo, hi, zones);
+  const bg = buildGaugeBackground(inner, radius);
+  const fg = buildGaugeForeground(inner, radius, frac);
+  const needleTip = gaugeNeedleTip(radius, frac);
   const fmt = format ?? ((v: number) => `${formatDefault(v, locale)}%`);
   // Ticks con el prop `format` resuelto (sin sufijo %: como hasta ahora).
   const fmtTick = resolveFormatter(format, locale);
+  const tickFracs = normalizeGaugeTickFracs(tickCount);
   const tip = `${label ? `${label}: ` : ""}${fmt(clamped)}`;
-  const tick = (f: number) => {
-    const a = START + f * Math.PI;
-    const r1 = inner - TICK_OUTER_OFFSET;
-    const r2 = inner - TICK_INNER_OFFSET;
-    return {
-      x1: radius + r1 * Math.cos(a),
-      y1: radius + r1 * Math.sin(a),
-      x2: radius + r2 * Math.cos(a),
-      y2: radius + r2 * Math.sin(a),
-      lx: radius + (r2 - TICK_LABEL_OFFSET) * Math.cos(a),
-      ly: radius + (r2 - TICK_LABEL_OFFSET) * Math.sin(a),
-      value: lo + f * (hi - lo),
-    };
-  };
+  const tick = (f: number) => gaugeTick(f, radius, inner, lo, hi);
 
   return (
     <svg
@@ -155,13 +90,24 @@ export function GaugeChart({
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}
     >
-      <title>{tip}</title>
       <g transform={`translate(0,0)`}>
-        <path
-          d={bg ?? ""}
-          fill={trackColor}
-          transform={`translate(${radius},${radius})`}
-        />
+        {zoneSegs.length > 0 ? (
+          zoneSegs.map((z, i) => (
+            <path
+              // biome-ignore lint/suspicious/noArrayIndexKey: zonas en orden de entrada
+              key={`zone__${i}`}
+              d={buildGaugeZonePath(inner, radius, z.fromFrac, z.toFrac) ?? ""}
+              fill={z.color}
+              transform={`translate(${radius},${radius})`}
+            />
+          ))
+        ) : (
+          <path
+            d={bg ?? ""}
+            fill={trackColor}
+            transform={`translate(${radius},${radius})`}
+          />
+        )}
         {showNeedle ? (
           frac > 0 ? (
             <g transform={`translate(${radius},${radius})`}>
@@ -192,7 +138,7 @@ export function GaugeChart({
           />
         ) : null}
       </g>
-      {GAUGE_TICK_FRACS.map((f) => {
+      {tickFracs.map((f) => {
         const p = tick(f);
         return (
           <g key={`tick__${f}`}>

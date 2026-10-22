@@ -6,6 +6,20 @@ const series = [
   { label: "Eólica", values: [8, -6, 15, -12, 24, 10, -4, 18] },
 ];
 
+const seriesEstres = ["Norte", "Centro", "Sur", "Oriente", "Poniente"].map(
+  (zona, s) => ({
+    label: `${zona} Eólica del Istmo`,
+    values: Array.from({ length: 80 }, (_, i) =>
+      Math.round(
+        30 * Math.sin(i / 6 + s * 1.4) +
+          12 * Math.sin(i / 2.3 + s) +
+          ((i * (s + 2)) % 7) -
+          3,
+      ),
+    ),
+  }),
+);
+
 export default function HorizonChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -47,6 +61,40 @@ const series = [
           ariaLabel="Balance con signo por día"
           labels={["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom", "Lun"]}
           series={series}
+          mode="offset"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 5 parques con 400 muestras, negativos y 4 bandas con signo"
+        code={`import { HorizonChart } from "@carlos-burelo/klin";
+
+const seriesEstres = ["Norte", "Centro", "Sur", "Oriente", "Poniente"].map(
+  (zona, s) => ({
+    label: \`\${zona} Eólica del Istmo\`,
+    values: Array.from(
+      { length: 80 },
+      (_, i) =>
+        Math.round(
+          30 * Math.sin(i / 6 + s * 1.4) +
+            12 * Math.sin(i / 2.3 + s) +
+            ((i * (s + 2)) % 7) -
+            3,
+        ),
+    ),
+  }),
+);
+
+<HorizonChart
+  ariaLabel="Balance horario de cinco parques eólicos con 400 muestras"
+  series={seriesEstres}
+  bands={4}
+  mode="offset"
+/>`}
+      >
+        <HorizonChart
+          ariaLabel="Balance horario de cinco parques eólicos con 400 muestras"
+          series={seriesEstres}
+          bands={4}
           mode="offset"
         />
       </DemoExample>

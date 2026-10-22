@@ -2,7 +2,9 @@
   "extends": "../../tools/config/tsconfig.react-library.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@carlos-burelo/klin": ["../../packages/klin/src/index.ts"],
+      "@carlos-burelo/klin/*": ["../../packages/klin/src/*"]
     }
   },
   "include": [

@@ -1,110 +1,36 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { hierarchy, tree } from "d3-hierarchy";
-import type { CSSProperties } from "react";
-import { stableKey } from "../lib/keys";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DIAGRAM_MIN_SCROLL,
   EDGE_LABEL_FONT_SIZE,
   EDGE_WIDTH,
   FONT_SEMIBOLD,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  BOX_H,
+  computeOrgLayout,
+  LABEL_DY,
+  LABEL_DY_WITH_ROLE,
+  NODE_FONT_SIZE,
+  NODE_RX,
+  ORG_AVATAR_FONT_SIZE,
+  ORG_AVATAR_PAD_X,
+  ORG_AVATAR_R,
+  ORG_AVATAR_TEXT_SHIFT,
+  orgInitials,
+  ROLE_DY,
+} from "./org-chart.compute";
+import type { OrgChartProps } from "./org-chart.types";
 
-export type OrgNode = {
-  name: string;
-  role?: string;
-  color?: string;
-  children?: OrgNode[];
-};
-
-/** Props del organigrama. */
-export type OrgChartProps = {
-  root: OrgNode;
-  ariaLabel: string;
-  /** Muestra el cargo bajo el nombre. */
-  showRole?: boolean;
-  /** Muestra un avatar con las iniciales del nombre. */
-  showAvatar?: boolean;
-  /** Profundidad máxima visible (los niveles más profundos se podan). */
-  collapseDepth?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-const BOX_W = 150;
-const BOX_H = 52;
-const GAP_X = 24;
-const GAP_Y = 64;
-const VIEW_PAD_X = 48;
-const VIEW_PAD_Y = 24;
-const ORIGIN_PAD_X = 24;
-const ORIGIN_PAD_Y = 12;
-const NODE_RX = 8;
-const NODE_FONT_SIZE = 12;
-const LABEL_DY = 4;
-const LABEL_DY_WITH_ROLE = -3;
-const ROLE_DY = 12;
-/** Avatar de iniciales: radio, sangría izquierda y desplazamiento del texto. */
-const ORG_AVATAR_R = 12;
-const ORG_AVATAR_PAD_X = 10;
-const ORG_AVATAR_TEXT_SHIFT = 14;
-const ORG_AVATAR_FONT_SIZE = 11;
-
-/** Iniciales del nombre (primera letra de las dos primeras palabras). */
-function orgInitials(name: string): string {
-  const words = name
-    .trim()
-    .split(/\s+/)
-    .filter((w) => w.length > 0);
-  return words
-    .slice(0, 2)
-    .map((w) => Array.from(w)[0] ?? "")
-    .join("")
-    .toUpperCase();
-}
-
-/** Poda el árbol a una profundidad máxima (la raíz vive en 0). */
-function pruneOrgDepth(node: OrgNode, depth: number, at = 0): OrgNode {
-  const out: OrgNode = {
-    name: node.name,
-    role: node.role,
-    color: node.color,
-  };
-  if (at < depth && node.children) {
-    out.children = node.children.map((c) => pruneOrgDepth(c, depth, at + 1));
-  }
-  return out;
-}
-
-/**
- * Cómputo puro del layout del organigrama (árbol vertical + viewport).
- */
-export function computeOrgLayout(root: OrgNode, collapseDepth?: number) {
-  const shown =
-    collapseDepth === undefined ? root : pruneOrgDepth(root, collapseDepth);
-  const laid = tree<OrgNode>().nodeSize([BOX_W + GAP_X, BOX_H + GAP_Y])(
-    hierarchy<OrgNode>(shown),
-  );
-  const nodes = laid.descendants();
-  const links = laid.links();
-  const xs = nodes.map((n) => n.x ?? 0);
-  const ys = nodes.map((n) => n.y ?? 0);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const maxY = Math.max(...ys);
-  const W = maxX - minX + BOX_W + VIEW_PAD_X;
-  const H = maxY + BOX_H + VIEW_PAD_Y;
-  const ox = BOX_W / 2 + ORIGIN_PAD_X - minX;
-  const oy = BOX_H / 2 + ORIGIN_PAD_Y;
-  return { nodes, links, W, H, ox, oy };
-}
+export type { OrgLayoutOptions } from "./org-chart.compute";
+export { computeOrgLayout, sortOrgChildren } from "./org-chart.compute";
+export type { OrgChartProps, OrgNode } from "./org-chart.types";
 
 /**
  * Organigrama SSR (árbol vertical con cargo).
@@ -115,6 +41,8 @@ export function OrgChart({
   showRole = true,
   showAvatar = false,
   collapseDepth,
+  sortBy,
+  nodeWidth,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -125,7 +53,11 @@ export function OrgChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const { nodes, links, W, H, ox, oy } = computeOrgLayout(root, collapseDepth);
+  const { nodes, links, W, H, ox, oy, boxW } = computeOrgLayout(
+    root,
+    collapseDepth,
+    { sortBy, nodeWidth },
+  );
 
   return (
     <div
@@ -140,7 +72,6 @@ export function OrgChart({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         {links.map((l, i) => {
           const x1 = (l.source.x ?? 0) + ox;
           const y1 = (l.source.y ?? 0) + oy + BOX_H / 2;
@@ -166,11 +97,10 @@ export function OrgChart({
           const textX = showAvatar ? cx + ORG_AVATAR_TEXT_SHIFT : cx;
           return (
             <g key={stableKey([n.data.name], i)}>
-              <title>{tip}</title>
               <rect
-                x={cx - BOX_W / 2}
+                x={cx - boxW / 2}
                 y={cy - BOX_H / 2}
-                width={BOX_W}
+                width={boxW}
                 height={BOX_H}
                 rx={NODE_RX}
                 fill={CHART_TOKEN.card}
@@ -181,7 +111,7 @@ export function OrgChart({
               {showAvatar ? (
                 <g>
                   <circle
-                    cx={cx - BOX_W / 2 + ORG_AVATAR_PAD_X + ORG_AVATAR_R}
+                    cx={cx - boxW / 2 + ORG_AVATAR_PAD_X + ORG_AVATAR_R}
                     cy={cy}
                     r={ORG_AVATAR_R}
                     fill={color}
@@ -189,7 +119,7 @@ export function OrgChart({
                     strokeWidth={EDGE_WIDTH}
                   />
                   <text
-                    x={cx - BOX_W / 2 + ORG_AVATAR_PAD_X + ORG_AVATAR_R}
+                    x={cx - boxW / 2 + ORG_AVATAR_PAD_X + ORG_AVATAR_R}
                     y={cy}
                     dy={LABEL_DY}
                     textAnchor="middle"

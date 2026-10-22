@@ -24,6 +24,19 @@ const concentrados: QuadrantPoint[] = [
   { x: 15, y: 20, label: "Beca E" },
 ];
 
+const proyectos: QuadrantPoint[] = [
+  { x: 80, y: 85, label: "Riego", color: "var(--chart-1)" },
+  { x: 30, y: 75, label: "Caminos", color: "var(--chart-2)" },
+  { x: 65, y: 25, label: "Luz", color: "var(--chart-3)" },
+  { x: 20, y: 15, label: "Pozo", color: "var(--chart-4)" },
+];
+
+const carteraEstres: QuadrantPoint[] = Array.from({ length: 40 }, (_, i) => ({
+  x: (i * 37) % 101,
+  y: (i * 53 + 11) % 101,
+  label: `Expediente ${i + 1}`,
+}));
+
 export default function QuadrantChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -104,6 +117,59 @@ const concentrados: QuadrantPoint[] = [
           yLabel="↑ Equidad"
           quads={["Prioritarias", "Ideales", "Revisar", "Descartar"]}
           ariaLabel="Becas concentradas en alta cobertura y equidad"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="formato de valores con colores por punto"
+        code={`import type { QuadrantPoint } from "@carlos-burelo/klin";
+import { QuadrantChart } from "@carlos-burelo/klin";
+
+const proyectos: QuadrantPoint[] = [
+  { x: 80, y: 85, label: "Riego", color: "var(--chart-1)" },
+  { x: 30, y: 75, label: "Caminos", color: "var(--chart-2)" },
+  { x: 65, y: 25, label: "Luz", color: "var(--chart-3)" },
+  { x: 20, y: 15, label: "Pozo", color: "var(--chart-4)" },
+];
+
+<QuadrantChart
+  points={proyectos}
+  format={(v: number) => \`\${v} pts\`}
+  ariaLabel="Proyectos con formato de puntos y color propio"
+/>`}
+      >
+        <QuadrantChart
+          points={proyectos}
+          format={(v: number) => `${v} pts`}
+          ariaLabel="Proyectos con formato de puntos y color propio"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 40 puntos con conteo por cuadrante"
+        code={`import type { QuadrantPoint } from "@carlos-burelo/klin";
+import { QuadrantChart } from "@carlos-burelo/klin";
+
+const cartera: QuadrantPoint[] = Array.from({ length: 40 }, (_, i) => ({
+  x: (i * 37) % 101,
+  y: (i * 53 + 11) % 101,
+  label: \`Expediente \${i + 1}\`,
+}));
+
+<QuadrantChart
+  points={cartera}
+  xLabel="→ Cobertura"
+  yLabel="↑ Equidad"
+  quads={["Prioritarias", "Ideales", "Revisar", "Descartar"]}
+  showCounts
+  ariaLabel="Cartera de 40 expedientes con conteo por cuadrante"
+/>`}
+      >
+        <QuadrantChart
+          points={carteraEstres}
+          xLabel="→ Cobertura"
+          yLabel="↑ Equidad"
+          quads={["Prioritarias", "Ideales", "Revisar", "Descartar"]}
+          showCounts
+          ariaLabel="Cartera de 40 expedientes con conteo por cuadrante"
         />
       </DemoExample>
     </div>

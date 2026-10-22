@@ -1,14 +1,10 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import type { CSSProperties } from "react";
-import { resolveFormatter } from "../lib/format";
-import { ChartSvg, CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_ROWS } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { stableKey } from "../core/keys";
+import { DEFAULT_MAX_ROWS } from "../core/limits";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -21,56 +17,33 @@ import {
   POINT_RADIUS_SCATTER,
   TICK_DY,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  cleanTernaryPoints,
+  safeTernaryLevels,
+  ternaryLayout,
+  ternaryLevels,
+  ternaryOrigin,
+  ternaryToXY,
+  VERTEX_LABEL_GAP,
+} from "./ternary-plot.compute";
+import type { TernaryPlotProps } from "./ternary-plot.types";
 
-/** Punto ternario (a + b + c se normaliza a 1; suma <= 0 se filtra). */
-export type TernaryPoint = {
-  a: number;
-  b: number;
-  c: number;
-  label?: string;
-  color?: string;
-};
-
-/** Props de TernaryPlot. */
-export type TernaryPlotProps = {
-  points: TernaryPoint[];
-  ariaLabel: string;
-  aLabel?: string;
-  bLabel?: string;
-  cLabel?: string;
-  height?: number;
-  format?: ValueFormatter;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  /** Muestra las etiquetas de vértices (A/B/C). */
-  showLabels?: boolean;
-  /** Niveles de rejilla por lado (por defecto GRID_TICKS). */
-  gridLevels?: number;
-  /** Tope de puntos (SSR acotado). */
-  maxItems?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-/** Mitad del lado (x del vértice A) y altura del equilátero unitario. */
-const TERNARY_HALF = 0.5;
-const TERNARY_ALT = Math.sqrt(3) / 2;
-/** Separación vértice-etiqueta. */
-const VERTEX_LABEL_GAP = 8;
-
-type TernaryClean = {
-  a: number;
-  b: number;
-  c: number;
-  label?: string;
-  color?: string;
-};
+export {
+  cleanTernaryPoints,
+  ternaryLayout,
+  ternaryLevels,
+  ternaryOrigin,
+  ternaryToXY,
+} from "./ternary-plot.compute";
+export type { TernaryPlotProps, TernaryPoint } from "./ternary-plot.types";
 
 /**
  * Ternario SSR (composiciones a/b/c normalizadas sobre triángulo
@@ -96,24 +69,8 @@ export function TernaryPlot({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: TernaryPlotProps) {
-  const rawLevels = Math.floor(toNumber(gridLevels, GRID_TICKS));
-  const safeLevels =
-    Number.isFinite(rawLevels) && rawLevels > 0 ? rawLevels : GRID_TICKS;
-  const rawMax = Math.floor(toNumber(maxItems, DEFAULT_MAX_ROWS));
-  const safeMax =
-    Number.isFinite(rawMax) && rawMax > 0 ? rawMax : DEFAULT_MAX_ROWS;
-  const clean: TernaryClean[] = [];
-  for (const p of points.slice(0, safeMax)) {
-    const sum = toNumber(p.a) + toNumber(p.b) + toNumber(p.c);
-    if (!(sum > 0)) continue;
-    clean.push({
-      a: toNumber(p.a) / sum,
-      b: toNumber(p.b) / sum,
-      c: toNumber(p.c) / sum,
-      label: p.label,
-      color: p.color,
-    });
-  }
+  const safeLevels = safeTernaryLevels(gridLevels);
+  const clean = cleanTernaryPoints(points, maxItems);
   if (clean.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
@@ -122,20 +79,22 @@ export function TernaryPlot({
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const side = Math.min(innerW, innerH / TERNARY_ALT);
-  const triH = side * TERNARY_ALT;
-  const ox = MARGIN.left + (innerW - side) / 2;
-  const oy = MARGIN.top + (innerH - triH) / 2;
-  const toXY = (a: number, b: number, c: number) => ({
-    x: ox + side * (TERNARY_HALF * a + c),
-    y: oy + triH * (b + c),
-  });
+  const { side, triH } = ternaryLayout(innerW, innerH);
+  const { x: ox, y: oy } = ternaryOrigin(
+    innerW,
+    innerH,
+    side,
+    triH,
+    MARGIN.left,
+    MARGIN.top,
+  );
+  const toXY = (a: number, b: number, c: number) =>
+    ternaryToXY(a, b, c, ox, oy, side, triH);
   const apex = toXY(1, 0, 0);
   const left = toXY(0, 1, 0);
   const right = toXY(0, 0, 1);
 
-  const levels: number[] = [];
-  for (let k = 1; k < safeLevels; k++) levels.push(k / safeLevels);
+  const levels = ternaryLevels(safeLevels);
 
   return (
     <div className={className} style={style}>
@@ -216,7 +175,6 @@ export function TernaryPlot({
             `${fmt(p.c * PERCENT_FACTOR)}%`;
           return (
             <g key={stableKey([p.label ?? `${p.a}-${p.b}-${p.c}`], i)}>
-              <title>{tip}</title>
               <circle
                 cx={pos.x}
                 cy={pos.y}

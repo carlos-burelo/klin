@@ -20,6 +20,18 @@ const metas: ProgressRow[] = [
   { label: "Ahorro", value: 12, total: 12 },
 ];
 
+const desorden: ProgressRow[] = [
+  { label: "Lectura", value: 3, total: 12 },
+  { label: "Ahorro", value: 12, total: 12 },
+  { label: "Ejercicio", value: 9, total: 12 },
+];
+
+const avanceEstres: ProgressRow[] = Array.from({ length: 40 }, (_, i) => ({
+  label: `Trámite ${i + 1}`,
+  value: (i * 37) % 101,
+  total: 100,
+}));
+
 function formatoMoneda(value: number): string {
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
@@ -106,6 +118,52 @@ const metas: ProgressRow[] = [
           rows={metas}
           format={(v) => `${v} de 12`}
           ariaLabel="Metas personales del mes sobre base 12"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="ordenadas por valor descendente"
+        code={`import type { ProgressRow } from "@carlos-burelo/klin";
+import { ProgressList } from "@carlos-burelo/klin";
+
+const desorden: ProgressRow[] = [
+  { label: "Lectura", value: 3, total: 12 },
+  { label: "Ahorro", value: 12, total: 12 },
+  { label: "Ejercicio", value: 9, total: 12 },
+];
+
+<ProgressList
+  rows={desorden}
+  sortBy="value"
+  format={(v) => \`\${v} de 12\`}
+  ariaLabel="Metas personales ordenadas por valor descendente"
+/>`}
+      >
+        <ProgressList
+          rows={desorden}
+          sortBy="value"
+          format={(v) => `${v} de 12`}
+          ariaLabel="Metas personales ordenadas por valor descendente"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 40 filas con avance determinista"
+        code={`import type { ProgressRow } from "@carlos-burelo/klin";
+import { ProgressList } from "@carlos-burelo/klin";
+
+const avanceEstres: ProgressRow[] = Array.from({ length: 40 }, (_, i) => ({
+  label: \`Trámite \${i + 1}\`,
+  value: (i * 37) % 101,
+  total: 100,
+}));
+
+<ProgressList
+  rows={avanceEstres}
+  ariaLabel="Avance de 40 trámites con valores deterministas"
+/>`}
+      >
+        <ProgressList
+          rows={avanceEstres}
+          ariaLabel="Avance de 40 trámites con valores deterministas"
         />
       </DemoExample>
     </div>

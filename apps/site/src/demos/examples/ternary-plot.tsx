@@ -1,6 +1,12 @@
 import { TernaryPlot } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const puntosEstres = Array.from({ length: 60 }, (_, i) => ({
+  a: 10 + ((i * 17) % 70),
+  b: 10 + ((i * 23) % 50),
+  c: 10 + ((i * 31) % 40),
+}));
+
 export default function TernaryPlotExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -102,6 +108,34 @@ const data = [
             { a: 55, b: 20, c: 25, label: "Sonora" },
           ]}
           format={(v: number) => `${v.toFixed(0)} %`}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: 60 puntos de muestreo sin etiquetas y sin leyenda"
+        code={`import { TernaryPlot } from "@carlos-burelo/klin";
+
+const puntos = Array.from({ length: 60 }, (_, i) => ({
+  a: 10 + ((i * 17) % 70),
+  b: 10 + ((i * 23) % 50),
+  c: 10 + ((i * 31) % 40),
+}));
+
+<TernaryPlot
+  ariaLabel="Composición de 60 muestras de suelo sin etiquetas"
+  aLabel="Arena"
+  bLabel="Limo"
+  cLabel="Arcilla"
+  points={puntos}
+  showLegend={false}
+/>`}
+      >
+        <TernaryPlot
+          ariaLabel="Composición de 60 muestras de suelo sin etiquetas"
+          aLabel="Arena"
+          bLabel="Limo"
+          cLabel="Arcilla"
+          points={puntosEstres}
+          showLegend={false}
         />
       </DemoExample>
     </div>

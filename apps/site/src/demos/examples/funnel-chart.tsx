@@ -92,6 +92,76 @@ const stages = [
           ]}
         />
       </DemoExample>
+      <DemoExample
+        caption="Embudo con leyenda de etapas"
+        code={`import { FunnelChart } from "@carlos-burelo/klin";
+
+const stages = [
+  { label: "Visitas", value: 1200 },
+  { label: "Registro", value: 640 },
+  { label: "Carrito", value: 320 },
+  { label: "Pago", value: 180 },
+  { label: "Compra", value: 96 },
+];
+
+<FunnelChart
+  ariaLabel="Embudo de conversión de visitas a compras con leyenda de etapas"
+  showLegend
+  stages={stages}
+/>`}
+      >
+        <FunnelChart
+          ariaLabel="Embudo de conversión de visitas a compras con leyenda de etapas"
+          showLegend
+          stages={[
+            { label: "Visitas", value: 1200 },
+            { label: "Registro", value: 640 },
+            { label: "Carrito", value: 320 },
+            { label: "Pago", value: 180 },
+            { label: "Compra", value: 96 },
+          ]}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 8 etapas con cola fina, un nombre largo y pérdida entre etapas"
+        code={`import { FunnelChart } from "@carlos-burelo/klin";
+
+const stages = [
+  { label: "Visitas", value: 2400 },
+  { label: "Registro", value: 1250 },
+  { label: "Interés en catálogo", value: 820 },
+  { label: "Carrito", value: 460 },
+  { label: "Cupón aplicado", value: 310 },
+  { label: "Pago iniciado", value: 190 },
+  { label: "Pago confirmado", value: 120 },
+  { label: "Compra con factura y garantía extendida", value: 64 },
+];
+
+<FunnelChart
+  ariaLabel="Embudo de ocho etapas de visitas a compras con cola fina"
+  showDropOff
+  baseline="previous"
+  format={(v: number) => \`\${v} personas\`}
+  stages={stages}
+/>`}
+      >
+        <FunnelChart
+          ariaLabel="Embudo de ocho etapas de visitas a compras con cola fina"
+          showDropOff
+          baseline="previous"
+          format={(v: number) => `${v} personas`}
+          stages={[
+            { label: "Visitas", value: 2400 },
+            { label: "Registro", value: 1250 },
+            { label: "Interés en catálogo", value: 820 },
+            { label: "Carrito", value: 460 },
+            { label: "Cupón aplicado", value: 310 },
+            { label: "Pago iniciado", value: 190 },
+            { label: "Pago confirmado", value: 120 },
+            { label: "Compra con factura y garantía extendida", value: 64 },
+          ]}
+        />
+      </DemoExample>
     </div>
   );
 }

@@ -20,6 +20,108 @@ const festivalTasks: GanttTask[] = [
   { label: "Festival", start: "2026-05-15", end: "2026-05-17" },
 ];
 
+const sistemaTasks: GanttTask[] = [
+  { label: "Diseño", start: "2026-06-01", end: "2026-06-05" },
+  {
+    label: "Backend",
+    start: "2026-06-06",
+    end: "2026-06-12",
+    dependsOn: ["Diseño"],
+  },
+  {
+    label: "Frontend",
+    start: "2026-06-06",
+    end: "2026-06-12",
+    dependsOn: ["Diseño"],
+  },
+  {
+    label: "Pruebas",
+    start: "2026-06-13",
+    end: "2026-06-17",
+    dependsOn: ["Backend", "Frontend"],
+  },
+];
+
+const estresTasks: GanttTask[] = [
+  {
+    label: "Levantamiento",
+    start: "2026-07-01",
+    end: "2026-07-04",
+    progress: 100,
+  },
+  { label: "Permisos", start: "2026-07-03", end: "2026-07-08", progress: 80 },
+  {
+    label: "Trazo",
+    start: "2026-07-07",
+    end: "2026-07-10",
+    dependsOn: ["Levantamiento"],
+    progress: 60,
+  },
+  {
+    label: "Cimentación",
+    start: "2026-07-09",
+    end: "2026-07-15",
+    dependsOn: ["Trazo", "Permisos"],
+    progress: 40,
+  },
+  {
+    label: "Muros",
+    start: "2026-07-14",
+    end: "2026-07-20",
+    dependsOn: ["Cimentación"],
+    progress: 30,
+  },
+  {
+    label: "Eléctrica",
+    start: "2026-07-16",
+    end: "2026-07-21",
+    dependsOn: ["Muros"],
+    progress: 20,
+  },
+  {
+    label: "Hidráulica",
+    start: "2026-07-16",
+    end: "2026-07-22",
+    dependsOn: ["Muros"],
+    progress: 20,
+  },
+  {
+    label: "Techo",
+    start: "2026-07-21",
+    end: "2026-07-26",
+    dependsOn: ["Muros", "Eléctrica"],
+    progress: 10,
+  },
+  {
+    label: "Aplanados",
+    start: "2026-07-24",
+    end: "2026-07-29",
+    dependsOn: ["Techo", "Hidráulica"],
+    progress: 0,
+  },
+  {
+    label: "Pintura",
+    start: "2026-07-28",
+    end: "2026-08-02",
+    dependsOn: ["Aplanados"],
+    progress: 0,
+  },
+  {
+    label: "Pisos",
+    start: "2026-07-29",
+    end: "2026-08-03",
+    dependsOn: ["Aplanados"],
+    progress: 0,
+  },
+  {
+    label: "Entrega",
+    start: "2026-08-04",
+    end: "2026-08-06",
+    dependsOn: ["Pintura", "Pisos"],
+    progress: 0,
+  },
+];
+
 function formatoCorto(d: Date): string {
   return d.toLocaleDateString("es-MX", { day: "numeric", month: "numeric" });
 }
@@ -81,6 +183,138 @@ function formatoCorto(d: Date): string {
           tasks={festivalTasks}
           showLegend={false}
           formatDate={formatoCorto}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="sistema con flechas de dependencia entre tareas"
+        code={`import { GanttChart } from "@carlos-burelo/klin";
+
+const tasks = [
+  { label: "Diseño", start: "2026-06-01", end: "2026-06-05" },
+  {
+    label: "Backend",
+    start: "2026-06-06",
+    end: "2026-06-12",
+    dependsOn: ["Diseño"],
+  },
+  {
+    label: "Frontend",
+    start: "2026-06-06",
+    end: "2026-06-12",
+    dependsOn: ["Diseño"],
+  },
+  {
+    label: "Pruebas",
+    start: "2026-06-13",
+    end: "2026-06-17",
+    dependsOn: ["Backend", "Frontend"],
+  },
+];
+
+<GanttChart
+  ariaLabel="Gantt de sistema con dependencias entre tareas"
+  tasks={tasks}
+/>`}
+      >
+        <GanttChart
+          ariaLabel="Gantt de sistema con dependencias entre tareas"
+          tasks={sistemaTasks}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés de obra con 12 tareas y dependencias cruzadas de avance"
+        code={`import { GanttChart } from "@carlos-burelo/klin";
+
+const tasks = [
+  {
+    label: "Levantamiento",
+    start: "2026-07-01",
+    end: "2026-07-04",
+    progress: 100,
+  },
+  { label: "Permisos", start: "2026-07-03", end: "2026-07-08", progress: 80 },
+  {
+    label: "Trazo",
+    start: "2026-07-07",
+    end: "2026-07-10",
+    dependsOn: ["Levantamiento"],
+    progress: 60,
+  },
+  {
+    label: "Cimentación",
+    start: "2026-07-09",
+    end: "2026-07-15",
+    dependsOn: ["Trazo", "Permisos"],
+    progress: 40,
+  },
+  {
+    label: "Muros",
+    start: "2026-07-14",
+    end: "2026-07-20",
+    dependsOn: ["Cimentación"],
+    progress: 30,
+  },
+  {
+    label: "Eléctrica",
+    start: "2026-07-16",
+    end: "2026-07-21",
+    dependsOn: ["Muros"],
+    progress: 20,
+  },
+  {
+    label: "Hidráulica",
+    start: "2026-07-16",
+    end: "2026-07-22",
+    dependsOn: ["Muros"],
+    progress: 20,
+  },
+  {
+    label: "Techo",
+    start: "2026-07-21",
+    end: "2026-07-26",
+    dependsOn: ["Muros", "Eléctrica"],
+    progress: 10,
+  },
+  {
+    label: "Aplanados",
+    start: "2026-07-24",
+    end: "2026-07-29",
+    dependsOn: ["Techo", "Hidráulica"],
+    progress: 0,
+  },
+  {
+    label: "Pintura",
+    start: "2026-07-28",
+    end: "2026-08-02",
+    dependsOn: ["Aplanados"],
+    progress: 0,
+  },
+  {
+    label: "Pisos",
+    start: "2026-07-29",
+    end: "2026-08-03",
+    dependsOn: ["Aplanados"],
+    progress: 0,
+  },
+  {
+    label: "Entrega",
+    start: "2026-08-04",
+    end: "2026-08-06",
+    dependsOn: ["Pintura", "Pisos"],
+    progress: 0,
+  },
+];
+
+<GanttChart
+  ariaLabel="Gantt denso de obra con doce tareas y dependencias cruzadas"
+  tasks={tasks}
+  showLegend
+/>`}
+      >
+        <GanttChart
+          ariaLabel="Gantt denso de obra con doce tareas y dependencias cruzadas"
+          tasks={estresTasks}
+          showLegend
         />
       </DemoExample>
     </div>

@@ -1,89 +1,66 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-
-import { scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import { topPositive } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import type { ChartMargin } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   BAR_RADIUS,
   CHART_TOKEN,
   DEFAULT_LOCALE,
-  GRID_TICKS,
   GRID_WIDTH,
   PERCENT_FACTOR,
   TICK_DY,
   TICK_FONT_SIZE,
   ZERO_MARK_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import type { ChartMargin } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  AXIS_LABEL_BOTTOM_PAD,
+  BAR_STROKE_OPACITY,
+  BAR_Y_PAD,
+  buildPyramidRows,
+  buildPyramidScale,
+  computePyramidLayout,
+  computePyramidTotals,
+  LABEL_MAX_CENTER,
+  LABEL_MAX_SIDE,
+  normalizePyramidBarRadius,
+  pyramidFitsValue,
+  SHARE_GAP_PX,
+} from "./pyramid-chart.compute";
+import type { PyramidChartProps } from "./pyramid-chart.types";
 
-/** Props de pirámide poblacional SSR (dos series espejadas). */
-export type PyramidChartProps = {
-  groups: string[];
-  left: { label: string; values: number[]; color?: string };
-  right: { label: string; values: number[]; color?: string };
-  ariaLabel: string;
-  formatX?: ValueFormatter;
-  /** Etiquetas de grupo a la izquierda (clásica) o en la banda central. */
-  labels?: "left" | "center";
-  locale?: string;
-  /**
-   * Color por grupo y lado. Si retorna `undefined` se usan los colores
-   * de cada lado (`left.color` / `right.color` primero).
-   */
-  itemColor?: (
-    group: string,
-    side: "left" | "right",
-    index: number,
-  ) => string | undefined;
-  showLegend?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  /** Alto fijo del lienzo (por defecto, automático según filas). */
-  height?: number;
-  /** Etiqueta con el % de cada lado (el tooltip ya lo trae). */
-  showShare?: boolean;
-  /** Ancho de la banda central (por defecto, según `labels`). */
-  centerGap?: number;
-  /** Orden de grupos por total (suma de ambos lados). */
-  sortGroups?: "none" | "asc" | "desc";
-};
+export type {
+  PyramidLabels,
+  PyramidMargin,
+  PyramidRow,
+  PyramidSort,
+} from "./pyramid-chart.compute";
+export {
+  AXIS_LABEL_BOTTOM_PAD,
+  BAR_STROKE_OPACITY,
+  BAR_Y_PAD,
+  buildPyramidRows,
+  buildPyramidScale,
+  computePyramidLayout,
+  computePyramidTotals,
+  LABEL_BAND,
+  LABEL_MAX_CENTER,
+  LABEL_MAX_SIDE,
+  normalizePyramidBarRadius,
+  PYRAMID_MIN_H,
+  pyramidFitsValue,
+  ROW_H,
+  SHARE_GAP_PX,
+  VALUE_MIN_W,
+} from "./pyramid-chart.compute";
+export type { PyramidChartProps } from "./pyramid-chart.types";
 
 const W = 640;
 const MARGIN: ChartMargin = { top: 8, right: 16, bottom: 34, left: 84 };
-const LABEL_BAND = 96;
-/** Alto de fila, alto mínimo del lienzo y relleno vertical de barra. */
-const ROW_H = 34;
-const PYRAMID_MIN_H = 140;
-const BAR_Y_PAD = 5;
-/** Máximos de truncado de etiqueta (banda central / lateral). */
-const LABEL_MAX_CENTER = 14;
-const LABEL_MAX_SIDE = 12;
-/** Separación de la etiqueta del eje inferior. */
-const AXIS_LABEL_BOTTOM_PAD = 12;
-/** Opacidad del borde de barra. */
-const BAR_STROKE_OPACITY = 0.25;
-/** Separación de la etiqueta de % al extremo de la barra. */
-const SHARE_GAP_PX = 4;
-
-/** Fila de pirámide con conteos ya saneados (negativos a 0). */
-type PyramidRow = {
-  group: string;
-  l: number;
-  r: number;
-};
 
 /**
  * Pirámide poblacional SSR (dos series espejadas): etiquetas a la izquierda,
@@ -96,6 +73,7 @@ export function PyramidChart({
   ariaLabel,
   locale = DEFAULT_LOCALE,
   formatX,
+  formatValues,
   labels = "left",
   itemColor,
   showLegend = true,
@@ -108,58 +86,26 @@ export function PyramidChart({
   showShare = false,
   centerGap,
   sortGroups = "none",
+  barRadius = BAR_RADIUS,
+  showValues = false,
 }: PyramidChartProps) {
   if (isBlank(groups)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const fmtX = resolveFormatter(formatX, locale);
+  const fmtV = formatValues ? resolveFormatter(formatValues, locale) : fmtX;
 
-  const rows: PyramidRow[] = groups.map((group, i) => ({
-    group,
-    // Conteos: negativos se fijan a 0.
-    l: Math.max(0, toNumber(left.values[i] ?? 0)),
-    r: Math.max(0, toNumber(right.values[i] ?? 0)),
-  }));
-  if (sortGroups !== "none") {
-    rows.sort((a, b) =>
-      sortGroups === "asc" ? a.l + a.r - (b.l + b.r) : b.l + b.r - (a.l + a.r),
-    );
-  }
+  const rows = buildPyramidRows(groups, left.values, right.values, sortGroups);
 
-  const rowH = ROW_H;
-  const autoHeight = Math.max(
-    PYRAMID_MIN_H,
-    MARGIN.top + MARGIN.bottom + rows.length * rowH,
-  );
-  const height =
-    heightProp == null
-      ? autoHeight
-      : Math.max(PYRAMID_MIN_H, Math.round(toNumber(heightProp, autoHeight)));
-  const baseBand = labels === "center" ? LABEL_BAND : 0;
-  const band = centerGap == null ? baseBand : toNumber(centerGap, baseBand);
-  const plotW = W - MARGIN.left - MARGIN.right - band;
-  const halfW = plotW / 2;
-  const top = topPositive([...left.values, ...right.values]);
+  const { rowH, height, halfW, midX, leftEdge, rightEdge } =
+    computePyramidLayout(rows.length, heightProp, labels, centerGap, W, MARGIN);
 
-  const scale = scaleLinear()
-    .domain([0, top])
-    .nice(GRID_TICKS)
-    .range([0, halfW]);
-  const ticks = scale.ticks(GRID_TICKS).filter((t) => t > 0);
+  const { scale, ticks } = buildPyramidScale(left.values, right.values, halfW);
+  const radius = normalizePyramidBarRadius(barRadius);
   const leftColor = seriesColor(0, left.color);
   const rightColor = seriesColor(1, right.color);
-  const midX = MARGIN.left + halfW + band;
-  const leftEdge = midX - band / 2;
-  const rightEdge = midX + band / 2;
-  const totalL = left.values.reduce(
-    (acc, v) => acc + Math.max(0, toNumber(v)),
-    0,
-  );
-  const totalR = right.values.reduce(
-    (acc, v) => acc + Math.max(0, toNumber(v)),
-    0,
-  );
+  const { totalL, totalR } = computePyramidTotals(left.values, right.values);
 
   return (
     <div className={className} style={style}>
@@ -170,7 +116,6 @@ export function PyramidChart({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         <line
           x1={midX}
           x2={midX}
@@ -204,42 +149,64 @@ export function PyramidChart({
                 textAnchor={labels === "center" ? "middle" : "start"}
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={group}
               >
-                <title>{group}</title>
                 {truncateLabel(
                   group,
                   labels === "center" ? LABEL_MAX_CENTER : LABEL_MAX_SIDE,
                 )}
               </text>
               <g>
-                <title>{tipL}</title>
                 <rect
                   x={leftEdge - lw}
                   y={by}
                   width={lw}
                   height={bh}
-                  rx={BAR_RADIUS}
+                  rx={radius}
                   fill={leftFill}
                   stroke={CHART_TOKEN.foreground}
                   strokeOpacity={BAR_STROKE_OPACITY}
                   strokeWidth={GRID_WIDTH}
                   data-chart-tip={tipL}
                 />
+                {pyramidFitsValue(showValues, lw) ? (
+                  <text
+                    x={leftEdge - lw / 2}
+                    y={by + bh / 2}
+                    dy={TICK_DY}
+                    textAnchor="middle"
+                    fontSize={TICK_FONT_SIZE}
+                    fill={CHART_TOKEN.onFill}
+                  >
+                    {fmtV(lv)}
+                  </text>
+                ) : null}
               </g>
               <g>
-                <title>{tipR}</title>
                 <rect
                   x={rightEdge}
                   y={by}
                   width={rw}
                   height={bh}
-                  rx={BAR_RADIUS}
+                  rx={radius}
                   fill={rightFill}
                   stroke={CHART_TOKEN.foreground}
                   strokeOpacity={BAR_STROKE_OPACITY}
                   strokeWidth={GRID_WIDTH}
                   data-chart-tip={tipR}
                 />
+                {pyramidFitsValue(showValues, rw) ? (
+                  <text
+                    x={rightEdge + rw / 2}
+                    y={by + bh / 2}
+                    dy={TICK_DY}
+                    textAnchor="middle"
+                    fontSize={TICK_FONT_SIZE}
+                    fill={CHART_TOKEN.onFill}
+                  >
+                    {fmtV(rv)}
+                  </text>
+                ) : null}
               </g>
               {showShare ? (
                 <>

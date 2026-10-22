@@ -1,25 +1,10 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-
-import { scaleBand, scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
 import { useId } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { domainWithZero } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColors, truncateLabel } from "../lib/palette";
-import type { ChartSeries } from "../lib/series";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -27,50 +12,41 @@ import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
   GRID_TICKS,
+  GRID_WIDTH,
   MIN_SHAPE_PX,
   PERCENT_FACTOR,
   TICK_DY,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { pctOf, shareTip } from "../lib/tips";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { pctOf, shareTip } from "../core/tips";
+import {
+  layoutXLabels,
+  ROTATE_EDGE_GAP,
+  ROTATE_MAX_W,
+  ROTATE_MIN_GAP,
+  ROTATE_PAD,
+  ROTATE_SIN,
+  STAGGER_DY,
+} from "../render/cartesian-frame";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { fitTextMiddle } from "../render/measure";
+import { YGrid } from "../render/y-grid";
+import {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  computeVerticalStackedModel,
+  MIN_SEGMENT_LABEL_PX,
+} from "./vertical-stacked-bar.compute";
+import type { VerticalStackedBarProps } from "./vertical-stacked-bar.types";
 
-const GROUP_BAND_PADDING = 0.3;
-const AXIS_LABEL_OFFSET = 10;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
-/** Alto mínimo de segmento (px) para rotular su valor dentro. */
-const MIN_SEGMENT_LABEL_PX = 16;
-
-/** Props de VerticalStackedBar. */
-export type VerticalStackedBarProps = {
-  data: Array<Record<string, string | number>>;
-  xKey: string;
-  series: ChartSeries[];
-  height?: number;
-  ariaLabel: string;
-  formatY?: ValueFormatter;
-  normalize?: boolean;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  annotations?: ValueAnnotation[];
-  emptyTitle?: string;
-  emptyDescription?: string;
-  /** Radio de esquina de la columna apilada (hoy clip fijo). */
-  barRadius?: number;
-  /** Etiqueta de valor dentro de cada segmento (si cabe). */
-  showValues?: boolean;
-  /** Ticks del grid horizontal. */
-  gridTicks?: number;
-  /** Orden de grupos por total (suma de series). */
-  sortGroups?: "none" | "asc" | "desc";
-  /** Prefijo de `defs`/`clipPath` (multi-instancia); por defecto useId. */
-  id?: string;
-};
+export type { VerticalStackedBarProps } from "./vertical-stacked-bar.types";
 
 /**
  * Barras verticales apiladas SSR, con modo `normalize` (100 %).
@@ -84,6 +60,7 @@ export function VerticalStackedBar({
   height = 260,
   ariaLabel,
   formatY,
+  formatValues,
   normalize = false,
   locale = DEFAULT_LOCALE,
   className,
@@ -104,8 +81,6 @@ export function VerticalStackedBar({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const radius = toNumber(barRadius, BAR_RADIUS);
-  const ticksCount = Math.max(1, Math.round(toNumber(gridTicks, GRID_TICKS)));
   const prefix =
     id == null || id === ""
       ? uid.replace(/:/g, "")
@@ -113,48 +88,73 @@ export function VerticalStackedBar({
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const totalOf = (d: Record<string, string | number>) =>
-    series.reduce((acc, s) => acc + toNumber(d[s.key]), 0);
-  const ordered = [...data];
-  if (sortGroups !== "none") {
-    ordered.sort((a, b) =>
-      sortGroups === "asc" ? totalOf(a) - totalOf(b) : totalOf(b) - totalOf(a),
-    );
-  }
-  const raws = ordered.map((d) => series.map((s) => toNumber(d[s.key])));
-  // En normalize los negativos se clamp a 0.
-  const posSums = raws.map((arr) =>
-    arr.reduce((acc, v) => acc + Math.max(0, v), 0),
-  );
-  const negSums = raws.map((arr) =>
-    arr.reduce((acc, v) => acc + Math.min(0, v), 0),
-  );
-  const [lo, hi] = domainWithZero([...posSums, ...negSums]);
+  const {
+    radius,
+    ordered,
+    raws,
+    posSums,
+    negSums,
+    lo,
+    hi,
+    y,
+    x,
+    ticks,
+    colors,
+    fmtY,
+    fmt,
+  } = computeVerticalStackedModel({
+    data,
+    xKey,
+    series,
+    innerW,
+    innerH,
+    normalize,
+    formatY,
+    locale,
+    gridTicks,
+    sortGroups,
+    barRadius,
+    showLegend,
+  });
 
-  const y = (
-    normalize
-      ? scaleLinear().domain([0, 1])
-      : scaleLinear().domain([lo, Math.max(hi, lo + 1)])
-  )
-    .nice(ticksCount)
-    .range([innerH, 0]);
-  const x = scaleBand()
-    .domain(ordered.map((d) => String(d[xKey] ?? "")))
-    .range([0, innerW])
-    .padding(GROUP_BAND_PADDING);
+  const fmtV = formatValues ? resolveFormatter(formatValues, locale) : fmtY;
 
-  const ticks = y.ticks(ticksCount);
-  const colors = seriesColors(series);
-  const fmtY = resolveFormatter(formatY, locale);
-  const fmt = normalize
-    ? (v: number) => `${Math.round(v * PERCENT_FACTOR)}%`
-    : fmtY;
+  // Etiquetas X sin choques (medidas; las omitidas siguen en tips).
+  const xLabelLayout = layoutXLabels(
+    ordered.map((d, di) => {
+      const group = String(d[xKey] ?? "");
+      return {
+        di,
+        x: (x(group) ?? 0) + x.bandwidth() / 2,
+        label: truncateLabel(group),
+        title: group,
+      };
+    }),
+    innerW,
+  );
+  const shownLabelIdx = new Set(xLabelLayout.shown.map((l) => l.di));
+  const shownLabelPos = new Map(
+    xLabelLayout.shown.map((l, i) => [l.di, i] as const),
+  );
+  const shownLabelByDi = new Map(
+    xLabelLayout.shown.map((l) => [l.di, l] as const),
+  );
+  const rotateExtra = xLabelLayout.rotate
+    ? Math.ceil(Math.min(xLabelLayout.maxW, ROTATE_MAX_W) * ROTATE_SIN) +
+      ROTATE_PAD
+    : 0;
+  const viewH = height + rotateExtra;
+  const xLabelBaseY =
+    height - AXIS_LABEL_OFFSET - (xLabelLayout.stagger ? STAGGER_DY : 0);
+  // Rotadas nacen pegadas al plot con tick de anclaje (si no, flotan).
+  const vsPlotBottom = height - MARGIN.bottom;
+  const vsRotateBaseY = vsPlotBottom + 12;
 
   return (
     <div className={className} style={style}>
       <ChartSvg
         width={W}
-        height={height}
+        height={viewH}
         ariaLabel={ariaLabel}
         ariaDescribedBy={ariaDescribedBy}
       >
@@ -165,8 +165,10 @@ export function VerticalStackedBar({
           if (a.value < annLo || a.value > annHi) return null;
           const ay = MARGIN.top + y(a.value);
           return (
-            <g key={`ann-${a.value}-${ai}`}>
-              <title>{a.label ?? String(a.value)}</title>
+            <g
+              key={`ann-${a.value}-${ai}`}
+              data-chart-tip={a.label ?? String(a.value)}
+            >
               <line
                 x1={MARGIN.left}
                 x2={W - MARGIN.right}
@@ -204,16 +206,72 @@ export function VerticalStackedBar({
           let negBase = 0;
           return (
             <g key={stableKey([group], di)}>
-              <text
-                x={colX + x.bandwidth() / 2}
-                y={height - AXIS_LABEL_OFFSET}
-                textAnchor="middle"
-                fontSize={TICK_FONT_SIZE}
-                fill={CHART_TOKEN.muted}
-              >
-                <title>{group}</title>
-                {truncateLabel(group)}
-              </text>
+              {shownLabelIdx.has(di) ? (
+                xLabelLayout.rotate ? (
+                  (() => {
+                    const l = shownLabelByDi.get(di);
+                    const lx = colX + x.bandwidth() / 2;
+                    const rightRoom =
+                      (innerW - (lx - MARGIN.left)) / ROTATE_SIN -
+                      ROTATE_EDGE_GAP;
+                    const flip = rightRoom < ROTATE_MIN_GAP * 2;
+                    const budget = Math.min(
+                      ROTATE_MAX_W,
+                      Math.max(
+                        0,
+                        flip
+                          ? (lx - MARGIN.left) / ROTATE_SIN - ROTATE_EDGE_GAP
+                          : rightRoom,
+                      ),
+                    );
+                    const text = fitTextMiddle(
+                      l?.title ?? l?.label ?? group,
+                      budget,
+                    );
+                    if (!text) return null;
+                    return (
+                      <g key={stableKey([group, "xlabel"], di)}>
+                        <line
+                          x1={lx}
+                          x2={lx}
+                          y1={vsPlotBottom}
+                          y2={vsRotateBaseY + 2}
+                          stroke={CHART_TOKEN.border}
+                          strokeWidth={GRID_WIDTH}
+                        />
+                        <text
+                          x={lx}
+                          y={vsRotateBaseY}
+                          transform={`rotate(45 ${lx} ${vsRotateBaseY})`}
+                          textAnchor={flip ? "end" : "start"}
+                          fontSize={TICK_FONT_SIZE}
+                          fill={CHART_TOKEN.muted}
+                          data-chart-tip={group}
+                        >
+                          {text}
+                        </text>
+                      </g>
+                    );
+                  })()
+                ) : (
+                  <text
+                    x={colX + x.bandwidth() / 2}
+                    y={xLabelBaseY}
+                    dy={
+                      xLabelLayout.stagger &&
+                      (shownLabelPos.get(di) ?? 0) % 2 === 1
+                        ? STAGGER_DY
+                        : undefined
+                    }
+                    textAnchor="middle"
+                    fontSize={TICK_FONT_SIZE}
+                    fill={CHART_TOKEN.muted}
+                    data-chart-tip={group}
+                  >
+                    {truncateLabel(group)}
+                  </text>
+                )
+              ) : null}
               <defs>
                 <clipPath id={clipId}>
                   <rect
@@ -259,7 +317,6 @@ export function VerticalStackedBar({
                   if (frac === 0) return <g key={s.key} />;
                   return (
                     <g key={s.key}>
-                      <title>{tip}</title>
                       <rect
                         x={colX}
                         y={MARGIN.top + Math.min(y0pix, y1pix)}
@@ -279,7 +336,7 @@ export function VerticalStackedBar({
                         >
                           {normalize
                             ? `${Math.round(frac * PERCENT_FACTOR)}%`
-                            : fmtY(raw)}
+                            : fmtV(raw)}
                         </text>
                       ) : null}
                     </g>

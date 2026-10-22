@@ -1,20 +1,13 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
 
-import { scaleBand, scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { domainWithZero } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import type { ChartMargin } from "../lib/frame";
-import { ChartSvg } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColors, truncateLabel } from "../lib/palette";
-import type { ChartSeries } from "../lib/series";
+import { placeEndValueLabel, VALUE_LABEL_DX } from "../core/cartesian-model";
+import { seriesColors } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { maxTotalIndex } from "../core/stacked-model";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -28,58 +21,30 @@ import {
   TICK_FONT_SIZE,
   TICK_GAP_PX,
   ZERO_MARK_PX,
-} from "../lib/theme";
-import { shareTip } from "../lib/tips";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { shareTip } from "../core/tips";
+import type { ChartMargin } from "../render/chart-svg";
+import { ChartSvg } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { measureText } from "../render/measure";
+import {
+  AXIS_LABEL_OFFSET,
+  buildHorizontalBands,
+  buildHorizontalValueAxis,
+  DEFAULT_LABEL_WIDTH,
+  HIGHLIGHT_WIDTH,
+  LABEL_MAX_X,
+  orderHorizontalGroups,
+  resolveHorizontalHeight,
+  resolveHorizontalMargin,
+  resolveHorizontalRowHeight,
+  totalOfGroup,
+  W,
+} from "./horizontal-bar-chart.compute";
+import type { HorizontalBarChartProps } from "./horizontal-bar-chart.types";
 
-/** Props de barras horizontales agrupadas SSR. */
-export type HorizontalBarChartProps = {
-  data: Array<Record<string, string | number>>;
-  yKey: string;
-  series: ChartSeries[];
-  ariaLabel: string;
-  formatX?: ValueFormatter;
-  locale?: string;
-  annotations?: ValueAnnotation[];
-  showLegend?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  /** Alto fijo del lienzo (por defecto, automático según filas). */
-  height?: number;
-  /** Radio de esquina de barra (`0` para estilo denso). */
-  barRadius?: number;
-  /** Etiqueta de valor al final de cada barra. */
-  showValues?: boolean;
-  /** Orden de grupos por total (suma de series). */
-  sortGroups?: "none" | "asc" | "desc";
-  /** Ticks del grid vertical. */
-  gridTicks?: number;
-  /** Ancho reservado a etiquetas de fila (hoy margen izquierdo fijo). */
-  labelWidth?: number;
-};
-
-const W = 640;
-/** Ancho por defecto reservado a etiquetas de fila. */
-const DEFAULT_LABEL_WIDTH = 132;
-const MARGIN: ChartMargin = {
-  top: 8,
-  right: 48,
-  bottom: 28,
-  left: DEFAULT_LABEL_WIDTH,
-};
-
-const GROUP_BAND_PADDING = 0.25;
-const SERIES_BAND_PADDING = 0.15;
-const LABEL_MAX_X = 18;
-const AXIS_LABEL_OFFSET = 10;
-const VALUE_LABEL_DX = 5;
-const ROW_BASE_H = 30;
-const ROW_PER_SERIES_H = 4;
-const MIN_HEIGHT = 140;
+export type { HorizontalBarChartProps } from "./horizontal-bar-chart.types";
 
 /**
  * Barras horizontales agrupadas SSR. Altura automática según filas.
@@ -92,6 +57,7 @@ export function HorizontalBarChart({
   ariaLabel,
   locale = DEFAULT_LOCALE,
   formatX,
+  formatValues,
   annotations,
   showLegend = true,
   className,
@@ -105,6 +71,12 @@ export function HorizontalBarChart({
   sortGroups = "none",
   gridTicks = GRID_TICKS,
   labelWidth = DEFAULT_LABEL_WIDTH,
+  xMin,
+  xMax,
+  xScale = "linear",
+  highlightMax = false,
+  barColor,
+  id,
 }: HorizontalBarChartProps) {
   if (isBlank(data) || isBlank(series)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
@@ -112,54 +84,40 @@ export function HorizontalBarChart({
 
   const radius = toNumber(barRadius, BAR_RADIUS);
   const ticksCount = Math.max(1, Math.round(toNumber(gridTicks, GRID_TICKS)));
-  const margin: ChartMargin = {
-    ...MARGIN,
-    left: toNumber(labelWidth, DEFAULT_LABEL_WIDTH),
-  };
+  const margin: ChartMargin = resolveHorizontalMargin(labelWidth);
+  const ordered = orderHorizontalGroups(data, series, sortGroups);
 
-  const totalOf = (d: Record<string, string | number>) =>
-    series.reduce((acc, s) => acc + toNumber(d[s.key]), 0);
-  const ordered = [...data];
-  if (sortGroups !== "none") {
-    ordered.sort((a, b) =>
-      sortGroups === "asc" ? totalOf(a) - totalOf(b) : totalOf(b) - totalOf(a),
-    );
-  }
-
-  const rowH = ROW_BASE_H + series.length * ROW_PER_SERIES_H;
-  const autoHeight = Math.max(
-    MIN_HEIGHT,
-    margin.top + margin.bottom + ordered.length * rowH,
+  const rowH = resolveHorizontalRowHeight(series.length);
+  const height = resolveHorizontalHeight(
+    ordered.length,
+    rowH,
+    margin,
+    heightProp,
   );
-  const height =
-    heightProp == null
-      ? autoHeight
-      : Math.max(MIN_HEIGHT, Math.round(toNumber(heightProp, autoHeight)));
   const innerW = W - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
 
-  const flat = ordered.flatMap((d) => series.map((s) => toNumber(d[s.key])));
-  const [lo, hi] = domainWithZero(flat);
-  const x = scaleLinear()
-    .domain([lo, Math.max(hi, lo + 1)])
-    .nice(ticksCount)
-    .range([0, innerW]);
-  const x0 = x(0);
-  const y0 = scaleBand()
-    .domain(ordered.map((d) => String(d[yKey] ?? "")))
-    .range([0, innerH])
-    .padding(GROUP_BAND_PADDING);
-  const y1 = scaleBand()
-    .domain(series.map((s) => s.key))
-    .range([0, y0.bandwidth()])
-    .padding(SERIES_BAND_PADDING);
+  const { lo, hi, x, ticks, fmtX, lv, log } = buildHorizontalValueAxis(
+    ordered,
+    series,
+    ticksCount,
+    formatX,
+    locale,
+    innerW,
+    xMin,
+    xMax,
+    xScale,
+  );
+  const fmtV = formatValues ? resolveFormatter(formatValues, locale) : fmtX;
+  const x0 = x(log ? lo : 0);
+  const { y0, y1 } = buildHorizontalBands(ordered, series, yKey, innerH);
 
-  const ticks = x.ticks(ticksCount);
   const colors = seriesColors(series);
-  const fmtX = resolveFormatter(formatX, locale);
+  const totals = ordered.map((d) => totalOfGroup(d, series));
+  const maxGroup = maxTotalIndex(totals);
 
   return (
-    <div className={className} style={style}>
+    <div id={id} className={className} style={style}>
       <ChartSvg
         width={W}
         height={height}
@@ -192,8 +150,10 @@ export function HorizontalBarChart({
           const ax = margin.left + x(clamped);
           const stroke = a.color ?? CHART_TOKEN.accent;
           return (
-            <g key={stableKey([a.label ?? `${a.value}`], ai)}>
-              <title>{a.label ?? fmtX(a.value)}</title>
+            <g
+              key={stableKey([a.label ?? `${a.value}`], ai)}
+              data-chart-tip={a.label ?? fmtX(a.value)}
+            >
               <line
                 x1={ax}
                 x2={ax}
@@ -218,7 +178,11 @@ export function HorizontalBarChart({
         })}
         {ordered.map((d, di) => {
           const group = String(d[yKey] ?? "");
-          const total = totalOf(d);
+          const total = totals[di] ?? totalOfGroup(d, series);
+          const isMax = highlightMax && di === maxGroup;
+          const hl = isMax
+            ? { stroke: CHART_TOKEN.accent, strokeWidth: HIGHLIGHT_WIDTH }
+            : {};
           return (
             <g key={stableKey([group], di)}>
               <text
@@ -228,17 +192,19 @@ export function HorizontalBarChart({
                 textAnchor="end"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={group}
               >
-                <title>{group}</title>
                 {truncateLabel(group, LABEL_MAX_X)}
               </text>
               {series.map((s, si) => {
                 const value = toNumber(d[s.key]);
-                const xv = x(value);
+                const xv = x(lv(value));
                 const bw = Math.abs(xv - x0);
                 const bx = margin.left + Math.min(x0, xv);
                 const w =
-                  value === 0 ? ZERO_MARK_PX : Math.max(MIN_SHAPE_PX, bw);
+                  value === 0 && !log
+                    ? ZERO_MARK_PX
+                    : Math.max(MIN_SHAPE_PX, bw);
                 const by = margin.top + (y0(group) ?? 0) + (y1(s.key) ?? 0);
                 const tip = shareTip({
                   label: group,
@@ -249,27 +215,38 @@ export function HorizontalBarChart({
                   multi: series.length >= 2,
                   of: "grupo",
                 });
+                const fill =
+                  barColor?.(d, di, s, si) ?? colors[si] ?? CHART_TOKEN.chart1;
+                const valueText = fmtV(value);
+                const vl = placeEndValueLabel(
+                  bx + w,
+                  W - margin.right,
+                  measureText(valueText, TICK_FONT_SIZE),
+                  VALUE_LABEL_DX,
+                );
                 return (
                   <g key={s.key}>
-                    <title>{tip}</title>
                     <rect
                       x={bx}
                       y={by}
                       width={w}
                       height={Math.max(ZERO_MARK_PX, y1.bandwidth())}
                       rx={radius}
-                      fill={colors[si] ?? CHART_TOKEN.chart1}
+                      fill={fill}
                       data-chart-tip={tip}
+                      {...hl}
                     />
                     {showValues ? (
                       <text
-                        x={bx + w + VALUE_LABEL_DX}
+                        x={vl.pos}
                         y={by + y1.bandwidth() / 2}
                         dy={TICK_DY}
                         fontSize={TICK_FONT_SIZE}
-                        fill={CHART_TOKEN.muted}
+                        fill={
+                          vl.inside ? CHART_TOKEN.background : CHART_TOKEN.muted
+                        }
                       >
-                        {fmtX(value)}
+                        {valueText}
                       </text>
                     ) : null}
                   </g>

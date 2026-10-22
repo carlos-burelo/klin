@@ -2,114 +2,31 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import type { DagLayout } from "../lib/graph";
-import { EdgeLabel, fitNodeWidth, layoutDag } from "../lib/graph";
-import { stableKey } from "../lib/keys";
-import { truncateLabel } from "../lib/palette";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
+import { CHART_TOKEN, EDGE_WIDTH, FONT_SEMIBOLD } from "../core/theme";
+import { EdgeLabel } from "../render/edge-label";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { markerUrl, SvgMarkers } from "../render/markers";
 import {
-  CHART_TOKEN,
-  DIAGRAM_MIN_SCROLL,
-  EDGE_WIDTH,
-  FONT_SEMIBOLD,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+  computeStateLayout,
+  DOT,
+  FINAL_RING_PAD,
+  LABEL_DY,
+  NODE_FONT_SIZE,
+  NODE_RX_STATE,
+  STATE_PSEUDO_INITIAL_ID,
+} from "./state-diagram.compute";
+import type { StateDiagramProps, StateNode } from "./state-diagram.types";
 
-export type StateNode = {
-  id: string;
-  label: string;
-  kind?: "state" | "initial" | "final";
-};
-
-export type StateEdge = {
-  from: string;
-  to: string;
-  /** Evento que dispara la transición. */
-  label?: string;
-};
-
-const NODE_FONT_SIZE = 12;
-const NODE_RX_STATE = 12;
-const NODE_FIT = { min: 150, max: 230, size: 12, pad: 36 } as const;
-const LAYOUT = {
-  NODE_H: 52,
-  GAP_X: 56,
-  GAP_Y: 72,
-  MIN_W: DIAGRAM_MIN_SCROLL,
-  MAX_NODES: 300,
-} as const;
-const ARROW_MARKER = {
-  SIZE: 10,
-  REF_X: 8,
-  REF_Y: 5,
-  WIDTH: 7,
-  HEIGHT: 7,
-} as const;
-const DOT = 28;
-const FINAL_RING_PAD = 4;
-const LABEL_DY = 4;
-/** Id del pseudoinicio que se inyecta cuando ningún nodo lo declara. */
-const STATE_PSEUDO_INITIAL_ID = "__klin-inicio__";
-
-/** Props del diagrama de estados. */
-export type StateDiagramProps = {
-  nodes: StateNode[];
-  edges: StateEdge[];
-  ariaLabel: string;
-  direction?: "TB" | "LR";
-  /** Dibuja el pseudoinicio aunque ningún nodo lo declare. */
-  showInitial?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-/**
- * Cómputo puro del layout de estados (ancho auto + DAG con cap SSR).
- */
-export function computeStateLayout(
-  nodes: StateNode[],
-  edges: StateEdge[],
-  direction: "TB" | "LR" = "LR",
-): {
-  layout: DagLayout;
-  byId: Map<string, StateNode>;
-  width: number;
-  height: number;
-} {
-  const W = fitNodeWidth(
-    nodes.map((n) => n.label),
-    {
-      min: NODE_FIT.min,
-      max: NODE_FIT.max,
-      size: NODE_FIT.size,
-      pad: NODE_FIT.pad,
-    },
-  );
-  const H = LAYOUT.NODE_H;
-  const layout = layoutDag(
-    nodes.map((n) => n.id),
-    edges,
-    {
-      direction,
-      nodeW: W,
-      nodeH: H,
-      gapX: LAYOUT.GAP_X,
-      gapY: LAYOUT.GAP_Y,
-      minW: LAYOUT.MIN_W,
-      maxNodes: LAYOUT.MAX_NODES,
-    },
-  );
-  return {
-    layout,
-    byId: new Map(nodes.map((n) => [n.id, n])),
-    width: Math.max(1, layout.width),
-    height: Math.max(1, layout.height),
-  };
-}
+export { computeStateLayout } from "./state-diagram.compute";
+export type {
+  StateDiagramProps,
+  StateEdge,
+  StateNode,
+} from "./state-diagram.types";
 
 /**
  * Máquina de estados SSR (inicial, estados, final, transiciones con evento).
@@ -120,6 +37,7 @@ export function StateDiagram({
   ariaLabel,
   direction = "LR",
   showInitial = true,
+  showLegend = false,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -168,20 +86,7 @@ export function StateDiagram({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
-        <defs>
-          <marker
-            id="charts-state-arrow"
-            viewBox={`0 0 ${ARROW_MARKER.SIZE} ${ARROW_MARKER.SIZE}`}
-            refX={ARROW_MARKER.REF_X}
-            refY={ARROW_MARKER.REF_Y}
-            markerWidth={ARROW_MARKER.WIDTH}
-            markerHeight={ARROW_MARKER.HEIGHT}
-            orient="auto-start-reverse"
-          >
-            <path d="M 0 1 L 9 5 L 0 9 z" fill={CHART_TOKEN.muted} />
-          </marker>
-        </defs>
+        <SvgMarkers prefix="charts-state" kinds={["arrow"]} />
         {layout.edges.map((e, i) => (
           <path
             key={stableKey([e.from, e.to], i)}
@@ -189,7 +94,7 @@ export function StateDiagram({
             fill="none"
             stroke={CHART_TOKEN.muted}
             strokeWidth={EDGE_WIDTH}
-            markerEnd="url(#charts-state-arrow)"
+            markerEnd={markerUrl("charts-state", "arrow")}
           />
         ))}
         {[...layout.nodes.values()].map((p, i) => {
@@ -198,8 +103,7 @@ export function StateDiagram({
           const kind = n.kind ?? "state";
           if (kind === "initial") {
             return (
-              <g key={stableKey([p.id], i)}>
-                <title>Inicial</title>
+              <g key={stableKey([p.id], i)} data-chart-tip="Inicial">
                 <circle
                   cx={p.cx}
                   cy={p.cy}
@@ -211,8 +115,7 @@ export function StateDiagram({
           }
           if (kind === "final") {
             return (
-              <g key={stableKey([p.id], i)}>
-                <title>{n.label || "Final"}</title>
+              <g key={stableKey([p.id], i)} data-chart-tip={n.label || "Final"}>
                 <circle
                   cx={p.cx}
                   cy={p.cy}
@@ -233,7 +136,6 @@ export function StateDiagram({
           const tip = n.label;
           return (
             <g key={stableKey([p.id], i)}>
-              <title>{tip}</title>
               <rect
                 x={p.x}
                 y={p.y}
@@ -271,6 +173,15 @@ export function StateDiagram({
           ) : null;
         })}
       </svg>
+      {showLegend ? (
+        <ChartLegend
+          items={[
+            { label: "Inicial", color: CHART_TOKEN.foreground },
+            { label: "Final", color: CHART_TOKEN.foreground },
+            { label: "Estado", color: CHART_TOKEN.card },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }

@@ -81,8 +81,8 @@ describe("BarChart (S)", () => {
   test("sortGroups desc reordena (B primero)", () => {
     const html = renderToStaticMarkup(<BarChart {...base} sortGroups="desc" />);
     expect(html).not.toBe(def);
-    expect(html.indexOf("<title>B</title>")).toBeLessThan(
-      html.indexOf("<title>A</title>"),
+    expect(html.indexOf('data-chart-tip="B"')).toBeLessThan(
+      html.indexOf('data-chart-tip="A"'),
     );
   });
   test("highlightMax acentúa el máximo", () => {
@@ -145,8 +145,8 @@ describe("HorizontalBarChart (S)", () => {
       <HorizontalBarChart {...base} sortGroups="desc" />,
     );
     expect(html).not.toBe(def);
-    expect(html.indexOf("<title>B</title>")).toBeLessThan(
-      html.indexOf("<title>A</title>"),
+    expect(html.indexOf('data-chart-tip="B"')).toBeLessThan(
+      html.indexOf('data-chart-tip="A"'),
     );
   });
   test("gridTicks cambia el output", () => {
@@ -205,8 +205,8 @@ describe("VerticalStackedBar (S)", () => {
       <VerticalStackedBar {...base} sortGroups="desc" />,
     );
     expect(html).not.toBe(def);
-    expect(html.indexOf("<title>B</title>")).toBeLessThan(
-      html.indexOf("<title>A</title>"),
+    expect(html.indexOf('data-chart-tip="B"')).toBeLessThan(
+      html.indexOf('data-chart-tip="A"'),
     );
   });
   test("id prefija defs", () => {
@@ -300,8 +300,8 @@ describe("LollipopChart (S)", () => {
       <LollipopChart {...base} sortGroups="desc" />,
     );
     expect(html).not.toBe(def);
-    expect(html.indexOf("<title>B</title>")).toBeLessThan(
-      html.indexOf("<title>A</title>"),
+    expect(html.indexOf('data-chart-tip="B"')).toBeLessThan(
+      html.indexOf('data-chart-tip="A"'),
     );
   });
   test("showValues=false quita etiquetas", () => {
@@ -356,8 +356,8 @@ describe("DivergingBar (S)", () => {
       <DivergingBar {...base} sortBy="total" />,
     );
     expect(byTotal).not.toBe(def);
-    expect(byTotal.indexOf("<title>B</title>")).toBeLessThan(
-      byTotal.indexOf("<title>A</title>"),
+    expect(byTotal.indexOf('data-chart-tip="B"')).toBeLessThan(
+      byTotal.indexOf('data-chart-tip="A"'),
     );
     expect(
       renderToStaticMarkup(<DivergingBar {...base} sortBy="diff" />),
@@ -404,8 +404,8 @@ describe("PyramidChart (S)", () => {
       <PyramidChart {...base} sortGroups="desc" />,
     );
     expect(html).not.toBe(def);
-    expect(html.indexOf("<title>B</title>")).toBeLessThan(
-      html.indexOf("<title>A</title>"),
+    expect(html.indexOf('data-chart-tip="B"')).toBeLessThan(
+      html.indexOf('data-chart-tip="A"'),
     );
   });
 });

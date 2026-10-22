@@ -1,17 +1,9 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { max, min } from "d3-array";
-import { scaleBand, scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { ChartSvg, YGrid } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -23,54 +15,53 @@ import {
   GRID_WIDTH,
   TICK_FONT_SIZE,
   ZERO_MARK_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartSvg } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { YGrid } from "../render/y-grid";
+import {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  buildWaterfallFloats,
+  buildWaterfallLabelsWithSubtotals,
+  buildWaterfallScales,
+  CONNECTOR_DASH,
+  resolveWaterfallColors,
+  resolveWaterfallDomain,
+  resolveWaterfallSubtotalIndices,
+  VALUE_LABEL_DY,
+  waterfallSubtotalLabel,
+} from "./waterfall-chart.compute";
+import type { WaterfallChartProps } from "./waterfall-chart.types";
 
-export type WaterfallStep = {
-  label: string;
-  /** Delta (positivo suma, negativo resta). */
-  value: number;
-};
-
-/** Props de WaterfallChart. */
-export type WaterfallChartProps = {
-  steps: WaterfallStep[];
-  ariaLabel: string;
-  height?: number;
-  totalLabel?: string;
-  formatY?: ValueFormatter;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  annotations?: ValueAnnotation[];
-  /** Muestra los conectores punteados entre barras. */
-  showConnectors?: boolean;
-  /** Color de deltas positivos (token). */
-  positiveColor?: string;
-  /** Color de deltas negativos (token). */
-  negativeColor?: string;
-  /** Color de la barra total (token). */
-  totalColor?: string;
-  /** Etiqueta acumulada sobre cada barra (si no, el delta). */
-  runningTotal?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
+export type { WaterfallFloat } from "./waterfall-chart.compute";
+export {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  buildWaterfallFloats,
+  buildWaterfallLabels,
+  buildWaterfallLabelsWithSubtotals,
+  buildWaterfallScales,
+  CONNECTOR_DASH,
+  DOWN,
+  GROUP_BAND_PADDING,
+  resolveWaterfallColors,
+  resolveWaterfallDomain,
+  resolveWaterfallSubtotalIndices,
+  TOTAL,
+  UP,
+  VALUE_LABEL_DY,
+  waterfallSubtotalLabel,
+} from "./waterfall-chart.compute";
+export type {
+  WaterfallChartProps,
+  WaterfallStep,
+} from "./waterfall-chart.types";
 
 const W = 640;
 const MARGIN = { top: 28, right: 12, bottom: 32, left: 48 };
-
-const UP = CHART_TOKEN.chart1;
-const DOWN = CHART_TOKEN.chart5;
-const TOTAL = CHART_TOKEN.primary;
-
-const GROUP_BAND_PADDING = 0.3;
-const AXIS_LABEL_OFFSET = 10;
-const VALUE_LABEL_DY = 6;
-const CONNECTOR_DASH = "3 3";
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
 
 /**
  * Cascada SSR (acumulado por deltas + total). Subidas, bajadas y conectores.
@@ -82,12 +73,18 @@ export function WaterfallChart({
   height = 280,
   totalLabel = "Total",
   formatY,
+  formatValues,
   locale = DEFAULT_LOCALE,
   className,
   style,
   ariaDescribedBy,
   annotations,
   showConnectors = true,
+  showValues = true,
+  gridTicks = GRID_TICKS,
+  yMin,
+  yMax,
+  subtotalAt,
   positiveColor,
   negativeColor,
   totalColor,
@@ -102,29 +99,34 @@ export function WaterfallChart({
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
 
-  let acc = 0;
-  const floats = steps.map((s) => {
-    const value = toNumber(s.value);
-    const from = acc;
-    acc += value;
-    return { label: s.label, value, from, to: acc };
-  });
-  const total = acc;
-  const lo = Math.min(0, min(floats, (f) => Math.min(f.from, f.to)) ?? 0);
-  const hi = Math.max(0, max(floats, (f) => Math.max(f.from, f.to)) ?? 1);
+  const { floats, total } = buildWaterfallFloats(steps);
+  const { lo: autoLo, hi: autoHi } = resolveWaterfallDomain(floats);
+  const lo = yMin === undefined ? autoLo : toNumber(yMin, autoLo);
+  const hi = yMax === undefined ? autoHi : toNumber(yMax, autoHi);
+  const ticksCount = Math.max(1, Math.round(toNumber(gridTicks, GRID_TICKS)));
+  const subIndices = resolveWaterfallSubtotalIndices(subtotalAt, floats.length);
+  const subSet = new Set(subIndices);
 
-  const labels = [...floats.map((f) => f.label), totalLabel];
-  const y = scaleLinear().domain([lo, hi]).nice(GRID_TICKS).range([innerH, 0]);
-  const x = scaleBand()
-    .domain(labels)
-    .range([0, innerW])
-    .padding(GROUP_BAND_PADDING);
-  const ticks = y.ticks(GRID_TICKS);
-  const bw = x.bandwidth();
+  const labels = buildWaterfallLabelsWithSubtotals(
+    floats,
+    totalLabel,
+    subIndices,
+  );
+  const { y, x, ticks, bw } = buildWaterfallScales(
+    labels,
+    lo,
+    hi,
+    innerW,
+    innerH,
+    ticksCount,
+  );
   const fmtY = resolveFormatter(formatY, locale);
-  const upColor = positiveColor ?? UP;
-  const downColor = negativeColor ?? DOWN;
-  const grandColor = totalColor ?? TOTAL;
+  const fmtV = formatValues ? resolveFormatter(formatValues, locale) : fmtY;
+  const { upColor, downColor, grandColor } = resolveWaterfallColors(
+    positiveColor,
+    negativeColor,
+    totalColor,
+  );
 
   const bar = (
     key: string,
@@ -140,7 +142,6 @@ export function WaterfallChart({
     const yBase = y(Math.min(from, to));
     return (
       <g key={key}>
-        <title>{tip}</title>
         <rect
           x={MARGIN.left + (x(label) ?? 0)}
           y={MARGIN.top + yTop}
@@ -150,16 +151,18 @@ export function WaterfallChart({
           fill={color}
           data-chart-tip={tip}
         />
-        <text
-          x={MARGIN.left + (x(label) ?? 0) + bw / 2}
-          y={MARGIN.top + yTop - VALUE_LABEL_DY}
-          textAnchor="middle"
-          fontSize={TICK_FONT_SIZE}
-          fontWeight={FONT_SEMIBOLD}
-          fill={CHART_TOKEN.foreground}
-        >
-          {runningTotal ? fmtY(to) : fmtY(to - from)}
-        </text>
+        {showValues ? (
+          <text
+            x={MARGIN.left + (x(label) ?? 0) + bw / 2}
+            y={MARGIN.top + yTop - VALUE_LABEL_DY}
+            textAnchor="middle"
+            fontSize={TICK_FONT_SIZE}
+            fontWeight={FONT_SEMIBOLD}
+            fill={CHART_TOKEN.foreground}
+          >
+            {runningTotal ? fmtV(to) : fmtV(to - from)}
+          </text>
+        ) : null}
         {showConnectors && dashed && nextLabel ? (
           <line
             x1={MARGIN.left + (x(label) ?? 0) + bw}
@@ -189,8 +192,10 @@ export function WaterfallChart({
         if (a.value < lo || a.value > hi) return null;
         const ay = MARGIN.top + y(a.value);
         return (
-          <g key={`ann-${a.value}-${ai}`}>
-            <title>{a.label ?? String(a.value)}</title>
+          <g
+            key={`ann-${a.value}-${ai}`}
+            data-chart-tip={a.label ?? String(a.value)}
+          >
             <line
               x1={MARGIN.left}
               x2={W - MARGIN.right}
@@ -214,7 +219,10 @@ export function WaterfallChart({
         );
       })}
       {floats.map((f, i) => {
-        const nextLabel = floats[i + 1]?.label ?? totalLabel;
+        const subLabel = subSet.has(i)
+          ? waterfallSubtotalLabel(f.label)
+          : undefined;
+        const nextLabel = subLabel ?? floats[i + 1]?.label ?? totalLabel;
         return (
           <g key={stableKey([f.label], i)}>
             {bar(
@@ -233,10 +241,34 @@ export function WaterfallChart({
               textAnchor="middle"
               fontSize={TICK_FONT_SIZE}
               fill={CHART_TOKEN.muted}
+              data-chart-tip={f.label}
             >
-              <title>{f.label}</title>
               {truncateLabel(f.label)}
             </text>
+            {subLabel ? (
+              <g key={stableKey([subLabel], i)}>
+                {bar(
+                  stableKey([subLabel], i),
+                  subLabel,
+                  0,
+                  f.to,
+                  grandColor,
+                  `${subLabel}: ${fmtY(f.to)}`,
+                  true,
+                  floats[i + 1]?.label ?? totalLabel,
+                )}
+                <text
+                  x={MARGIN.left + (x(subLabel) ?? 0) + bw / 2}
+                  y={height - AXIS_LABEL_OFFSET}
+                  textAnchor="middle"
+                  fontSize={TICK_FONT_SIZE}
+                  fill={CHART_TOKEN.muted}
+                  data-chart-tip={subLabel}
+                >
+                  {truncateLabel(subLabel)}
+                </text>
+              </g>
+            ) : null}
           </g>
         );
       })}

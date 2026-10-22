@@ -1,95 +1,43 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import { scaleBand, scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { CartesianFrame } from "../lib/cartesian";
-import { domainWithZero } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_ROWS } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColors, truncateLabel } from "../lib/palette";
+import { scaleBand } from "d3-scale";
+import { buildValueAxis } from "../core/cartesian-model";
+import { seriesColors } from "../core/color";
+
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { DEFAULT_MAX_ROWS } from "../core/limits";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
   GRID_TICKS,
   POINT_BORDER,
   POINT_RADIUS_SCATTER,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { CartesianFrame } from "../render/cartesian-frame";
+import { CHART_MARGIN as MARGIN, CHART_W as W } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  computeStripPositions,
+  DEFAULT_JITTER,
+  DEFAULT_JITTER_SEED,
+  GROUP_BAND_PADDING,
+  STRIP_FILL_OPACITY,
+} from "./strip-plot.compute";
+import type { StripPlotProps } from "./strip-plot.types";
 
-const GROUP_BAND_PADDING = 0.45;
-/** Jitter por defecto (fracción del semiancho de banda). */
-const DEFAULT_JITTER = 0.7;
-/** Semilla por defecto del jitter determinista. */
-const DEFAULT_JITTER_SEED = 42;
-/** Opacidad de punto (las acumulaciones se leen por densidad). */
-const STRIP_FILL_OPACITY = 0.8;
-
-/** Grupo del strip (etiqueta, muestra y color opcional). */
-export type StripGroup = {
-  label: string;
-  values: number[];
-  color?: string;
-};
-
-/** Props de StripPlot. */
-export type StripPlotProps = {
-  groups: StripGroup[];
-  ariaLabel: string;
-  height?: number;
-  formatY?: ValueFormatter;
-  locale?: string;
-  /** Dispersión horizontal 0–1 (0 = columna recta). */
-  jitter?: number;
-  /** Semilla del jitter (mismo seed, mismo dibujo). */
-  seed?: number;
-  /** Ticks del grid Y (por defecto GRID_TICKS). */
-  gridTicks?: number;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  annotations?: ValueAnnotation[];
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-/**
- * PRNG mulberry32 (determinista: mismo seed, mismos offsets en
- * servidor y cliente). Rango [0, 1).
- */
-export function mulberry32(seed: number): () => number {
-  let a = toNumber(seed, DEFAULT_JITTER_SEED) >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/**
- * Desplazamientos horizontales deterministas para una muestra
- * (`halfW` = semiancho útil de banda). Exportado para pruebas.
- */
-export function computeStripPositions(
-  count: number,
-  seed: number,
-  halfW: number,
-): number[] {
-  const rand = mulberry32(seed);
-  return Array.from(
-    { length: Math.max(0, count) },
-    () => (rand() * 2 - 1) * halfW,
-  );
-}
+export {
+  computeStripPositions,
+  DEFAULT_JITTER,
+  DEFAULT_JITTER_SEED,
+  GROUP_BAND_PADDING,
+  mulberry32,
+  STRIP_FILL_OPACITY,
+} from "./strip-plot.compute";
+export type { StripGroup, StripPlotProps } from "./strip-plot.types";
 
 /**
  * Puntos 1D con jitter determinista por grupo (tira cómica seria:
@@ -127,18 +75,25 @@ export function StripPlot({
 
   const innerW = W - MARGIN.left - MARGIN.right;
   const innerH = height - MARGIN.top - MARGIN.bottom;
-  const [lo, hi] = domainWithZero(computed.flatMap((c) => c.clean));
-  const fmtY = resolveFormatter(formatY, locale);
-  const ticksCount = Math.max(1, Math.round(toNumber(gridTicks, GRID_TICKS)));
-  const y = scaleLinear()
-    .domain([lo, Math.max(hi, lo + 1)])
-    .nice(ticksCount)
-    .range([innerH, 0]);
+  const {
+    lo,
+    hi,
+    y,
+    ticks,
+    fmt: fmtY,
+  } = buildValueAxis(
+    {
+      values: computed.flatMap((c) => c.clean),
+      ticks: gridTicks,
+      format: formatY,
+      locale,
+    },
+    [innerH, 0],
+  );
   const x = scaleBand()
     .domain(computed.map((c) => c.group.label))
     .range([0, innerW])
     .padding(GROUP_BAND_PADDING);
-  const ticks = y.ticks(ticksCount);
   const colors = seriesColors(computed.map((c) => ({ color: c.group.color })));
   const spread = Math.min(1, Math.max(0, toNumber(jitter, DEFAULT_JITTER)));
   const legendItems = showLegend
@@ -182,7 +137,6 @@ export function StripPlot({
               const tip = `${c.group.label}: ${fmtY(v)}`;
               return (
                 <g key={stableKey([c.group.label, String(vi)], vi)}>
-                  <title>{tip}</title>
                   <circle
                     cx={cx + (offsets[vi] ?? 0)}
                     cy={MARGIN.top + y(v)}

@@ -1,13 +1,8 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-
-import { max } from "d3-array";
-import type { CSSProperties } from "react";
-import { stableKey } from "../lib/keys";
-import { clamp01, toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { formatDefault, seriesColor } from "../lib/palette";
+import { formatDefault } from "../core/format";
+import { stableKey } from "../core/keys";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -17,54 +12,29 @@ import {
   POINT_RADIUS_RADAR,
   TICK_DY,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  AXIS_LABEL_OFFSET,
+  computeRadarTop,
+  DEFAULT_RADAR_GRID_SHAPE,
+  normalizeRadarPointRadius,
+  normalizeRadarStrokeWidth,
+  RADAR_FILL_OPACITY,
+  radarAngle,
+  radarCenter,
+  radarLevelRadius,
+  radarPoint,
+  radarRadius,
+  radarSeriesColors,
+  resolveRadarOpacity,
+} from "./radar-chart.compute";
+import type { RadarChartProps } from "./radar-chart.types";
 
-/** Serie del radar (etiqueta, valores por eje y color opcional). */
-export type RadarSeries = {
-  label: string;
-  values: number[];
-  color?: string;
-};
-
-/** Relleno exterior del lienzo, separación de etiquetas y relleno de serie. */
-const RADAR_OUTER_PAD = 44;
-const AXIS_LABEL_OFFSET = 14;
-const RADAR_FILL_OPACITY = 0.18;
-
-/** Props del radar SSR para perfiles multivariados. */
-export type RadarChartProps = {
-  axes: string[];
-  series: RadarSeries[];
-  ariaLabel: string;
-  size?: number;
-  levels?: number;
-  maxValue?: number;
-  /**
-   * Opacidad del relleno: un valor para todas o uno por serie.
-   * @default 0.18
-   */
-  fillOpacity?: number | number[];
-  /**
-   * Muestra los vértices de cada serie.
-   * @default true
-   */
-  showVertices?: boolean;
-  /**
-   * Escala radial (sqrt comprime los valores altos).
-   * @default "linear"
-   */
-  scale?: "linear" | "sqrt";
-  format?: ValueFormatter;
-  locale?: string;
-  showLegend?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
+export type { RadarGridShape } from "./radar-chart.compute";
+export { DEFAULT_RADAR_GRID_SHAPE } from "./radar-chart.compute";
+export type { RadarChartProps, RadarSeries } from "./radar-chart.types";
 
 /**
  * Radar (telaraña) SSR para perfiles multivariados.
@@ -79,6 +49,9 @@ export function RadarChart({
   fillOpacity = RADAR_FILL_OPACITY,
   showVertices = true,
   scale = "linear",
+  gridShape = DEFAULT_RADAR_GRID_SHAPE,
+  strokeWidth = LINE_WIDTH,
+  pointRadius = POINT_RADIUS_RADAR,
   locale = DEFAULT_LOCALE,
   format = (v: number) => formatDefault(v, locale),
   showLegend = true,
@@ -88,32 +61,23 @@ export function RadarChart({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: RadarChartProps) {
-  const center = size / 2;
-  const radius = size / 2 - RADAR_OUTER_PAD;
+  const center = radarCenter(size);
+  const radius = radarRadius(size);
 
   if (axes.length < 3 || series.length === 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const top = Math.max(
-    1,
-    toNumber(maxValue ?? max(series.flatMap((s) => s.values)) ?? 1),
-  );
+  const top = computeRadarTop(series, maxValue);
   const useSqrt = scale === "sqrt";
-  const angle = (i: number) => (Math.PI * 2 * i) / axes.length - Math.PI / 2;
-  const point = (i: number, v: number) => {
-    const ratio = Math.max(0, toNumber(v)) / top;
-    const r = (useSqrt ? Math.sqrt(ratio) : ratio) * radius;
-    return `${center + r * Math.cos(angle(i))},${center + r * Math.sin(angle(i))}`;
-  };
-  const seriesOpacity = (si: number) =>
-    clamp01(
-      toNumber(
-        Array.isArray(fillOpacity) ? fillOpacity[si] : fillOpacity,
-        RADAR_FILL_OPACITY,
-      ),
-    );
-  const colors = series.map((s, i) => seriesColor(i, s.color));
+  const lineWidth = normalizeRadarStrokeWidth(strokeWidth);
+  const vertexRadius = normalizeRadarPointRadius(pointRadius);
+  const circularGrid = gridShape === "circle";
+  const angle = (i: number) => radarAngle(i, axes.length);
+  const point = (i: number, v: number) =>
+    radarPoint(center, radius, top, useSqrt, axes.length, i, v);
+  const seriesOpacity = (si: number) => resolveRadarOpacity(fillOpacity, si);
+  const colors = radarSeriesColors(series);
 
   return (
     <div
@@ -133,10 +97,20 @@ export function RadarChart({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         {Array.from({ length: levels }, (_, li) => {
           const frac = (li + 1) / levels;
-          return (
+          return circularGrid ? (
+            <circle
+              // biome-ignore lint/suspicious/noArrayIndexKey: niveles estáticos orden inmutable
+              key={`level__${li}`}
+              cx={center}
+              cy={center}
+              r={radarLevelRadius(radius, useSqrt, frac)}
+              fill="none"
+              stroke={CHART_TOKEN.border}
+              strokeWidth={GRID_WIDTH}
+            />
+          ) : (
             <polygon
               // biome-ignore lint/suspicious/noArrayIndexKey: niveles estáticos orden inmutable
               key={`level__${li}`}
@@ -170,14 +144,16 @@ export function RadarChart({
           </g>
         ))}
         {series.map((s, si) => (
-          <g key={stableKey([s.label], si)}>
-            <title>{`${s.label}: ${s.values.map((v) => format(v)).join(" · ")}`}</title>
+          <g
+            key={stableKey([s.label], si)}
+            data-chart-tip={`${s.label}: ${s.values.map((v) => format(v)).join(" · ")}`}
+          >
             <polygon
               points={s.values.map((v, i) => point(i, v)).join(" ")}
               fill={colors[si] ?? CHART_TOKEN.chart1}
               fillOpacity={seriesOpacity(si)}
               stroke={colors[si] ?? CHART_TOKEN.chart1}
-              strokeWidth={LINE_WIDTH}
+              strokeWidth={lineWidth}
               strokeLinejoin="round"
             />
             {showVertices
@@ -186,11 +162,10 @@ export function RadarChart({
                   const [cx, cy] = point(i, v).split(",").map(Number);
                   return (
                     <g key={stableKey([s.label, i], i)}>
-                      <title>{tip}</title>
                       <circle
                         cx={cx ?? center}
                         cy={cy ?? center}
-                        r={POINT_RADIUS_RADAR}
+                        r={vertexRadius}
                         fill={colors[si] ?? CHART_TOKEN.chart1}
                         stroke={CHART_TOKEN.background}
                         strokeWidth={POINT_BORDER}

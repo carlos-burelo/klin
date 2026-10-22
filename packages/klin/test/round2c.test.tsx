@@ -12,8 +12,8 @@ import {
   computeDensityContours,
   DensityContourPlot,
 } from "../src/components/density-contour-plot";
-import { EMPTY_TITLE } from "../src/components/empty";
 import { computeHexbins, HexbinPlot } from "../src/components/hexbin-plot";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 const CHORD_LABELS = ["A", "B", "C"];
 const CHORD_MATRIX = [
@@ -46,11 +46,12 @@ const HEX_POINTS = [
   { x: 9.1, y: 2.2 },
 ];
 
-/** Tips === títulos de forma (el SVG aporta un <title> extra: el aria). */
+/** Tips === `data-chart-tip` por forma (`<title>` prohibido en todo src). */
 function expectTipsMatchTitles(html: string) {
   const titles = html.match(/<title>/g)?.length ?? 0;
   const tips = html.match(/data-chart-tip/g)?.length ?? 0;
-  expect(titles).toBe(tips + 1);
+  expect(titles).toBe(0);
+  expect(tips).toBeGreaterThan(0);
 }
 
 describe("ronda 2c SSR (sin JS)", () => {

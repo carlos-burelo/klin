@@ -7,6 +7,11 @@ const cohorts = [
   { label: "Mar", values: [480, 300] },
 ];
 
+const cohortesHueco = [
+  { label: "Abr", values: [400, Number.NaN, 180, 120] },
+  { label: "May", values: [360, 240, Number.NaN, 110] },
+];
+
 export default function CohortChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -48,6 +53,29 @@ const cohorts = [
           cohorts={cohorts}
           showValues="always"
           format={(v: number) => `ret ${Math.round(v * 100)}%`}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Huecos con etiqueta de dato faltante"
+        code={`import { CohortChart } from "@carlos-burelo/klin";
+
+const cohortesHueco = [
+  { label: "Abr", values: [400, Number.NaN, 180, 120] },
+  { label: "May", values: [360, 240, Number.NaN, 110] },
+];
+
+<CohortChart
+  ariaLabel="Retención con huecos marcados como sin dato"
+  cohorts={cohortesHueco}
+  showValues="always"
+  missingLabel="sin dato"
+/>`}
+      >
+        <CohortChart
+          ariaLabel="Retención con huecos marcados como sin dato"
+          cohorts={cohortesHueco}
+          showValues="always"
+          missingLabel="sin dato"
         />
       </DemoExample>
     </div>

@@ -54,7 +54,7 @@ describe("paridad S en 7 componentes nuevos", () => {
   test("Candlestick: default intacto + cada prop cambia el output", () => {
     const base = renderToStaticMarkup(<CandlestickChart {...candleBase} />);
     expect(count(base, "<rect")).toBe(3);
-    expect(count(base, "data-chart-tip")).toBe(3);
+    expect(count(base, "data-chart-tip")).toBe(6);
     expect(base).not.toContain('rx="0"');
     expect(
       renderToStaticMarkup(
@@ -84,7 +84,7 @@ describe("paridad S en 7 componentes nuevos", () => {
   test("Dumbbell: default intacto + cada prop cambia el output", () => {
     const base = renderToStaticMarkup(<DumbbellChart {...dumbbellBase} />);
     expect(count(base, "<circle")).toBe(4);
-    expect(count(base, "data-chart-tip")).toBe(4);
+    expect(count(base, "data-chart-tip")).toBe(6);
     expect(
       renderToStaticMarkup(
         <DumbbellChart {...dumbbellBase} domain={[0, 30]} />,
@@ -116,7 +116,7 @@ describe("paridad S en 7 componentes nuevos", () => {
       <RangeChart ariaLabel="rangos" groups={groups} />,
     );
     expect(count(base, "<circle")).toBe(2);
-    expect(count(base, "data-chart-tip")).toBe(2);
+    expect(count(base, "data-chart-tip")).toBe(4);
     expect(
       renderToStaticMarkup(
         <RangeChart ariaLabel="rangos" groups={groups} yMin={0} yMax={20} />,
@@ -152,7 +152,7 @@ describe("paridad S en 7 componentes nuevos", () => {
       <ViolinPlot ariaLabel="violines" groups={violinGroups} />,
     );
     expect(count(base, "<path")).toBe(3);
-    expect(count(base, "data-chart-tip")).toBe(3);
+    expect(count(base, "data-chart-tip")).toBe(6);
     expect(base).not.toContain("(n 9)");
     expect(
       renderToStaticMarkup(
@@ -193,7 +193,7 @@ describe("paridad S en 7 componentes nuevos", () => {
       <RidgelinePlot ariaLabel="crestas" series={violinGroups} />,
     );
     expect(count(base, "<path")).toBe(3);
-    expect(count(base, "data-chart-tip")).toBe(3);
+    expect(count(base, "data-chart-tip")).toBe(6);
     expect(
       renderToStaticMarkup(
         <RidgelinePlot

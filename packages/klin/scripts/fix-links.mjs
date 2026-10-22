@@ -13,7 +13,9 @@ function fixFile(path) {
     /((?:from|import|export)\s+(?:[^'"]*?\sfrom\s+)?)(['"])(\.[^'"]+)\2/g,
     (m, head, q, spec) => {
       const base = spec.split("/").pop() ?? "";
-      if (base.includes(".")) return m;
+      // Solo se considera extensión real al final (los puntos intermedios
+      // como `box-plot.compute` son parte del nombre base, no extensión).
+      if (/\.(?:js|mjs|cjs|json|css)$/.test(base)) return m;
       return `${head}${q}${spec}.js${q}`;
     },
   );

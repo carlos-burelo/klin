@@ -1,11 +1,11 @@
 /**
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
-import type { CSSProperties } from "react";
-import { resolveFormatter } from "../lib/format";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import { seriesColor } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -13,83 +13,17 @@ import {
   LINK_OPACITY,
   PERCENT_FACTOR,
   TICK_DY,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  computeVennGeometry,
+  DEFAULT_VENN_SHOW_PERCENT,
+} from "./venn-diagram.compute";
+import type { VennDiagramProps } from "./venn-diagram.types";
 
-export type VennSet = {
-  label: string;
-  value: number;
-  color?: string;
-};
-
-export type VennDiagramProps = {
-  sets: [VennSet, VennSet] | [VennSet, VennSet, VennSet];
-  /** Valores de intersecciones por índices (`[0,1]`, `[0,1,2]`…). */
-  intersections?: { sets: number[]; value: number }[];
-  ariaLabel: string;
-  size?: number;
-  format?: (value: number) => string;
-  locale?: string;
-  /** Añade el % del universo junto a cada valor. */
-  showPercent?: boolean;
-  /** Total de referencia para `showPercent` (obligatorio si se activa). */
-  universe?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-};
-
-/** Sin % por defecto (solo valores absolutos, como hasta ahora). */
-const DEFAULT_VENN_SHOW_PERCENT = false;
-
-/**
- * Cómputo puro de la geometría fija del Venn (centros + regiones).
- */
-export function computeVennGeometry(
-  count: 2 | 3,
-  size: number,
-): {
-  r: number;
-  pad: number;
-  cy: number;
-  centers: Array<{ x: number; y: number }>;
-  regions: Array<{ sets: number[]; x: number; y: number }>;
-} {
-  const r = size * 0.26;
-  const pad = 34;
-  const cy = size / 2;
-  const centers =
-    count === 2
-      ? [
-          { x: size * 0.36, y: cy },
-          { x: size * 0.64, y: cy },
-        ]
-      : [
-          { x: size * 0.5, y: size * 0.36 },
-          { x: size * 0.34, y: size * 0.64 },
-          { x: size * 0.66, y: size * 0.64 },
-        ];
-  const regions =
-    count === 2
-      ? [
-          { sets: [0], x: size * 0.24, y: cy },
-          { sets: [1], x: size * 0.76, y: cy },
-          { sets: [0, 1], x: size * 0.5, y: cy },
-        ]
-      : [
-          { sets: [0], x: size * 0.5, y: size * 0.2 },
-          { sets: [1], x: size * 0.22, y: size * 0.72 },
-          { sets: [2], x: size * 0.78, y: size * 0.72 },
-          { sets: [0, 1], x: size * 0.4, y: size * 0.5 },
-          { sets: [0, 2], x: size * 0.6, y: size * 0.5 },
-          { sets: [1, 2], x: size * 0.5, y: size * 0.72 },
-          { sets: [0, 1, 2], x: size * 0.5, y: size * 0.57 },
-        ];
-  return { r, pad, cy, centers, regions };
-}
+export { computeVennGeometry } from "./venn-diagram.compute";
+export type { VennDiagramProps, VennSet } from "./venn-diagram.types";
 
 /**
  * Venn SSR de 2 o 3 conjuntos (geometría fija, valores por región).
@@ -103,6 +37,7 @@ export function VennDiagram({
   locale = DEFAULT_LOCALE,
   showPercent = DEFAULT_VENN_SHOW_PERCENT,
   universe,
+  showLegend = true,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
   className,
@@ -172,13 +107,11 @@ export function VennDiagram({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
         {centers.map((c, i) => {
           const color = seriesColor(i, sets[i]?.color);
           const tip = `${sets[i]?.label}: ${fmtShare(toNumber(sets[i]?.value))}`;
           return (
             <g key={stableKey([sets[i]?.label ?? ""], i)}>
-              <title>{tip}</title>
               <circle
                 cx={c.x}
                 cy={c.y}
@@ -196,7 +129,6 @@ export function VennDiagram({
           const tip = tipFor(rg.sets);
           return (
             <g key={stableKey([rg.sets.join(",")], i)}>
-              <title>{tip}</title>
               <text
                 x={rg.x}
                 y={rg.y}
@@ -232,12 +164,14 @@ export function VennDiagram({
           );
         })}
       </svg>
-      <ChartLegend
-        items={sets.map((s, i) => ({
-          label: `${s.label} · ${fmt(toNumber(s.value))}`,
-          color: seriesColor(i, s.color),
-        }))}
-      />
+      {showLegend ? (
+        <ChartLegend
+          items={sets.map((s, i) => ({
+            label: `${s.label} · ${fmt(toNumber(s.value))}`,
+            color: seriesColor(i, s.color),
+          }))}
+        />
+      ) : null}
     </div>
   );
 }

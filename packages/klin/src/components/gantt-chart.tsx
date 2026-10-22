@@ -1,76 +1,41 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-
-import { max, min } from "d3-array";
-import { scaleTime } from "d3-scale";
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import type { ChartMargin } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import { formatDefault, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   CHART_TOKEN,
   DEFAULT_LOCALE,
+  EDGE_WIDTH,
   GRID_WIDTH,
-  PERCENT_FACTOR,
   TICK_DY,
   TICK_FONT_SIZE,
   TICK_GAP_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import type { ChartMargin } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { markerUrl, SvgMarkers } from "../render/markers";
+import {
+  AXIS_LABEL_BOTTOM_PAD,
+  buildGanttScale,
+  buildGanttTip,
+  DEFAULT_LABEL_WIDTH,
+  ganttProgressWidth,
+  ganttTaskGeometry,
+  LABEL_MAX_TASK,
+  ROW_H,
+  resolveGanttHeight,
+  resolveGanttMargin,
+  resolveGanttRows,
+  resolveGanttToday,
+  sortGanttTasks,
+  W,
+} from "./gantt-chart.compute";
+import type { GanttChartProps } from "./gantt-chart.types";
 
-/** Tarea del Gantt (etiqueta, rango temporal y avance opcional). */
-export type GanttTask = {
-  label: string;
-  start: string | Date;
-  end: string | Date;
-  /** 0–100. */
-  progress?: number;
-  color?: string;
-};
-
-/** Props del Gantt SSR (tareas en el tiempo con avance opcional). */
-export type GanttChartProps = {
-  tasks: GanttTask[];
-  ariaLabel: string;
-  /** Muestra la barra de avance sobre la pista programada. */
-  showProgress?: boolean;
-  /** Fecha `YYYY-MM-DD` o `Date` para dibujar la línea de hoy. */
-  today?: string | Date;
-  /** Alto de fila en px. */
-  rowHeight?: number;
-  /** Ancho de la columna de etiquetas en px. */
-  labelWidth?: number;
-  /** Alto total del SVG (por defecto según nº de tareas). */
-  height?: number;
-  formatDate?: (d: Date) => string;
-  locale?: string;
-  showLegend?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-const W = 640;
-const MARGIN: ChartMargin = { top: 8, right: 12, bottom: 28, left: 148 };
-const ROW_H = 30;
-/** Ancho por defecto de la columna de etiquetas (paridad con `MARGIN.left`). */
-const DEFAULT_LABEL_WIDTH = 148;
-/** Alto mínimo, día en ms, nº de marcas y geometría de barra/etiqueta. */
-const GANTT_MIN_H = 120;
-const DAY_MS = 86_400_000;
-const GANTT_TICKS = 5;
-const MIN_BAR_W = 3;
-const BAR_Y_OFFSET = 6;
-const AXIS_LABEL_BOTTOM_PAD = 10;
-/** Máximo de truncado de tarea. */
-const LABEL_MAX_TASK = 20;
+export { sortGanttTasks } from "./gantt-chart.compute";
+export type { GanttChartProps, GanttTask } from "./gantt-chart.types";
 
 /**
  * Gantt SSR (tareas en el tiempo, con % de avance opcional).
@@ -87,6 +52,8 @@ export function GanttChart({
   formatDate,
   locale = DEFAULT_LOCALE,
   showLegend = true,
+  showDependencies,
+  sortBy,
   className,
   style,
   ariaDescribedBy,
@@ -97,45 +64,51 @@ export function GanttChart({
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
-  const effectiveRowH = Math.max(1, Math.floor(toNumber(rowHeight)));
-  const effectiveLabelW = Math.max(0, Math.floor(toNumber(labelWidth)));
-  const margin: ChartMargin = { ...MARGIN, left: effectiveLabelW };
-  const computedH = Math.max(
-    GANTT_MIN_H,
-    margin.top + margin.bottom + tasks.length * effectiveRowH,
+  const { effectiveRowH, effectiveLabelW } = resolveGanttRows(
+    rowHeight,
+    labelWidth,
   );
-  const height =
-    heightProp === undefined
-      ? computedH
-      : Math.max(GANTT_MIN_H, Math.floor(toNumber(heightProp)));
+  const ordered = sortGanttTasks(tasks, sortBy, locale);
+  const margin: ChartMargin = resolveGanttMargin(effectiveLabelW);
+  const height = resolveGanttHeight(
+    ordered.length,
+    effectiveRowH,
+    margin,
+    heightProp,
+  );
   const innerW = W - margin.left - margin.right;
 
-  const toDate = (v: string | Date) =>
-    v instanceof Date ? v : new Date(`${v}T12:00:00`);
-  const starts = tasks
-    .map((t) => toDate(t.start).getTime())
-    .filter(Number.isFinite);
-  const ends = tasks
-    .map((t) => toDate(t.end).getTime())
-    .filter(Number.isFinite);
-  const lo = min(starts) ?? Date.now();
-  const hi = Math.max(max(ends) ?? Date.now(), lo + DAY_MS);
-
-  const x = scaleTime()
-    .domain([new Date(lo - DAY_MS), new Date(hi + DAY_MS)])
-    .range([0, innerW]);
+  const { x, lo, hi, ticks } = buildGanttScale(ordered, innerW);
   const fmt =
     formatDate ??
     ((d: Date) =>
       d.toLocaleDateString(locale, { day: "numeric", month: "short" }));
-  const ticks = x.ticks(GANTT_TICKS);
-  const todayDate = today === undefined ? null : toDate(today);
-  const todayX =
-    todayDate && Number.isFinite(todayDate.getTime())
-      ? margin.left + x(todayDate)
-      : null;
-  const showToday =
-    todayX !== null && todayX >= margin.left && todayX <= margin.left + innerW;
+  const { todayDate, todayX, showToday } = resolveGanttToday(
+    today,
+    x,
+    margin.left,
+    innerW,
+  );
+  const showDeps =
+    showDependencies ?? ordered.some((t) => (t.dependsOn?.length ?? 0) > 0);
+  const byLabel = new Map(ordered.map((t, i) => [t.label, i] as const));
+  const geos = ordered.map((task, i) =>
+    ganttTaskGeometry(task, x, margin.left, margin.top, effectiveRowH, i),
+  );
+  const depEdges = showDeps
+    ? ordered.flatMap((task, i) =>
+        (task.dependsOn ?? [])
+          .map((dep) => {
+            const j = byLabel.get(dep);
+            if (j === undefined || j === i) return null;
+            const a = geos[j];
+            const b = geos[i];
+            if (!a || !b) return null;
+            return { from: j, to: i, a, b };
+          })
+          .filter((d): d is NonNullable<typeof d> => d !== null),
+      )
+    : [];
 
   return (
     <div className={className} style={style}>
@@ -146,7 +119,9 @@ export function GanttChart({
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
+        {showDeps && depEdges.length > 0 ? (
+          <SvgMarkers prefix="charts-gantt" kinds={["arrow"]} />
+        ) : null}
         {ticks.map((t) => (
           <g key={t.getTime()}>
             <line
@@ -170,7 +145,6 @@ export function GanttChart({
         ))}
         {showToday && todayDate ? (
           <g>
-            <title>{`Hoy: ${fmt(todayDate)}`}</title>
             <line
               x1={todayX ?? margin.left}
               x2={todayX ?? margin.left}
@@ -183,26 +157,16 @@ export function GanttChart({
             />
           </g>
         ) : null}
-        {tasks.map((task, i) => {
-          const s = toDate(task.start);
-          const e = toDate(task.end);
-          const bx = margin.left + x(s);
-          const bw = Math.max(MIN_BAR_W, x(e) - x(s));
-          const by = margin.top + i * effectiveRowH + BAR_Y_OFFSET;
-          const bh = effectiveRowH - BAR_Y_OFFSET * 2;
-          const color = task.color ?? CHART_TOKEN.chart1;
-          const pct =
-            task.progress === undefined
-              ? null
-              : Math.min(PERCENT_FACTOR, Math.max(0, toNumber(task.progress)));
-          const durMs = e.getTime() - s.getTime();
-          const days = Number.isFinite(durMs)
-            ? Math.max(1, Math.round(durMs / DAY_MS) + 1)
-            : null;
-          const tip =
-            `${task.label}: ${fmt(s)} → ${fmt(e)}` +
-            (pct === null ? "" : ` · ${formatDefault(pct, locale)}%`) +
-            (days === null ? "" : ` · ${days} d`);
+        {ordered.map((task, i) => {
+          const { s, e, bx, bw, by, bh, color, pct, days } = ganttTaskGeometry(
+            task,
+            x,
+            margin.left,
+            margin.top,
+            effectiveRowH,
+            i,
+          );
+          const tip = buildGanttTip(task.label, s, e, pct, days, fmt, locale);
           return (
             <g key={stableKey([task.label], i)}>
               <text
@@ -212,12 +176,11 @@ export function GanttChart({
                 textAnchor="end"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={task.label}
               >
-                <title>{task.label}</title>
                 {truncateLabel(task.label, LABEL_MAX_TASK)}
               </text>
               <g>
-                <title>{tip}</title>
                 {showProgress ? (
                   <>
                     <rect
@@ -231,10 +194,7 @@ export function GanttChart({
                     <rect
                       x={bx}
                       y={by}
-                      width={Math.max(
-                        bh,
-                        (bw * (pct ?? PERCENT_FACTOR)) / PERCENT_FACTOR,
-                      )}
+                      width={ganttProgressWidth(bw, bh, pct)}
                       height={bh}
                       rx={bh / 2}
                       fill={color}
@@ -254,6 +214,22 @@ export function GanttChart({
                 )}
               </g>
             </g>
+          );
+        })}
+        {depEdges.map((d, i) => {
+          const sx = d.a.bx + d.a.bw;
+          const sy = d.a.by + d.a.bh / 2;
+          const tx = d.b.bx;
+          const ty = d.b.by + d.b.bh / 2;
+          return (
+            <path
+              key={stableKey([d.from, d.to], i)}
+              d={`M ${sx} ${sy} C ${sx + 20} ${sy}, ${tx - 20} ${ty}, ${tx} ${ty}`}
+              fill="none"
+              stroke={CHART_TOKEN.muted}
+              strokeWidth={EDGE_WIDTH}
+              markerEnd={markerUrl("charts-gantt", "arrow")}
+            />
           );
         })}
       </svg>

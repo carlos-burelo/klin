@@ -1,6 +1,21 @@
 import { RidgelinePlot } from "@carlos-burelo/klin";
 import { DemoExample } from "../../components/docs/demo-example";
 
+const seriesEstres = Array.from({ length: 8 }, (_, g) => ({
+  label: `Sucursal ${g + 1} Periférico Sur`,
+  values: Array.from(
+    { length: 60 },
+    (_, i) =>
+      Math.round(
+        (30 +
+          g * 8 +
+          16 * Math.abs(Math.sin(i / 7 + g * 0.9)) +
+          ((i * 5 + g * 11) % 13)) *
+          10,
+      ) / 10,
+  ),
+}));
+
 export default function RidgelinePlotExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -62,6 +77,35 @@ const series: RidgelineSeries[] = [
           ]}
           overlap={0.8}
           showLegend={false}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 8 sucursales con 480 tickets y tamaño de muestra visible"
+        code={`import { RidgelinePlot, type RidgelineSeries } from "@carlos-burelo/klin";
+
+const seriesEstres = Array.from({ length: 8 }, (_, g) => ({
+  label: \`Sucursal \${g + 1} Periférico Sur\`,
+  values: Array.from(
+    { length: 60 },
+    (_, i) =>
+      Math.round(
+        (30 + g * 8 + 16 * Math.abs(Math.sin(i / 7 + g * 0.9)) + ((i * 5 + g * 11) % 13)) * 10,
+      ) / 10,
+  ),
+});
+
+<RidgelinePlot
+  ariaLabel="Distribución de minutos por ticket en ocho sucursales con 480 datos"
+  series={seriesEstres}
+  formatX={(v: number) => \`\${v} min\`}
+  showSampleSize
+/>`}
+      >
+        <RidgelinePlot
+          ariaLabel="Distribución de minutos por ticket en ocho sucursales con 480 datos"
+          series={seriesEstres}
+          formatX={(v: number) => `${v} min`}
+          showSampleSize
         />
       </DemoExample>
     </div>

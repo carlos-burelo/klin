@@ -5,7 +5,7 @@ export default function LollipopExamples() {
   return (
     <div className="flex flex-col gap-6">
       <DemoExample
-        caption="Ventas por región en miles de piezas"
+        caption="Ventas por región con dominio fijo de 0 a 250 mil"
         code={`import { LollipopChart } from "@carlos-burelo/klin";
 
 const data = [
@@ -21,6 +21,8 @@ const data = [
   data={data}
   xKey="region"
   yKey="ventas"
+  yMin={0}
+  yMax={250}
 />`}
       >
         <LollipopChart
@@ -34,6 +36,8 @@ const data = [
           ]}
           xKey="region"
           yKey="ventas"
+          yMin={0}
+          yMax={250}
         />
       </DemoExample>
       <DemoExample
@@ -108,6 +112,95 @@ const data = [
           formatY={(v: number) =>
             `$${new Intl.NumberFormat("es-MX").format(v)}`
           }
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 24 centros con nombres largos y saldos negativos mezclados"
+        code={`import { LollipopChart } from "@carlos-burelo/klin";
+
+const data = [
+  { centro: "Centro de Distribución Toluca Lerma", saldo: 128 },
+  { centro: "Centro de Distribución Puebla Amozoc", saldo: -34 },
+  { centro: "Centro de Distribución Monterrey Apodaca", saldo: 214 },
+  { centro: "Centro de Distribución Guadalajara Tlajomulco", saldo: 96 },
+  { centro: "Centro de Distribución León Silao", saldo: -18 },
+  { centro: "Centro de Distribución Querétaro El Marqués", saldo: 167 },
+  { centro: "Centro de Distribución Tijuana Otay", saldo: 142 },
+  { centro: "Centro de Distribución Mérida Umán", saldo: -52 },
+  { centro: "Centro de Distribución Veracruz Puerto Seco", saldo: 188 },
+  { centro: "Centro de Distribución Oaxaca Etla", saldo: 74 },
+  { centro: "Centro de Distribución Chihuahua Sur", saldo: -27 },
+  { centro: "Centro de Distribución Culiacán Norte", saldo: 155 },
+  { centro: "Centro de Distribución Hermosillo Poniente", saldo: 203 },
+  { centro: "Centro de Distribución Saltillo Ramos", saldo: -41 },
+  { centro: "Centro de Distribución Morelia Tarímbaro", saldo: 119 },
+  { centro: "Centro de Distribución Tuxtla Berriozábal", saldo: 88 },
+  { centro: "Centro de Distribución Campeche Castamay", saldo: -12 },
+  { centro: "Centro de Distribución Villahermosa Parrilla", saldo: 176 },
+  { centro: "Centro de Distribución Irapuato Castro", saldo: 134 },
+  { centro: "Centro de Distribución Celaya Cortazar", saldo: -63 },
+  { centro: "Centro de Distribución Aguascalientes Sur", saldo: 149 },
+  { centro: "Centro de Distribución San Luis Pozos", saldo: 161 },
+  { centro: "Centro de Distribución Cuautitlán Izcalli", saldo: -22 },
+  { centro: "Centro de Distribución Ecatepec Tulpetlac", saldo: 197 },
+];
+
+<LollipopChart
+  ariaLabel="Paletas de saldo por centro de distribución con nombres largos y saldos en rojo"
+  data={data}
+  xKey="centro"
+  yKey="saldo"
+  formatY={(v: number) => \`\${v} mdp\`}
+  stemStyle="dashed"
+/>`}
+      >
+        <LollipopChart
+          ariaLabel="Paletas de saldo por centro de distribución con nombres largos y saldos en rojo"
+          data={[
+            { centro: "Centro de Distribución Toluca Lerma", saldo: 128 },
+            { centro: "Centro de Distribución Puebla Amozoc", saldo: -34 },
+            { centro: "Centro de Distribución Monterrey Apodaca", saldo: 214 },
+            {
+              centro: "Centro de Distribución Guadalajara Tlajomulco",
+              saldo: 96,
+            },
+            { centro: "Centro de Distribución León Silao", saldo: -18 },
+            {
+              centro: "Centro de Distribución Querétaro El Marqués",
+              saldo: 167,
+            },
+            { centro: "Centro de Distribución Tijuana Otay", saldo: 142 },
+            { centro: "Centro de Distribución Mérida Umán", saldo: -52 },
+            {
+              centro: "Centro de Distribución Veracruz Puerto Seco",
+              saldo: 188,
+            },
+            { centro: "Centro de Distribución Oaxaca Etla", saldo: 74 },
+            { centro: "Centro de Distribución Chihuahua Sur", saldo: -27 },
+            { centro: "Centro de Distribución Culiacán Norte", saldo: 155 },
+            {
+              centro: "Centro de Distribución Hermosillo Poniente",
+              saldo: 203,
+            },
+            { centro: "Centro de Distribución Saltillo Ramos", saldo: -41 },
+            { centro: "Centro de Distribución Morelia Tarímbaro", saldo: 119 },
+            { centro: "Centro de Distribución Tuxtla Berriozábal", saldo: 88 },
+            { centro: "Centro de Distribución Campeche Castamay", saldo: -12 },
+            {
+              centro: "Centro de Distribución Villahermosa Parrilla",
+              saldo: 176,
+            },
+            { centro: "Centro de Distribución Irapuato Castro", saldo: 134 },
+            { centro: "Centro de Distribución Celaya Cortazar", saldo: -63 },
+            { centro: "Centro de Distribución Aguascalientes Sur", saldo: 149 },
+            { centro: "Centro de Distribución San Luis Pozos", saldo: 161 },
+            { centro: "Centro de Distribución Cuautitlán Izcalli", saldo: -22 },
+            { centro: "Centro de Distribución Ecatepec Tulpetlac", saldo: 197 },
+          ]}
+          xKey="centro"
+          yKey="saldo"
+          formatY={(v: number) => `${v} mdp`}
+          stemStyle="dashed"
         />
       </DemoExample>
     </div>

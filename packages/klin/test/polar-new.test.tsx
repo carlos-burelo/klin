@@ -21,7 +21,7 @@ describe("polares nuevas SSR (sin JS)", () => {
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="coxcomb"');
     expect(html.match(/<path/g)?.length).toBe(2);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(2);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
     expect(html).toContain("A: 30 (30% del total)");
     expect(html).toContain("B: 70 (70% del total)");
   });
@@ -48,7 +48,7 @@ describe("polares nuevas SSR (sin JS)", () => {
     expect(html).toContain('aria-label="anillos"');
     // 2 pistas + 2 arcos de valor = 4 paths.
     expect(html.match(/<path/g)?.length).toBe(4);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(2);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
     expect(html).toContain("A: 30 de 100 (30%)");
     expect(html).toContain("B: 70 de 100 (70%)");
   });
@@ -80,7 +80,7 @@ describe("polares nuevas SSR (sin JS)", () => {
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="mari"');
     // 2 columnas × 2 series = 4 rects con tooltip.
-    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(6);
     expect(html).toContain("X · A: 30 (30% de la columna)");
     expect(html).toContain("Y · B: 50 (50% de la columna)");
     expect(html).toContain("100%");

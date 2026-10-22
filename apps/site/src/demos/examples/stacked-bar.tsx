@@ -34,6 +34,29 @@ function formatoMoneda(value: number): string {
   }).format(value);
 }
 
+const segmentosEstres: StackSegment[] = [
+  { key: "g0", label: "Federal" },
+  { key: "g1", label: "Estatal" },
+  { key: "g2", label: "Municipal" },
+  { key: "g3", label: "Propios" },
+  { key: "g4", label: "Donativos" },
+];
+
+const filasEstres: StackRow[] = Array.from({ length: 15 }, (_, i) => {
+  const values: Record<string, number> = {};
+  segmentosEstres.forEach((s, k) => {
+    values[s.key] =
+      20 +
+      Math.round(
+        60 * Math.abs(Math.sin(i * 0.9 + k * 1.7)) + ((i * 7 + k * 5) % 11),
+      );
+  });
+  return {
+    label: `Programa ${i + 1} de Bienestar Comunitario Regional`,
+    values,
+  };
+});
+
 export default function StackedBarExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -148,6 +171,48 @@ const presupuesto: StackRow[] = [
           segments={segmentos}
           showLegend={false}
           ariaLabel="Presupuesto por rubro con un segmento en cero"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 15 filas con nombres largos y 5 segmentos con 75 valores"
+        code={`import type { StackRow, StackSegment } from "@carlos-burelo/klin";
+import { StackedBar } from "@carlos-burelo/klin";
+
+const segmentosEstres: StackSegment[] = [
+  { key: "g0", label: "Federal" },
+  { key: "g1", label: "Estatal" },
+  { key: "g2", label: "Municipal" },
+  { key: "g3", label: "Propios" },
+  { key: "g4", label: "Donativos" },
+];
+
+const filasEstres: StackRow[] = Array.from({ length: 15 }, (_, i) => {
+  const values: Record<string, number> = {};
+  segmentosEstres.forEach((s, k) => {
+    values[s.key] =
+      20 +
+      Math.round(
+        60 * Math.abs(Math.sin(i * 0.9 + k * 1.7)) + ((i * 7 + k * 5) % 11),
+      );
+  });
+  return {
+    label: \`Programa \${i + 1} de Bienestar Comunitario Regional\`,
+    values,
+  };
+});
+
+<StackedBar
+  rows={filasEstres}
+  segments={segmentosEstres}
+  showValues
+  ariaLabel="Financiamiento por programa con cinco fuentes y nombres largos"
+/>`}
+      >
+        <StackedBar
+          rows={filasEstres}
+          segments={segmentosEstres}
+          showValues
+          ariaLabel="Financiamiento por programa con cinco fuentes y nombres largos"
         />
       </DemoExample>
     </div>

@@ -1,137 +1,48 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-
-import { sum } from "d3-array";
-import { arc, pie } from "d3-shape";
-import type { CSSProperties } from "react";
-import { resolveFormatter } from "../lib/format";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import { resolveFormatter } from "../core/format";
+import { stableKey } from "../core/keys";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
   FONT_SEMIBOLD,
+  GRID_WIDTH,
   NODE_BORDER_WIDTH,
-  PERCENT_FACTOR,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { fitText, measureText } from "../render/measure";
+import type { DonutSlice } from "./donut-chart.compute";
+import {
+  buildDonutArcs,
+  buildDonutPath,
+  CENTER_LABEL_DY,
+  CENTER_VALUE_DY,
+  CENTER_VALUE_FONT_SIZE,
+  cleanDonutData,
+  donutFitsInner,
+  donutInnerLabel,
+  donutLayout,
+  donutLegendLabel,
+  donutPercent,
+  donutTotal,
+  layoutDonutOuterLabels,
+  normalizeDonutAngles,
+  OUTER_V_PAD,
+  orderDonutSlices,
+  resolveDonutSliceColor,
+  resolveTotalPill,
+  TOTAL_PILL_RX,
+  totalPillHits,
+} from "./donut-chart.compute";
+import type { DonutChartProps, PieChartProps } from "./donut-chart.types";
 
-/** Tamaño del total al centro de la dona. */
-const CENTER_VALUE_FONT_SIZE = 22;
-/** Desplazamiento vertical del total y de la etiqueta "Total". */
-const CENTER_VALUE_DY = 4;
-const CENTER_LABEL_DY = 14;
-/** Vuelta completa en radianes (rotación de rebanadas). */
-const TAU = Math.PI * 2;
-/** Longitud mínima de arco (px) para pintar el % dentro de la rebanada. */
-const INNER_LABEL_MIN_ARC = 30;
-
-/** Dato de dona/torta (etiqueta, valor y color opcional). */
-export type DonutDatum = {
-  label: string;
-  value: number;
-  color?: string;
-};
-
-/** Props de la dona SSR (arcos, total al centro y leyenda). */
-export type DonutChartProps = {
-  data: DonutDatum[];
-  ariaLabel: string;
-  size?: number;
-  thickness?: number;
-  format?: ValueFormatter;
-  locale?: string;
-  /**
-   * Color por rebanada. Si retorna `undefined` se usa el color de serie.
-   * Se respeta `datum.color` primero.
-   */
-  itemColor?: (datum: DonutDatum, index: number) => string | undefined;
-  totalLabel?: string;
-  showTotal?: boolean;
-  /**
-   * Ángulo inicial de la primera rebanada en radianes (0 = arriba).
-   * @default 0
-   */
-  startAngle?: number;
-  /**
-   * Separación entre rebanadas en radianes.
-   * @default 0
-   */
-  padAngle?: number;
-  /**
-   * Ordena las rebanadas de mayor a menor (por defecto respeta la entrada).
-   * @default false
-   */
-  sortSlices?: boolean;
-  /**
-   * Radio de esquina de los arcos (0 = bordes rectos).
-   * @default 0
-   */
-  cornerRadius?: number;
-  /**
-   * Etiqueta dentro de la rebanada: el % solo si el arco es grande.
-   * @default "none"
-   */
-  innerLabels?: "none" | "percent";
-  showLegend?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-/** Props de la torta SSR (dona sin agujero). */
-export type PieChartProps = {
-  data: DonutDatum[];
-  ariaLabel: string;
-  size?: number;
-  format?: ValueFormatter;
-  locale?: string;
-  /**
-   * Color por rebanada. Si retorna `undefined` se usa el color de serie.
-   * Se respeta `datum.color` primero.
-   */
-  itemColor?: (datum: DonutDatum, index: number) => string | undefined;
-  totalLabel?: string;
-  showTotal?: boolean;
-  /**
-   * Ángulo inicial de la primera rebanada en radianes (0 = arriba).
-   * @default 0
-   */
-  startAngle?: number;
-  /**
-   * Separación entre rebanadas en radianes.
-   * @default 0
-   */
-  padAngle?: number;
-  /**
-   * Ordena las rebanadas de mayor a menor (por defecto respeta la entrada).
-   * @default false
-   */
-  sortSlices?: boolean;
-  /**
-   * Radio de esquina de los arcos (0 = bordes rectos).
-   * @default 0
-   */
-  cornerRadius?: number;
-  /**
-   * Etiqueta dentro de la rebanada: el % solo si el arco es grande.
-   * @default "none"
-   */
-  innerLabels?: "none" | "percent";
-  showLegend?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
+export type {
+  DonutChartProps,
+  DonutDatum,
+  DonutLabelMode,
+  PieChartProps,
+} from "./donut-chart.types";
 
 /**
  * Dona SSR: arcos con d3-shape, total al centro, leyenda HTML.
@@ -152,50 +63,54 @@ export function DonutChart({
   sortSlices = false,
   cornerRadius = 0,
   innerLabels = "none",
+  outerLabels = "none",
   showLegend = true,
+  showLegendValues = true,
   className,
   style,
   ariaDescribedBy,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: DonutChartProps) {
-  const clean = data
-    .map((d, index) => ({
-      label: d.label,
-      color: d.color,
-      value: toNumber(d.value),
-      index,
-    }))
-    .filter((d) => d.value > 0);
-  const total = sum(clean, (d) => d.value);
+  const clean = cleanDonutData(data);
+  const total = donutTotal(clean);
   if (clean.length === 0 || total <= 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const fmt = resolveFormatter(format, locale);
 
-  const start = toNumber(startAngle);
-  const pad = Math.max(0, toNumber(padAngle));
-  const corners = Math.max(0, toNumber(cornerRadius));
-  const radius = size / 2;
-  const ordered = sortSlices
-    ? [...clean].sort((a, b) => b.value - a.value)
-    : clean;
-  const pieGen = pie<(typeof ordered)[number]>()
-    .value((d) => d.value)
-    .padAngle(pad)
-    .startAngle(start)
-    .endAngle(start + TAU)
-    .sort(null);
-  const arcs = pieGen(ordered);
-  const path = arc<(typeof arcs)[number]>()
-    .innerRadius(radius - thickness)
-    .outerRadius(radius)
-    .cornerRadius(corners);
-  const midRadius = radius - thickness / 2;
-  const withInner = innerLabels === "percent";
-  const sliceColor = (datum: (typeof clean)[number]) =>
-    datum.color ?? itemColor?.(datum, datum.index) ?? seriesColor(datum.index);
+  const { start, pad, corners } = normalizeDonutAngles(
+    startAngle,
+    padAngle,
+    cornerRadius,
+  );
+  const { radius, midRadius } = donutLayout(size, thickness);
+  const ordered = orderDonutSlices(clean, sortSlices);
+  const arcs = buildDonutArcs(ordered, start, pad);
+  const path = buildDonutPath(radius, thickness, corners);
+  const withInner = innerLabels !== "none";
+  const withOuter = outerLabels !== "none";
+  const sliceColor = (datum: DonutSlice) =>
+    resolveDonutSliceColor(datum, itemColor);
+  // Etiquetas externas colocadas en conjunto (con carriles medidos).
+  const outerLayout = withOuter
+    ? layoutDonutOuterLabels(arcs, radius, size, (datum) =>
+        donutInnerLabel(datum, outerLabels, fmt, total),
+      )
+    : { labels: [], lane: 0 };
+  const outerByIndex = new Map(outerLayout.labels.map((p) => [p.index, p]));
+  const lane = outerLayout.lane;
+  const vpad = lane > 0 ? OUTER_V_PAD : 0;
+  const viewW = size + lane * 2;
+  const viewH = size + vpad * 2;
+  // Total: píldora solo si no cabe en el agujero (siempre en torta).
+  const hasHole = thickness < radius;
+  const totalText = fmt(total);
+  const holeDiam = hasHole ? (radius - thickness) * 2 : 0;
+  const pill = showTotal
+    ? resolveTotalPill(measureText(totalText, CENTER_VALUE_FONT_SIZE), holeDiam)
+    : { show: false, w: 0, h: 0 };
 
   return (
     <div
@@ -207,32 +122,32 @@ export function DonutChart({
       style={style}
     >
       <svg
-        viewBox={`0 0 ${size} ${size}`}
-        width={size}
-        height={size}
+        viewBox={`0 0 ${viewW} ${viewH}`}
+        width={viewW}
+        height={viewH}
         className="h-auto max-w-full"
         role="img"
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
       >
-        <title>{ariaLabel}</title>
-        <g transform={`translate(${radius},${radius})`}>
+        <g transform={`translate(${viewW / 2},${viewH / 2})`}>
           {arcs.map((a, i) => {
             const datum = a.data;
             const color = sliceColor(datum);
-            const pct =
-              total > 0
-                ? Math.round((datum.value / total) * PERCENT_FACTOR)
-                : 0;
+            const pct = donutPercent(datum.value, total);
             const tip = `${datum.label}: ${fmt(datum.value)} (${pct}% del total)`;
-            const fitsInner =
-              withInner &&
-              midRadius > 0 &&
-              (a.endAngle - a.startAngle) * midRadius >= INNER_LABEL_MIN_ARC;
-            const [innerX, innerY] = fitsInner ? path.centroid(a) : [0, 0];
+            const baseFits = donutFitsInner(withInner, midRadius, a);
+            const [innerX, innerY] = baseFits ? path.centroid(a) : [0, 0];
+            // Vetada si cae bajo la píldora del total (info intacta en tip).
+            const fitsInner = baseFits && !totalPillHits(pill, innerX, innerY);
+            const innerText = donutInnerLabel(datum, innerLabels, fmt, total);
+            // En modo nombre se recorta al arco disponible.
+            const arcLen = (a.endAngle - a.startAngle) * midRadius;
+            const shownInner =
+              innerLabels === "label" ? fitText(innerText, arcLen) : innerText;
+            const outer = outerByIndex.get(i) ?? null;
             return (
               <g key={stableKey([datum.label], i)}>
-                <title>{tip}</title>
                 <path
                   d={path(a) ?? ""}
                   fill={color}
@@ -249,18 +164,51 @@ export function DonutChart({
                     fontSize={TICK_FONT_SIZE}
                     fill={CHART_TOKEN.background}
                   >
-                    {pct}%
+                    {shownInner}
                   </text>
                 ) : null}
+                {outer === null ? null : (
+                  <g data-chart-tip={tip}>
+                    <path
+                      d={outer.leader}
+                      fill="none"
+                      stroke={CHART_TOKEN.muted}
+                      strokeWidth={GRID_WIDTH}
+                    />
+                    <text
+                      x={outer.x}
+                      y={outer.y}
+                      textAnchor={outer.anchor}
+                      dominantBaseline="central"
+                      fontSize={TICK_FONT_SIZE}
+                      fill={CHART_TOKEN.foreground}
+                    >
+                      {outer.text}
+                    </text>
+                  </g>
+                )}
               </g>
             );
           })}
         </g>
         {showTotal ? (
           <>
+            {pill.show ? (
+              <rect
+                x={viewW / 2 - pill.w / 2}
+                y={viewH / 2 - pill.h / 2}
+                width={pill.w}
+                height={pill.h}
+                rx={TOTAL_PILL_RX}
+                fill={CHART_TOKEN.background}
+                stroke={CHART_TOKEN.border}
+                strokeWidth={NODE_BORDER_WIDTH}
+                data-chart-tip={`${totalLabel}: ${totalText}`}
+              />
+            ) : null}
             <text
-              x={radius}
-              y={radius - CENTER_VALUE_DY}
+              x={viewW / 2}
+              y={viewH / 2 - CENTER_VALUE_DY}
               textAnchor="middle"
               fontSize={CENTER_VALUE_FONT_SIZE}
               fontWeight={FONT_SEMIBOLD}
@@ -269,8 +217,8 @@ export function DonutChart({
               {fmt(total)}
             </text>
             <text
-              x={radius}
-              y={radius + CENTER_LABEL_DY}
+              x={viewW / 2}
+              y={viewH / 2 + CENTER_LABEL_DY}
               textAnchor="middle"
               fontSize={TICK_FONT_SIZE}
               fill={CHART_TOKEN.muted}
@@ -282,8 +230,8 @@ export function DonutChart({
       </svg>
       {showLegend ? (
         <ChartLegend
-          items={clean.map((d) => ({
-            label: `${d.label} · ${fmt(d.value)}`,
+          items={ordered.map((d) => ({
+            label: donutLegendLabel(d.label, fmt(d.value), showLegendValues),
             color: sliceColor(d),
           }))}
         />
@@ -301,13 +249,15 @@ export function PieChart({
   format,
   itemColor,
   totalLabel = "Total",
-  showTotal = true,
+  showTotal = false,
   startAngle = 0,
   padAngle = 0,
   sortSlices = false,
   cornerRadius = 0,
   innerLabels = "none",
+  outerLabels = "none",
   showLegend = true,
+  showLegendValues = true,
   className,
   style,
   ariaDescribedBy,
@@ -330,7 +280,9 @@ export function PieChart({
       sortSlices={sortSlices}
       cornerRadius={cornerRadius}
       innerLabels={innerLabels}
+      outerLabels={outerLabels}
       showLegend={showLegend}
+      showLegendValues={showLegendValues}
       className={className}
       style={style}
       ariaDescribedBy={ariaDescribedBy}

@@ -1,17 +1,9 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import { scaleLinear, scalePoint } from "d3-scale";
-import { line } from "d3-shape";
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { ChartSvg, CHART_MARGIN as MARGIN, CHART_W as W } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_ROWS } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColors, truncateLabel } from "../lib/palette";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { DEFAULT_MAX_ROWS } from "../core/limits";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
@@ -20,47 +12,29 @@ import {
   POINT_BORDER,
   POINT_RADIUS,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  AXIS_LABEL_MAX,
+  AXIS_LABEL_OFFSET,
+  AXIS_PAD_BOTTOM,
+  AXIS_PAD_TOP,
+  computeParallelModel,
+  VERTEX_OPACITY,
+} from "./parallel-coordinates.compute";
+import type { ParallelCoordinatesProps } from "./parallel-coordinates.types";
 
-/** Dimensión del paralelo (clave + etiqueta opcional). */
-export type ParallelAxis = {
-  key: string;
-  label?: string;
-};
-
-/** Fila del paralelo (etiqueta + valor por dimensión + color opcional). */
-export type ParallelRow = {
-  label?: string;
-  values: Record<string, number>;
-  color?: string;
-};
-
-/** Props de ParallelCoordinates. */
-export type ParallelCoordinatesProps = {
-  axes: ParallelAxis[];
-  rows: ParallelRow[];
-  height?: number;
-  ariaLabel: string;
-  format?: ValueFormatter;
-  locale?: string;
-  /** Marca cada cruce eje-fila con punto y tip. */
-  showPoints?: boolean;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-const AXIS_LABEL_OFFSET = 10;
-const AXIS_PAD_TOP = 28;
-const AXIS_PAD_BOTTOM = 28;
-/** Ancho de etiqueta de eje y truncado de vértices. */
-const AXIS_LABEL_MAX = 12;
-const VERTEX_OPACITY = 0.9;
+export type {
+  ParallelAxis,
+  ParallelCoordinatesProps,
+  ParallelRow,
+} from "./parallel-coordinates.types";
 
 /**
  * Coordenadas paralelas SSR (multivariado sin interacción). Cada eje se
@@ -75,6 +49,7 @@ export function ParallelCoordinates({
   format,
   locale = DEFAULT_LOCALE,
   showPoints = true,
+  maxItems = DEFAULT_MAX_ROWS,
   className,
   style,
   ariaDescribedBy,
@@ -82,64 +57,26 @@ export function ParallelCoordinates({
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: ParallelCoordinatesProps) {
-  const clean = rows
-    .slice(0, DEFAULT_MAX_ROWS)
-    .map((row, i) => {
-      const vals = new Map<string, number>();
-      for (const a of axes) {
-        const v = toNumber(row.values[a.key], Number.NaN);
-        if (Number.isFinite(v)) vals.set(a.key, v);
-      }
-      return { row, vals, index: i };
-    })
-    .filter((c) => c.vals.size > 0);
-  if (isBlank(axes) || isBlank(clean)) {
-    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
-  }
-
-  const fmt = resolveFormatter(format, locale);
   const innerW = W - MARGIN.left - MARGIN.right;
   const top = MARGIN.top + AXIS_PAD_TOP;
   const bottom = height - MARGIN.bottom - AXIS_PAD_BOTTOM;
-  const x = scalePoint()
-    .domain(axes.map((a) => a.key))
-    .range([0, innerW])
-    .padding(0.5);
-  const y = scaleLinear().domain([0, 1]).range([bottom, top]);
 
-  // Dominio por eje sobre valores finitos (constante → punto medio).
-  const domains = new Map<string, [number, number]>();
-  for (const a of axes) {
-    let lo = Number.POSITIVE_INFINITY;
-    let hi = Number.NEGATIVE_INFINITY;
-    for (const c of clean) {
-      const v = c.vals.get(a.key);
-      if (v === undefined) continue;
-      if (v < lo) lo = v;
-      if (v > hi) hi = v;
-    }
-    domains.set(a.key, lo <= hi ? [lo, hi] : [0, 1]);
+  const { clean, fmt, x, y, domains, norm, palette, legendItems, pathFor } =
+    computeParallelModel({
+      axes,
+      rows,
+      innerW,
+      top,
+      bottom,
+      marginLeft: MARGIN.left,
+      format,
+      locale,
+      showLegend,
+      maxItems,
+    });
+  if (isBlank(axes) || isBlank(clean)) {
+    return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
-  const norm = (key: string, v: number): number => {
-    const [lo, hi] = domains.get(key) ?? [0, 1];
-    if (!(hi > lo)) return 0.5;
-    return Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
-  };
-
-  const palette = seriesColors(clean.map((c) => ({ color: c.row.color })));
-  const legendItems = showLegend
-    ? clean.map((c, i) => ({
-        label: c.row.label ?? `Fila ${i + 1}`,
-        color: palette[i] ?? CHART_TOKEN.chart1,
-      }))
-    : undefined;
-
-  const pathFor = (vals: Map<string, number>) =>
-    line<{ key: string; t: number }>()
-      .x((p) => MARGIN.left + (x(p.key) ?? 0))
-      .y((p) => y(p.t))(
-      axes.map((a) => ({ key: a.key, t: norm(a.key, vals.get(a.key) ?? 0) })),
-    ) ?? "";
 
   return (
     <div className={className} style={style}>
@@ -169,8 +106,8 @@ export function ParallelCoordinates({
                 textAnchor="middle"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={label}
               >
-                <title>{label}</title>
                 {truncateLabel(label, AXIS_LABEL_MAX)}
               </text>
               <text
@@ -206,7 +143,6 @@ export function ParallelCoordinates({
             .join(" · ")}`;
           return (
             <g key={stableKey([name], i)}>
-              <title>{tip}</title>
               <path
                 d={pathFor(c.vals)}
                 fill="none"
@@ -223,7 +159,6 @@ export function ParallelCoordinates({
                     const vtip = `${name} · ${a.label ?? a.key}: ${fmt(v)}`;
                     return (
                       <g key={stableKey([a.key], ai)}>
-                        <title>{vtip}</title>
                         <circle
                           cx={MARGIN.left + (x(a.key) ?? 0)}
                           cy={y(norm(a.key, v))}

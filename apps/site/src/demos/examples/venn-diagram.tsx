@@ -26,6 +26,19 @@ const desayunoIntersections = [
   { sets: [0, 1, 2], value: 180 },
 ];
 
+const audienciaSets: [VennSet, VennSet, VennSet] = [
+  { label: "Radio", value: 1_850_000 },
+  { label: "TV", value: 2_400_000 },
+  { label: "Streaming", value: 3_100_000 },
+];
+
+const audienciaIntersections = [
+  { sets: [0, 1], value: 620_000 },
+  { sets: [0, 2], value: 540_000 },
+  { sets: [1, 2], value: 980_000 },
+  { sets: [0, 1, 2], value: 310_000 },
+];
+
 export default function VennDiagramExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -85,6 +98,39 @@ const intersections = [
           ariaLabel="Diagrama de Venn de preferencias de desayuno"
           sets={desayunoSets}
           intersections={desayunoIntersections}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="estrés: tres audiencias en millones con porcentaje del universo"
+        code={`import { VennDiagram } from "@carlos-burelo/klin";
+
+const sets = [
+  { label: "Radio", value: 1_850_000 },
+  { label: "TV", value: 2_400_000 },
+  { label: "Streaming", value: 3_100_000 },
+];
+
+const intersections = [
+  { sets: [0, 1], value: 620_000 },
+  { sets: [0, 2], value: 540_000 },
+  { sets: [1, 2], value: 980_000 },
+  { sets: [0, 1, 2], value: 310_000 },
+];
+
+<VennDiagram
+  ariaLabel="Diagrama de Venn de audiencias en millones con porcentaje del universo"
+  sets={sets}
+  intersections={intersections}
+  showPercent
+  universe={8_000_000}
+/>`}
+      >
+        <VennDiagram
+          ariaLabel="Diagrama de Venn de audiencias en millones con porcentaje del universo"
+          sets={audienciaSets}
+          intersections={audienciaIntersections}
+          showPercent
+          universe={8_000_000}
         />
       </DemoExample>
     </div>

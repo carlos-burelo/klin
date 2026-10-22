@@ -5,8 +5,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
 import { CandlestickChart } from "../src/components/candlestick-chart";
 import { DumbbellChart } from "../src/components/dumbbell-chart";
-import { EMPTY_TITLE } from "../src/components/empty";
 import { RangeChart } from "../src/components/range-chart";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 const ohlc = [
   { d: "Lun", o: 10, h: 14, l: 9, c: 13 },
@@ -30,7 +30,7 @@ describe("cartesianas nuevas SSR (sin JS)", () => {
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="velas demo"');
     expect(html.match(/<rect/g)?.length).toBe(3);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(3);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(6);
     expect(html).toContain("Lun: O");
     expect(html).toContain("· H ");
     expect(html).toContain("· L ");
@@ -87,7 +87,7 @@ describe("cartesianas nuevas SSR (sin JS)", () => {
       />,
     );
     expect(html.match(/<rect/g)?.length).toBe(400);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(400);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(800);
   });
 
   test("DumbbellChart pinta dos puntos por fila con su tip", () => {
@@ -108,7 +108,7 @@ describe("cartesianas nuevas SSR (sin JS)", () => {
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="mancuernas demo"');
     expect(html.match(/<circle/g)?.length).toBe(4);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(6);
     expect(html).toContain("A · Antes:");
     expect(html).toContain("B · Después:");
   });
@@ -142,7 +142,7 @@ describe("cartesianas nuevas SSR (sin JS)", () => {
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="rangos demo"');
     expect(html.match(/<circle/g)?.length).toBe(2);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(2);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
     expect(html).toContain("A: min");
     expect(html).toContain("valor");
     expect(html).toContain("B: min");

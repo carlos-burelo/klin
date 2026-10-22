@@ -4,21 +4,14 @@
 import { quantileSorted } from "d3-array";
 import { scaleBand, scaleLinear } from "d3-scale";
 import { area, curveCatmullRom } from "d3-shape";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { domainWithZero } from "../lib/domain";
-import { resolveFormatter } from "../lib/format";
-import {
-  ChartSvg,
-  CHART_MARGIN as MARGIN,
-  CHART_W as W,
-  YGrid,
-} from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_ROWS } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { domainWithZero } from "../core/domain";
+import { resolveFormatter } from "../core/format";
+import { cleanValues, kdeOf } from "../core/kde";
+import { stableKey } from "../core/keys";
+import { DEFAULT_MAX_ROWS } from "../core/limits";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -31,160 +24,42 @@ import {
   POINT_BORDER,
   POINT_RADIUS,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+  ZERO_MARK_PX,
+} from "../core/theme";
+import {
+  ChartSvg,
+  CHART_MARGIN as MARGIN,
+  CHART_W as W,
+} from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import { YGrid } from "../render/y-grid";
+import {
+  ANNOTATION_LABEL_DX,
+  ANNOTATION_LABEL_DY,
+  AXIS_LABEL_OFFSET,
+  GROUP_BAND_PADDING,
+  MEDIAN_TICK_FRAC,
+  TICKS_MIN,
+  VIOLIN_BOX_FRAC,
+  VIOLIN_LINE_WIDTH,
+  VIOLIN_WIDTH_FRAC,
+} from "./violin-plot.compute";
+import type { KdePoint, ViolinPlotProps } from "./violin-plot.types";
 
-/** Puntos de la rejilla KDE (valor → densidad). */
-export type KdePoint = {
-  value: number;
-  density: number;
-};
-
-/** Rejilla fija de la KDE gaussiana propia. */
-export const KDE_BINS = 48;
-/** Factor de Silverman y exponente del tamaño muestral (h = 1.06·σ·n^-0.2). */
-const SILVERMAN_FACTOR = 1.06;
-const SILVERMAN_EXPONENT = -0.2;
-/** Divisor IQR→σ del fallback robusto (σ ≈ IQR / 1.34). */
-const IQR_SIGMA_DIVISOR = 1.34;
-/** Últimos recursos si σ e IQR son cero: rango/10, luego 1. */
-const KDE_FALLBACK_RANGE_FRAC = 10;
-const KDE_FALLBACK_MIN = 1;
-/** Normal de la gaussiana (1 / √(2π)). */
-const GAUSS_NORM = 0.204_179_955_571_658_05;
-
-/** Padding de banda, etiqueta de eje, fracción del ancho y del tick de mediana. */
-const GROUP_BAND_PADDING = 0.45;
-const AXIS_LABEL_OFFSET = 10;
-const VIOLIN_WIDTH_FRAC = 0.85;
-const MEDIAN_TICK_FRAC = 0.6;
-const VIOLIN_LINE_WIDTH = 1.5;
-const ANNOTATION_LABEL_DX = 4;
-const ANNOTATION_LABEL_DY = -4;
-/** Mínimo de ticks del grid. */
-const TICKS_MIN = 1;
-
-/** Grupo del violín (etiqueta, muestra y color opcional). */
-export type ViolinGroup = {
-  label: string;
-  values: number[];
-  color?: string;
-};
-
-/** Orden de los grupos por mediana (none conserva el orden de entrada). */
-export type ViolinSort = "none" | "asc" | "desc";
-
-/** Props de ViolinPlot. */
-export type ViolinPlotProps = {
-  groups: ViolinGroup[];
-  ariaLabel: string;
-  height?: number;
-  bandwidth?: "auto" | number;
-  formatY?: ValueFormatter;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  annotations?: ValueAnnotation[];
-  /** Mínimo fijo del dominio Y (indefinido = automático con cero). */
-  yMin?: number;
-  /** Máximo fijo del dominio Y (indefinido = automático). */
-  yMax?: number;
-  /** Ticks del grid horizontal (por defecto GRID_TICKS). */
-  gridTicks?: number;
-  /** Orden de los grupos por su mediana. */
-  sortGroups?: ViolinSort;
-  /** Muestra el tamaño de muestra (n) junto a cada etiqueta. */
-  showSampleSize?: boolean;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-/** Limpia una muestra (no-finitos fuera, como box-plot statsOf). */
-function cleanValues(values: number[]): number[] {
-  return values
-    .map((v) => toNumber(v, Number.NaN))
-    .filter((v) => Number.isFinite(v));
-}
-
-/**
- * Ancho de banda Silverman (1.06·sd·n^-0.2, fallback IQR; nunca ≤ 0).
- * Puro y determinista (igual en server y cliente).
- */
-export function kdeBandwidth(values: number[]): number {
-  const n = values.length;
-  if (n === 0) return KDE_FALLBACK_MIN;
-  const fall = n ** SILVERMAN_EXPONENT;
-  const mean = values.reduce((acc, v) => acc + v, 0) / n;
-  const sd = Math.sqrt(
-    values.reduce((acc, v) => acc + (v - mean) * (v - mean), 0) / n,
-  );
-  if (Number.isFinite(sd) && sd > 0) return SILVERMAN_FACTOR * sd * fall;
-  const sorted = [...values].sort((a, b) => a - b);
-  const first = sorted[0] ?? 0;
-  const last = sorted[sorted.length - 1] ?? 0;
-  const q1 = quantileSorted(sorted, 0.25) ?? first;
-  const q3 = quantileSorted(sorted, 0.75) ?? first;
-  const sigma = (q3 - q1) / IQR_SIGMA_DIVISOR;
-  if (Number.isFinite(sigma) && sigma > 0)
-    return SILVERMAN_FACTOR * sigma * fall;
-  const range = last - first;
-  if (Number.isFinite(range) && range > 0)
-    return range / KDE_FALLBACK_RANGE_FRAC;
-  return KDE_FALLBACK_MIN;
-}
-
-/**
- * KDE gaussiana propia sobre rejilla fija (`bins` puntos en [lo, hi]).
- * `bandwidth` ≤ 0 o no-finito → Silverman. Nunca devuelve NaN.
- */
-export function kdeOf(
-  values: number[],
-  bandwidth: number,
-  lo: number,
-  hi: number,
-  bins: number = KDE_BINS,
-): KdePoint[] {
-  const n = values.length;
-  if (n === 0) return [];
-  const h =
-    Number.isFinite(bandwidth) && bandwidth > 0
-      ? bandwidth
-      : kdeBandwidth(values);
-  const safeH = h > 0 && Number.isFinite(h) ? h : KDE_FALLBACK_MIN;
-  let a = lo;
-  let b = hi;
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return [];
-  if (a > b) [a, b] = [b, a];
-  if (a === b) {
-    a -= safeH;
-    b += safeH;
-  }
-  const count = Math.max(2, Math.floor(bins) || 2);
-  const step = (b - a) / (count - 1);
-  const points: KdePoint[] = [];
-  for (let i = 0; i < count; i += 1) {
-    const v = a + step * i;
-    let s = 0;
-    for (const x of values) {
-      const u = (v - x) / safeH;
-      s += Math.exp(-0.5 * u * u);
-    }
-    points.push({ value: v, density: (s * GAUSS_NORM) / (n * safeH) });
-  }
-  return points;
-}
-
-/** Valor de la rejilla con densidad máxima (pico de la distribución). */
-export function kdePeak(points: KdePoint[]): number {
-  let best = points[0];
-  for (const p of points) {
-    if (best === undefined || p.density > best.density) best = p;
-  }
-  return best?.value ?? 0;
-}
+export {
+  cleanValues,
+  KDE_BINS,
+  kdeBandwidth,
+  kdeOf,
+  kdePeak,
+} from "../core/kde";
+export type {
+  KdePoint,
+  ViolinGroup,
+  ViolinPlotProps,
+  ViolinSort,
+} from "./violin-plot.types";
 
 /**
  * Violines SSR (densidad por grupo con KDE gaussiana propia + mediana).
@@ -264,8 +139,10 @@ export function ViolinPlot({
           if (a.value < blo || a.value > bhi) return null;
           const ay = MARGIN.top + y(a.value);
           return (
-            <g key={`ann-${a.value}-${ai}`}>
-              <title>{a.label ?? String(a.value)}</title>
+            <g
+              key={`ann-${a.value}-${ai}`}
+              data-chart-tip={a.label ?? String(a.value)}
+            >
               <line
                 x1={MARGIN.left}
                 x2={W - MARGIN.right}
@@ -309,21 +186,23 @@ export function ViolinPlot({
               .y((p) => MARGIN.top + y(p.value))
               .curve(curveCatmullRom)(pts) ?? "";
           const tickW = halfMax * 2 * MEDIAN_TICK_FRAC;
+          const boxW = halfMax * 2 * VIOLIN_BOX_FRAC;
           const my = MARGIN.top + y(median);
+          const yq3 = MARGIN.top + y(q3);
+          const yq1 = MARGIN.top + y(q1);
           const tip =
             `${group.label}: n ${clean.length} · mediana ${fmtY(median)} · ` +
             `Q1 ${fmtY(q1)} · Q3 ${fmtY(q3)}`;
           return (
             <g key={stableKey([group.label], gi)}>
-              <title>{tip}</title>
               <text
                 x={cx}
                 y={safeH - AXIS_LABEL_OFFSET}
                 textAnchor="middle"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={group.label}
               >
-                <title>{group.label}</title>
                 {showSampleSize
                   ? `${truncateLabel(group.label)} (n ${clean.length})`
                   : truncateLabel(group.label)}
@@ -336,6 +215,16 @@ export function ViolinPlot({
                 strokeWidth={VIOLIN_LINE_WIDTH}
                 strokeLinejoin="round"
                 data-chart-tip={tip}
+              />
+              <rect
+                x={cx - boxW / 2}
+                y={yq3}
+                width={boxW}
+                height={Math.max(ZERO_MARK_PX, yq1 - yq3)}
+                rx={BAR_RADIUS}
+                fill={CHART_TOKEN.background}
+                stroke={color}
+                strokeWidth={VIOLIN_LINE_WIDTH}
               />
               <rect
                 x={cx - tickW / 2}

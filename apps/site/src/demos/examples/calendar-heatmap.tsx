@@ -110,6 +110,38 @@ const values = {
           }}
         />
       </DemoExample>
+      <DemoExample
+        caption="Semana que inicia en domingo"
+        code={`import { CalendarHeatmap } from "@carlos-burelo/klin";
+
+const values = {
+  "2026-03-01": 5,
+  "2026-03-02": 8,
+  "2026-03-07": 12,
+  "2026-03-08": 6,
+};
+
+<CalendarHeatmap
+  ariaLabel="Mapa de calor de marzo con semana que inicia en domingo"
+  end="2026-03-31"
+  weeks={5}
+  weekStart={0}
+  values={values}
+/>`}
+      >
+        <CalendarHeatmap
+          ariaLabel="Mapa de calor de marzo con semana que inicia en domingo"
+          end="2026-03-31"
+          weeks={5}
+          weekStart={0}
+          values={{
+            "2026-03-01": 5,
+            "2026-03-02": 8,
+            "2026-03-07": 12,
+            "2026-03-08": 6,
+          }}
+        />
+      </DemoExample>
     </div>
   );
 }

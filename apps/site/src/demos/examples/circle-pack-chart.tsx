@@ -81,6 +81,27 @@ function moneda(value: number): string {
   }).format(value);
 }
 
+const zonasPack = [
+  "Norte",
+  "Sur",
+  "Este",
+  "Oeste",
+  "Centro",
+  "Noreste",
+  "Suroeste",
+];
+
+const estresPack: CirclePackNode = {
+  label: "Arbolado",
+  children: zonasPack.map((zona, zi) => ({
+    label: zona,
+    children: Array.from({ length: 7 }, (_, i) => ({
+      label: `${zona} ${i + 1}`,
+      value: 120 + ((zi * 41 + i * 67) % 480),
+    })),
+  })),
+};
+
 export default function CirclePackChartExamples() {
   return (
     <div className="flex flex-col gap-6">
@@ -210,6 +231,82 @@ const biblioteca: CirclePackNode = {
           root={biblioteca}
           format={(v) => `${v} préstamos`}
           ariaLabel="Préstamos por género, autor y título: la novela supera a la poesía y Rulfo es el autor más prestado"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Relleno amplio entre burbujas"
+        code={`import type { CirclePackNode } from "@carlos-burelo/klin";
+import { CirclePackChart } from "@carlos-burelo/klin";
+
+const arbolado: CirclePackNode = {
+  label: "Arbolado",
+  children: [
+    {
+      label: "Chapultepec",
+      children: [
+        { label: "Ahuehuete", value: 1200 },
+        { label: "Fresno", value: 3400 },
+        { label: "Jacaranda", value: 2100 },
+      ],
+    },
+    {
+      label: "Viveros",
+      children: [
+        { label: "Fresno", value: 1800 },
+        { label: "Trueno", value: 1500 },
+      ],
+    },
+  ],
+};
+
+<CirclePackChart
+  root={arbolado}
+  padding={12}
+  ariaLabel="Arbolado con relleno amplio entre burbujas"
+/>`}
+      >
+        <CirclePackChart
+          root={arbolado}
+          padding={12}
+          ariaLabel="Arbolado con relleno amplio entre burbujas"
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 49 burbujas en 7 zonas con valores deterministas"
+        code={`import type { CirclePackNode } from "@carlos-burelo/klin";
+import { CirclePackChart } from "@carlos-burelo/klin";
+
+const zonasPack = [
+  "Norte",
+  "Sur",
+  "Este",
+  "Oeste",
+  "Centro",
+  "Noreste",
+  "Suroeste",
+];
+
+const estresPack: CirclePackNode = {
+  label: "Arbolado",
+  children: zonasPack.map((zona, zi) => ({
+    label: zona,
+    children: Array.from({ length: 7 }, (_, i) => ({
+      label: \`\${zona} \${i + 1}\`,
+      value: 120 + ((zi * 41 + i * 67) % 480),
+    })),
+  })),
+};
+
+<CirclePackChart
+  root={estresPack}
+  format={(v) => \`\${v} árboles\`}
+  ariaLabel="Arbolado por zona y sector con 49 burbujas: los valores siguen una serie aritmética determinista"
+/>`}
+      >
+        <CirclePackChart
+          root={estresPack}
+          format={(v) => `${v} árboles`}
+          ariaLabel="Arbolado por zona y sector con 49 burbujas: los valores siguen una serie aritmética determinista"
         />
       </DemoExample>
     </div>

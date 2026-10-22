@@ -3,9 +3,9 @@
  */
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { EMPTY_TITLE } from "../src/components/empty";
 import { RidgelinePlot } from "../src/components/ridgeline-plot";
 import { ViolinPlot } from "../src/components/violin-plot";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 const groups = [
   { label: "A", values: [1, 2, 3, 4, 5, 4, 3, 2, 1] },
@@ -22,7 +22,7 @@ describe("distribuciones nuevas SSR (sin JS)", () => {
     expect(html).toContain('aria-label="violines demo"');
     // Un path espejado por grupo, cada uno con su tooltip.
     expect(html.match(/<path/g)?.length).toBe(3);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(3);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(6);
     expect(html).toContain("A: n 9 · mediana");
     expect(html).toContain("Q1");
     expect(html).toContain("Q3");
@@ -37,7 +37,7 @@ describe("distribuciones nuevas SSR (sin JS)", () => {
       />,
     );
     expect(html.match(/<path/g)?.length).toBe(1);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(1);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(2);
     expect(html).toContain("A: n 3 · mediana");
   });
 
@@ -65,7 +65,7 @@ describe("distribuciones nuevas SSR (sin JS)", () => {
     expect(html).toContain('aria-label="crestas demo"');
     // Una cresta por serie, cada una con su tooltip.
     expect(html.match(/<path/g)?.length).toBe(3);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(3);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(6);
     expect(html).toContain("B: n 9 · pico en");
     expect(html).toContain("C: n 7 · pico en");
   });
@@ -82,7 +82,7 @@ describe("distribuciones nuevas SSR (sin JS)", () => {
       />,
     );
     expect(html.match(/<path/g)?.length).toBe(2);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(2);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
     expect(html).toContain("A: n 4 · pico en");
   });
 

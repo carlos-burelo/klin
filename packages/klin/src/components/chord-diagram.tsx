@@ -1,125 +1,41 @@
-/**
- * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
- */
-import {
-  type Chord as ChordDatum,
-  type ChordGroup,
-  type ChordSubgroup,
-  type Chords,
-  chord,
-  ribbon,
-} from "d3-chord";
+/** klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE). */
+import type { Chord as ChordDatum, ChordGroup, ChordSubgroup } from "d3-chord";
+import { ribbon } from "d3-chord";
 import { arc } from "d3-shape";
-import type { CSSProperties } from "react";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import { ChartSvg, CHART_W as W } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   CHART_TOKEN,
   DEFAULT_LOCALE,
   LINK_OPACITY,
   TICK_FONT_SIZE,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
-import { ChartLegend } from "./legend";
+} from "../core/theme";
+import { ChartSvg, CHART_W as W } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import { ChartLegend } from "../render/legend";
+import {
+  ANCHOR_EPS,
+  CHORD_PAD_ANGLE,
+  computeChordLayout,
+  LABEL_DX,
+  LABEL_MARGIN,
+  MAX_CHORD,
+  MIN_OUTER_RADIUS,
+  RIBBON_STROKE,
+  RING_STROKE,
+  RING_THICKNESS,
+} from "./chord-diagram.compute";
+import type { ChordDiagramProps } from "./chord-diagram.types";
 
-/** Cap SSR de la matriz (trunca determinista a 12x12). */
-export const MAX_CHORD = 12;
-
-/** Separación entre grupos vecinos (radianes). */
-const CHORD_PAD_ANGLE = 0.05;
-/** Grosor del anillo de grupos y reserva radial para etiquetas. */
-const RING_THICKNESS = 18;
-const LABEL_MARGIN = 64;
-const LABEL_DX = 12;
-/** Coseno mínimo para alinear etiqueta a un lado (si no, centrada). */
-const ANCHOR_EPS = 0.2;
-/** Radio exterior mínimo (evita colapso con alturas diminutas). */
-const MIN_OUTER_RADIUS = 48;
-/** Grosores de trazo del anillo y de la cinta. */
-const RING_STROKE = 1.5;
-const RIBBON_STROKE = 1;
-
-/** Props de ChordDiagram. */
-export type ChordDiagramProps = {
-  labels: string[];
-  matrix: number[][];
-  ariaLabel: string;
-  height?: number;
-  format?: ValueFormatter;
-  locale?: string;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  showLegend?: boolean;
-  /** Muestra las etiquetas de cada grupo del anillo. */
-  showLabels?: boolean;
-  /** Ordena grupos por flujo total descendente (reordena la matriz). */
-  sortGroups?: boolean;
-  /** Tope de grupos (1–MAX_CHORD). */
-  maxItems?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-/** Opciones puras del layout chord (paridad S del componente). */
-export type ChordLayoutOptions = {
-  /** Ordena grupos por flujo total descendente (reordena la matriz). */
-  sortGroups?: boolean;
-  /** Tope de grupos (1–MAX_CHORD). */
-  maxItems?: number;
-};
-
-/**
- * Cómputo puro del layout chord (trunca determinista a MAX_CHORD,
- * clamp a >= 0 con toNumber; nunca toca el DOM).
- */
-export function computeChordLayout(
-  labels: string[],
-  matrix: number[][],
-  opts?: ChordLayoutOptions,
-) {
-  const rawMax = Math.floor(toNumber(opts?.maxItems ?? MAX_CHORD, MAX_CHORD));
-  const safeMax =
-    Number.isFinite(rawMax) && rawMax > 0
-      ? Math.min(rawMax, MAX_CHORD)
-      : MAX_CHORD;
-  const order = labels.slice(0, safeMax).map((_, i) => i);
-  if (opts?.sortGroups) {
-    const totals = order.map((i) => {
-      let acc = 0;
-      for (const j of order) {
-        acc += Math.max(0, toNumber(matrix[i]?.[j]));
-        acc += Math.max(0, toNumber(matrix[j]?.[i]));
-      }
-      return acc;
-    });
-    order.sort((a, b) => (totals[b] ?? 0) - (totals[a] ?? 0));
-  }
-  const capped = order.map((i) => labels[i] ?? "");
-  const n = capped.length;
-  const clean: number[][] = [];
-  for (let i = 0; i < n; i += 1) {
-    const src = order[i] ?? i;
-    const row = matrix[src] ?? [];
-    const cleanRow: number[] = [];
-    for (let j = 0; j < n; j += 1) {
-      cleanRow.push(Math.max(0, toNumber(row[order[j] ?? j])));
-    }
-    clean.push(cleanRow);
-  }
-  const layout = chord().padAngle(CHORD_PAD_ANGLE);
-  const chords: Chords = layout(clean);
-  let total = 0;
-  for (const row of clean) {
-    for (const v of row) total += v;
-  }
-  return { labels: capped, matrix: clean, chords, total };
-}
+export { computeChordLayout, MAX_CHORD } from "./chord-diagram.compute";
+export type {
+  ChordDiagramProps,
+  ChordLayoutOptions,
+} from "./chord-diagram.types";
 
 /**
  * Diagrama de cuerdas SSR (flujos dirigidos entre N grupos en un anillo).
@@ -132,6 +48,7 @@ export function ChordDiagram({
   height = 260,
   format,
   locale = DEFAULT_LOCALE,
+  padAngle = CHORD_PAD_ANGLE,
   className,
   style,
   ariaDescribedBy,
@@ -153,6 +70,7 @@ export function ChordDiagram({
   } = computeChordLayout(labels, matrix, {
     sortGroups,
     maxItems,
+    padAngle,
   });
   if (isBlank(capped) || isBlank(chords.groups) || total <= 0) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
@@ -186,7 +104,6 @@ export function ChordDiagram({
             const color = seriesColor(c.source.index);
             return (
               <g key={stableKey([src, dst], i)}>
-                <title>{tip}</title>
                 <path
                   d={ribbonGen(c) ?? ""}
                   fill={color}
@@ -210,7 +127,6 @@ export function ChordDiagram({
               cos > ANCHOR_EPS ? "start" : cos < -ANCHOR_EPS ? "end" : "middle";
             return (
               <g key={stableKey([label, g.index], g.index)}>
-                <title>{tip}</title>
                 <path
                   d={arcGen(g) ?? ""}
                   fill={color}

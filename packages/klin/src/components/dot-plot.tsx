@@ -2,18 +2,14 @@
  * klin — © 2026 Carlos Burelo — AGPL-3.0-or-later (ver LICENSE).
  */
 import { scaleBand, scaleLinear } from "d3-scale";
-import type { CSSProperties } from "react";
-import type { ValueAnnotation } from "../lib/api";
-import { domainWithZero } from "../lib/domain";
-import { isBlank } from "../lib/empty";
-import { resolveFormatter } from "../lib/format";
-import type { ChartMargin } from "../lib/frame";
-import { ChartSvg } from "../lib/frame";
-import { stableKey } from "../lib/keys";
-import { DEFAULT_MAX_ROWS } from "../lib/limits";
-import { toNumber } from "../lib/number";
-import type { ValueFormatter } from "../lib/palette";
-import { seriesColor, truncateLabel } from "../lib/palette";
+import { seriesColor } from "../core/color";
+import { domainWithZero } from "../core/domain";
+import { resolveFormatter } from "../core/format";
+import { isBlank } from "../core/guards";
+import { stableKey } from "../core/keys";
+import { DEFAULT_MAX_ROWS } from "../core/limits";
+import { toNumber } from "../core/number";
+import { truncateLabel } from "../core/text";
 import {
   ANNOTATION_DASH,
   ANNOTATION_WIDTH,
@@ -28,59 +24,26 @@ import {
   TICK_DY,
   TICK_FONT_SIZE,
   TICK_GAP_PX,
-} from "../lib/theme";
-import { ChartEmpty, EMPTY_TITLE } from "./empty";
+} from "../core/theme";
+import { ChartSvg } from "../render/chart-svg";
+import { ChartEmpty, EMPTY_TITLE } from "../render/empty";
+import {
+  buildDotRows,
+  DOT_AXIS_LABEL_OFFSET,
+  DOT_BAND_PADDING,
+  DOT_LABEL_MAX,
+  DOT_MARGIN,
+  DOT_SORT_NONE,
+  DOT_STEM_OPACITY,
+  DOT_VALUE_GAP,
+  DOT_W,
+  resolveDotDomain,
+  resolveDotRadius,
+  resolveDotTicks,
+} from "./dot-plot.compute";
+import type { DotPlotProps } from "./dot-plot.types";
 
-/** Props de DotPlot. */
-export type DotPlotProps = {
-  data: Array<Record<string, string | number>>;
-  categoryKey: string;
-  valueKey: string;
-  ariaLabel: string;
-  height?: number;
-  format?: ValueFormatter;
-  locale?: string;
-  color?: string;
-  /**
-   * Override de color por punto. Si retorna `undefined` se usa el color base (`color`).
-   */
-  itemColor?: (
-    datum: Record<string, string | number>,
-    datumIndex: number,
-  ) => string | undefined;
-  className?: string;
-  style?: CSSProperties;
-  ariaDescribedBy?: string;
-  annotations?: ValueAnnotation[];
-  /** Muestra etiquetas de categoría (eje Y). */
-  showLabels?: boolean;
-  /** Muestra el valor junto a cada punto. */
-  showValues?: boolean;
-  /** Ticks del grid del eje X. */
-  gridTicks?: number;
-  /** Orden por valor (`none` respeta el orden de entrada). */
-  sortBy?: "none" | "asc" | "desc";
-  /** Tope de filas (SSR acotado). */
-  maxItems?: number;
-  emptyTitle?: string;
-  emptyDescription?: string;
-};
-
-const DOT_SORT_NONE = "none";
-
-const DOT_W = 640;
-const DOT_MARGIN: ChartMargin = { top: 12, right: 48, bottom: 32, left: 132 };
-const DOT_BAND_PADDING = 0.35;
-const DOT_LABEL_MAX = 20;
-const DOT_STEM_OPACITY = 0.5;
-const DOT_VALUE_GAP = 6;
-const DOT_AXIS_LABEL_OFFSET = 10;
-
-type DotRow = {
-  label: string;
-  value: number;
-  datum: Record<string, string | number>;
-};
+export type { DotPlotProps } from "./dot-plot.types";
 
 /**
  * Puntos SSR horizontales estilo Cleveland (un punto por categoría sobre
@@ -106,35 +69,22 @@ export function DotPlot({
   gridTicks = GRID_TICKS,
   sortBy = DOT_SORT_NONE,
   maxItems = DEFAULT_MAX_ROWS,
+  pointRadius = POINT_RADIUS_SCATTER,
+  xMin,
+  xMax,
   emptyTitle = EMPTY_TITLE,
   emptyDescription,
 }: DotPlotProps) {
-  const rawTicks = Math.floor(toNumber(gridTicks, GRID_TICKS));
-  const safeTicks =
-    Number.isFinite(rawTicks) && rawTicks > 0 ? rawTicks : GRID_TICKS;
-  const rawMax = Math.floor(toNumber(maxItems, DEFAULT_MAX_ROWS));
-  const safeMax =
-    Number.isFinite(rawMax) && rawMax > 0 ? rawMax : DEFAULT_MAX_ROWS;
-  const sortMode =
-    sortBy === "asc" || sortBy === "desc" ? sortBy : DOT_SORT_NONE;
-  const computed: DotRow[] = [];
-  for (const d of data.slice(0, safeMax)) {
-    const value = toNumber(d[valueKey], Number.NaN);
-    if (!Number.isFinite(value)) continue;
-    computed.push({ label: String(d[categoryKey] ?? ""), value, datum: d });
-  }
-  if (sortMode !== DOT_SORT_NONE) {
-    computed.sort((a, b) =>
-      sortMode === "asc" ? a.value - b.value : b.value - a.value,
-    );
-  }
+  const safeTicks = resolveDotTicks(gridTicks);
+  const computed = buildDotRows(data, categoryKey, valueKey, sortBy, maxItems);
   if (isBlank(computed)) {
     return <ChartEmpty title={emptyTitle} description={emptyDescription} />;
   }
 
   const innerW = DOT_W - DOT_MARGIN.left - DOT_MARGIN.right;
   const innerH = height - DOT_MARGIN.top - DOT_MARGIN.bottom;
-  const [lo, hi] = domainWithZero(computed.map((r) => r.value));
+  const [autoLo, autoHi] = domainWithZero(computed.map((r) => r.value));
+  const { lo, hi } = resolveDotDomain(autoLo, autoHi, xMin, xMax);
   const x = scaleLinear()
     .domain([lo, Math.max(hi, lo + 1)])
     .nice(safeTicks)
@@ -146,7 +96,8 @@ export function DotPlot({
   const ticks = x.ticks(safeTicks);
   const fmt = resolveFormatter(format, locale);
   const fill = seriesColor(0, color);
-  const x0 = DOT_MARGIN.left + x(0);
+  const dotR = resolveDotRadius(pointRadius);
+  const x0 = DOT_MARGIN.left + x(Math.min(hi, Math.max(lo, 0)));
 
   return (
     <ChartSvg
@@ -183,8 +134,10 @@ export function DotPlot({
         const ax = DOT_MARGIN.left + x(clamped);
         const stroke = a.color ?? CHART_TOKEN.accent;
         return (
-          <g key={stableKey([a.label ?? `${a.value}`], ai)}>
-            <title>{a.label ?? fmt(a.value)}</title>
+          <g
+            key={stableKey([a.label ?? `${a.value}`], ai)}
+            data-chart-tip={a.label ?? fmt(a.value)}
+          >
             <line
               x1={ax}
               x2={ax}
@@ -215,7 +168,6 @@ export function DotPlot({
         const right = r.value >= 0;
         return (
           <g key={stableKey([r.label], ri)}>
-            <title>{tip}</title>
             {showLabels ? (
               <text
                 x={DOT_MARGIN.left - TICK_GAP_PX}
@@ -224,8 +176,8 @@ export function DotPlot({
                 textAnchor="end"
                 fontSize={TICK_FONT_SIZE}
                 fill={CHART_TOKEN.muted}
+                data-chart-tip={r.label}
               >
-                <title>{r.label}</title>
                 {truncateLabel(r.label, DOT_LABEL_MAX)}
               </text>
             ) : null}
@@ -241,7 +193,7 @@ export function DotPlot({
             <circle
               cx={cx}
               cy={cy}
-              r={POINT_RADIUS_SCATTER}
+              r={dotR}
               fill={c}
               stroke={CHART_TOKEN.background}
               strokeWidth={POINT_BORDER}

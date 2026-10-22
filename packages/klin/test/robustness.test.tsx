@@ -4,20 +4,23 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
 import { BarChart } from "../src/components/bar-chart";
-import { ChartEmpty } from "../src/components/empty";
 import { HorizontalBarChart } from "../src/components/horizontal-bar-chart";
-import { ChartLegend } from "../src/components/legend";
 import { LineChart } from "../src/components/line-chart";
 import { computeNetworkPositions } from "../src/components/network-graph";
 import { computeSankeyLayout } from "../src/components/sankey-diagram";
-import { ChartTooltipPortal } from "../src/components/tooltip-portal";
 import { VerticalStackedBar } from "../src/components/vertical-stacked-bar";
 import { WaffleChart } from "../src/components/waffle-chart";
-import { domainWithZero, topPositive } from "../src/lib/domain";
-import { EdgeLabel, layoutDag } from "../src/lib/graph";
-import { stableKey } from "../src/lib/keys";
-import { toNumber } from "../src/lib/number";
-import { formatDefault, seriesColors, truncateLabel } from "../src/lib/palette";
+import { seriesColors } from "../src/core/color";
+import { layoutDag } from "../src/core/dag/layout";
+import { domainWithZero, topPositive } from "../src/core/domain";
+import { formatDefault } from "../src/core/format";
+import { stableKey } from "../src/core/keys";
+import { toNumber } from "../src/core/number";
+import { truncateLabel } from "../src/core/text";
+import { EdgeLabel } from "../src/render/edge-label";
+import { ChartEmpty } from "../src/render/empty";
+import { ChartLegend } from "../src/render/legend";
+import { ChartTooltipPortal } from "../src/render/tooltip-portal";
 
 describe("lib número/dominio/paleta", () => {
   test("toNumber filtra no-finitos", () => {
@@ -68,7 +71,7 @@ describe("cartesianos robustos", () => {
     expect(html).toContain("-5");
     expect(html).toContain("10");
     expect(html).not.toContain("NaN");
-    expect(html.match(/data-chart-tip/g)?.length).toBe(2);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
   });
 
   test("BarChart filtra NaN/strings como 0", () => {
@@ -96,7 +99,7 @@ describe("cartesianos robustos", () => {
         series={series}
       />,
     );
-    expect(html.match(/data-chart-tip/g)?.length).toBe(2);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(4);
   });
 
   test("HorizontalBarChart negativos sin NaN", () => {

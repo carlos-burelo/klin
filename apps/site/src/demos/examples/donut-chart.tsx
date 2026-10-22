@@ -96,6 +96,124 @@ const data = [
           ]}
         />
       </DemoExample>
+      <DemoExample
+        caption="Leyenda con etiquetas sin valores"
+        code={`import { DonutChart } from "@carlos-burelo/klin";
+
+const data = [
+  { label: "Jalisco", value: 320 },
+  { label: "Nuevo León", value: 280 },
+  { label: "Puebla", value: 190 },
+  { label: "Oaxaca", value: 140 },
+  { label: "Yucatán", value: 110 },
+];
+
+<DonutChart
+  ariaLabel="Dona de matrícula por estado con leyenda sin valores"
+  totalLabel="Alumnos"
+  showLegendValues={false}
+  data={data}
+/>`}
+      >
+        <DonutChart
+          ariaLabel="Dona de matrícula por estado con leyenda sin valores"
+          totalLabel="Alumnos"
+          showLegendValues={false}
+          data={[
+            { label: "Jalisco", value: 320 },
+            { label: "Nuevo León", value: 280 },
+            { label: "Puebla", value: 190 },
+            { label: "Oaxaca", value: 140 },
+            { label: "Yucatán", value: 110 },
+          ]}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Valores dentro y nombres fuera con total al centro"
+        code={`import { DonutChart } from "@carlos-burelo/klin";
+
+const data = [
+  { label: "Jalisco", value: 320 },
+  { label: "Nuevo León", value: 280 },
+  { label: "Puebla", value: 190 },
+  { label: "Oaxaca", value: 140 },
+  { label: "Yucatán", value: 110 },
+];
+
+<DonutChart
+  ariaLabel="Dona de matrícula con valores dentro y nombres fuera"
+  totalLabel="Alumnos"
+  innerLabels="value"
+  outerLabels="label"
+  showLegend={false}
+  data={data}
+/>`}
+      >
+        <DonutChart
+          ariaLabel="Dona de matrícula con valores dentro y nombres fuera"
+          totalLabel="Alumnos"
+          innerLabels="value"
+          outerLabels="label"
+          showLegend={false}
+          data={[
+            { label: "Jalisco", value: 320 },
+            { label: "Nuevo León", value: 280 },
+            { label: "Puebla", value: 190 },
+            { label: "Oaxaca", value: 140 },
+            { label: "Yucatán", value: 110 },
+          ]}
+        />
+      </DemoExample>
+      <DemoExample
+        caption="Estrés: 12 rebanadas con varias finas, nombres fuera y valores dentro"
+        code={`import { DonutChart } from "@carlos-burelo/klin";
+
+const data = [
+  { label: "Jalisco", value: 320 },
+  { label: "Nuevo León", value: 280 },
+  { label: "Puebla", value: 190 },
+  { label: "Oaxaca", value: 140 },
+  { label: "Veracruz de Ignacio de la Llave", value: 96 },
+  { label: "Yucatán", value: 64 },
+  { label: "Chiapas", value: 41 },
+  { label: "Michoacán", value: 27 },
+  { label: "Guanajuato", value: 18 },
+  { label: "San Luis Potosí", value: 11 },
+  { label: "Aguascalientes", value: 6 },
+  { label: "Colima", value: 3 },
+];
+
+<DonutChart
+  ariaLabel="Dona de matrícula por estado con doce rebanadas y varias finas"
+  totalLabel="Alumnos"
+  innerLabels="value"
+  outerLabels="label"
+  showLegend={false}
+  data={data}
+/>`}
+      >
+        <DonutChart
+          ariaLabel="Dona de matrícula por estado con doce rebanadas y varias finas"
+          totalLabel="Alumnos"
+          innerLabels="value"
+          outerLabels="label"
+          showLegend={false}
+          data={[
+            { label: "Jalisco", value: 320 },
+            { label: "Nuevo León", value: 280 },
+            { label: "Puebla", value: 190 },
+            { label: "Oaxaca", value: 140 },
+            { label: "Veracruz de Ignacio de la Llave", value: 96 },
+            { label: "Yucatán", value: 64 },
+            { label: "Chiapas", value: 41 },
+            { label: "Michoacán", value: 27 },
+            { label: "Guanajuato", value: 18 },
+            { label: "San Luis Potosí", value: 11 },
+            { label: "Aguascalientes", value: 6 },
+            { label: "Colima", value: 3 },
+          ]}
+        />
+      </DemoExample>
     </div>
   );
 }

@@ -4,9 +4,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
 import { DotPlot } from "../src/components/dot-plot";
-import { EMPTY_TITLE } from "../src/components/empty";
 import { IsotypeChart } from "../src/components/isotype-chart";
 import { TernaryPlot } from "../src/components/ternary-plot";
+import { EMPTY_TITLE } from "../src/render/empty";
 
 describe("TernaryPlot SSR (sin JS)", () => {
   const pts = [
@@ -23,7 +23,7 @@ describe("TernaryPlot SSR (sin JS)", () => {
     expect(html).toContain('aria-label="ternario demo"');
     expect(html.match(/<circle/g)?.length).toBe(3);
     expect(html.match(/data-chart-tip/g)?.length).toBe(3);
-    expect(html).toContain("<title>P1: 50% · 30% · 20%</title>");
+    expect(html).toContain('data-chart-tip="P1: 50% · 30% · 20%"');
     expect(html).toContain("P2: 33.3% · 33.3% · 33.3%");
     expect(html).toContain(">A<");
     expect(html).toContain(">B<");
@@ -96,8 +96,8 @@ describe("DotPlot SSR (sin JS)", () => {
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="puntos demo"');
     expect(html.match(/<circle/g)?.length).toBe(3);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(3);
-    expect(html).toContain("<title>A: 10</title>");
+    expect(html.match(/data-chart-tip/g)?.length).toBe(6);
+    expect(html).toContain('data-chart-tip="A: 10"');
     expect(html).toContain("B: -4");
     expect(html).toContain("C: 7");
   });
@@ -129,7 +129,7 @@ describe("DotPlot SSR (sin JS)", () => {
       <DotPlot ariaLabel="muchos" data={big} categoryKey="cat" valueKey="v" />,
     );
     expect(html.match(/<circle/g)?.length).toBe(400);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(400);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(800);
   });
 });
 
@@ -148,8 +148,8 @@ describe("IsotypeChart SSR (sin JS)", () => {
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="isotipo demo"');
     expect(html.match(/<circle/g)?.length).toBe(7);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(7);
-    expect(html).toContain("<title>Gatos: 25 (5 pictogramas)</title>");
+    expect(html.match(/data-chart-tip/g)?.length).toBe(9);
+    expect(html).toContain('data-chart-tip="Gatos: 25 (5 pictogramas)"');
     expect(html).toContain("Perros: 10 (2 pictogramas)");
     expect(html).toContain(">Gatos<");
   });
@@ -180,7 +180,7 @@ describe("IsotypeChart SSR (sin JS)", () => {
       />,
     );
     expect(html.match(/<circle/g)?.length).toBe(200);
-    expect(html.match(/data-chart-tip/g)?.length).toBe(200);
+    expect(html.match(/data-chart-tip/g)?.length).toBe(201);
     expect(html).toContain("(200 pictogramas)");
   });
 });
