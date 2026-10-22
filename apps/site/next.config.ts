@@ -21,6 +21,7 @@ const klinSrcRel = path
 const nextConfig: NextConfig = {
   // Sitio estático: HTML prerenderizado, despliegue en cualquier hosting.
   output: "export",
+  experimental: { agentUpgrade: "security" },
   transpilePackages: ["@carlos-burelo/klin"],
   turbopack: {
     root: path.join(process.cwd(), "..", ".."),
